@@ -1,0 +1,109 @@
+/* Modal Styling */
+.customization-modal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    padding: 20px;
+    width: 400px;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  
+  .modal-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+  }
+  
+  .modal-section {
+    margin-bottom: 16px;
+  }
+  
+  .modal-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+  }
+  
+  .MuiRadio-root {
+    color: #6b4e31 !important;
+  }
+  
+  .MuiRadio-root.Mui-checked {
+    color: #6b4e31 !important;
+  }
+  
+  .MuiFormControlLabel-label {
+    font-size: 14px;
+    color: #333;
+  }
+  
+  .toppings-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .MuiCheckbox-root {
+    color: #6b4e31 !important;
+  }
+  
+  .MuiCheckbox-root.Mui-checked {
+    color: #6b4e31 !important;
+  }
+  
+  .quantity-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .quantity-control .MuiTypography-root {
+    font-size: 16px;
+    color: #333;
+  }
+  
+  .modal-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 16px;
+  }
+  
+  .modal-cancel-button {
+    border: none;
+    color: #333;
+    font-size: 14px;
+    font-weight: 500;
+    text-transform: none;
+    padding: 8px 16px;
+  }
+  
+  .modal-cancel-button:hover {
+    background-color: #f0f0f0;
+  }
+  
+  .modal-add-button {
+    background-color: #6b4e31;
+    color: #fff;
+    border-radius: 4px;
+    padding: 8px 16px;
+    text-transform: none;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  
+  .modal-add-button:hover {
+    background-color: #543d27;
+  }
