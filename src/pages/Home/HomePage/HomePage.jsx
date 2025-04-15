@@ -1,7 +1,9 @@
 import {
   Box,
   Button,
+  Card,
   CardContent,
+  CardMedia,
   Divider,
   Grid,
   Tab,
@@ -13,6 +15,7 @@ import { useDispatch, useSelector } from "react-redux";
 import "./HomePage.css";
 import CustomizationModal from "../../../components/Modal/CustomizationModal";
 import { listItemApi } from "../../../store/slices/itemSlice";
+import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
 
 export default function HomePage() {
   const dispatch = useDispatch();
@@ -41,10 +44,10 @@ export default function HomePage() {
   const handleOpenModal = (item) => {
     setSelectedItem(item);
     setCustomization({
-      size: item.options.sizes[1]?.label || "Medium", // Mặc định chọn size thứ 2 (Medium)
+      size: item.options.sizes[1]?.label || "Medium",
       sizePrice: item.options.sizes[1]?.priceModifier || 0,
-      sugar: item.options.sugarLevels[4] || "100%", // Mặc định 100%
-      ice: item.options.iceLevels[2] || "Regular", // Mặc định Regular
+      sugar: item.options.sugarLevels[4] || "100%",
+      ice: item.options.iceLevels[2] || "Regular",
       toppings: [],
       quantity: 1,
     });
@@ -79,7 +82,7 @@ export default function HomePage() {
   return (
     <Box className="home-page">
       <Grid container spacing={2} className="home-page-grid">
-        <Grid size={6} className="menu-section">
+        <Grid size={7} className="menu-section">
           <Typography className="menu-title">Menu Items</Typography>
           <Tabs
             value={tabValue}
@@ -102,41 +105,65 @@ export default function HomePage() {
             ) : item.length > 0 ? (
               <Grid container spacing={2} className="menu-items-grid">
                 {item.map((item) => (
-                  <Grid item xs={6} key={item.id} className="menu-item">
-                    <Box
-                      className="menu-item-image-placeholder"
-                      component="img"
-                      src={item.image}
-                      alt={item.name}
-                      sx={{ width: "100%", height: "auto" }}
-                    />
-                    <CardContent className="menu-item-content">
-                      <Typography variant="h6" className="menu-item-name">
-                        {item.name}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        className="menu-item-description"
-                      >
-                        {item.description}
-                      </Typography>
-                      <Typography
-                        variant="h6"
-                        color="text.primary"
-                        className="menu-item-price"
-                      >
-                        ${item.basePrice.toFixed(2)}
-                      </Typography>
-                    </CardContent>
-                    <Box className="menu-item-actions">
-                      <Button
-                        onClick={() => handleOpenModal(item)}
-                        className="menu-item-add-button"
-                      >
-                        Add
-                      </Button>
-                    </Box>
+                  <Grid key={item.id}>
+                    <Card sx={{ maxWidth: 345 }} className="menu-item">
+                      <CardMedia
+                        className="menu-item-image-placeholder"
+                        component="img"
+                        src={item.image}
+                        alt={item.name}
+                        sx={{
+                          width: "100%",
+                          height: "150px",
+                          maxWidth: "250px",
+                          objectFit: "cover",
+                        }}
+                      />
+                      <CardContent className="menu-item-content">
+                        <Typography
+                          variant="h6"
+                          className="menu-item-name"
+                          sx={{ marginTop: "5px", color: "#8a5a2a" }}
+                        >
+                          {item.name}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          className="menu-item-description"
+                          sx={{ marginTop: "5px" }}
+                        >
+                          {item.description}
+                        </Typography>
+
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexDirection: "row",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginTop: "5px",
+                          }}
+                        >
+                          <Typography
+                            variant="h6"
+                            color="text.primary"
+                            className="menu-item-price"
+                            sx={{ marginTop: "5px", color: "#8a5a2a" }}
+                          >
+                            ${item.basePrice.toFixed(2)}
+                          </Typography>
+                          <Box className="menu-item-actions">
+                            <button
+                              onClick={() => handleOpenModal(item)}
+                              className="menu-item-add-button"
+                            >
+                              Add
+                            </button>
+                          </Box>
+                        </Box>
+                      </CardContent>
+                    </Card>
                   </Grid>
                 ))}
               </Grid>
@@ -145,18 +172,29 @@ export default function HomePage() {
             )}
           </Box>
         </Grid>
-        <Grid size={6} className="order-section">
+        <Grid size={5} className="order-section">
           <Typography variant="h6" className="order-title">
             CURRENT ORDER
           </Typography>
           {order.length === 0 ? (
             <Box className="order-empty-message">
-              <Typography variant="body1" className="order-empty-text">
-                No items in order yet
-              </Typography>
-              <Typography variant="body2" className="order-empty-subtext">
-                Add items from the menu to get started
-              </Typography>
+              <Box sx={{ textAlign: "center", marginTop: "-6%" }}>
+                <ShoppingBagIcon
+                  className="order-empty-icon"
+                  sx={{
+                    color: "#786c5f",
+                    fontSize: "50px",
+                    marginBottom: "5px",
+                    
+                  }}
+                />
+                <Typography variant="body1" className="order-empty-text">
+                  No items in order yet
+                </Typography>
+                <Typography variant="body2" className="order-empty-subtext">
+                  Add items from the menu to get started
+                </Typography>
+              </Box>
             </Box>
           ) : (
             <>
