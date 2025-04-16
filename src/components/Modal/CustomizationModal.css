@@ -7,12 +7,12 @@
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   width: 650px;
-  max-height: 80vh;
+  max-height: 200vh;
   overflow-y: hidden;
 }
 
 .customization-modal__content {
-  padding: 20px 0; /* Chỉ giữ padding trên/dưới, loại bỏ padding trái/phải */
+  padding: 20px 0;
 }
 
 .customization-modal__header {
@@ -38,7 +38,6 @@
 .customization-modal__section {
   margin-top: 16px;
   padding: 0 20px;
-
 }
 
 .customization-modal__radio-group {
@@ -107,7 +106,8 @@
   border-top: 1px solid #e6e2e2;
   padding: 20px 20px;
   box-sizing: border-box;
-  box-shadow: rgba(17, 17, 26, 0.1) 0px 4px 16px, rgba(17, 17, 26, 0.1) 0px 8px 24px, rgba(17, 17, 26, 0.1) 0px 16px 56px;
+  box-shadow: rgba(17, 17, 26, 0.1) 0px 4px 16px,
+    rgba(17, 17, 26, 0.1) 0px 8px 24px, rgba(17, 17, 26, 0.1) 0px 16px 56px;
 }
 
 button.customization-modal__button--cancel {

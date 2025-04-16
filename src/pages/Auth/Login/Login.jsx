@@ -1,7 +1,8 @@
+import { Box } from '@mui/material'
 import React from 'react'
 
 export default function Login() {
   return (
-    <div>Login</div>
+    <Box>Login</Box>
   )
 }

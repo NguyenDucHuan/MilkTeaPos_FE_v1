@@ -9,6 +9,8 @@ import {
   Tab,
   Tabs,
   Typography,
+  IconButton,
+  colors,
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -16,6 +18,9 @@ import "./HomePage.css";
 import CustomizationModal from "../../../components/Modal/CustomizationModal";
 import { listItemApi } from "../../../store/slices/itemSlice";
 import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 export default function HomePage() {
   const dispatch = useDispatch();
@@ -60,7 +65,41 @@ export default function HomePage() {
   };
 
   const handleAddToOrder = (customizedItem) => {
-    setOrder([...order, customizedItem]);
+    const existingItemIndex = order.findIndex(
+      (orderItem) =>
+        orderItem.name === customizedItem.name &&
+        orderItem.size === customizedItem.size &&
+        orderItem.sugar === customizedItem.sugar &&
+        orderItem.ice === customizedItem.ice &&
+        JSON.stringify(orderItem.toppings.sort()) ===
+          JSON.stringify(customizedItem.toppings.sort())
+    );
+
+    if (existingItemIndex !== -1) {
+      const updatedOrder = [...order];
+      updatedOrder[existingItemIndex].quantity += customizedItem.quantity;
+      updatedOrder[existingItemIndex].itemPrice +=
+        customizedItem.itemPrice * customizedItem.quantity;
+      setOrder(updatedOrder);
+    } else {
+      setOrder([...order, customizedItem]);
+    }
+    handleCloseModal();
+  };
+
+  const handleRemoveItem = (index) => {
+    setOrder(order.filter((_, i) => i !== index));
+  };
+
+  const handleAdjustQuantity = (index, change) => {
+    const updatedOrder = [...order];
+    const newQuantity = updatedOrder[index].quantity + change;
+    if (newQuantity < 1) return;
+    updatedOrder[index].quantity = newQuantity;
+    const basePrice =
+      updatedOrder[index].itemPrice / updatedOrder[index].quantity;
+    updatedOrder[index].itemPrice = basePrice * newQuantity;
+    setOrder(updatedOrder);
   };
 
   const handleClearOrder = () => {
@@ -185,7 +224,6 @@ export default function HomePage() {
                     color: "#786c5f",
                     fontSize: "50px",
                     marginBottom: "5px",
-                    
                   }}
                 />
                 <Typography variant="body1" className="order-empty-text">
@@ -203,7 +241,7 @@ export default function HomePage() {
                   ORDER SUMMARY
                 </Typography>
                 <Typography variant="body2" className="order-summary-item">
-                  ITEMS: {order.length}
+                  ITEMS: {order.reduce((sum, item) => sum + item.quantity, 0)}
                 </Typography>
                 <Typography variant="body2" className="order-summary-subtotal">
                   SUBTOTAL: ${subtotal.toFixed(2)}
@@ -220,20 +258,81 @@ export default function HomePage() {
                   ORDER DETAILS
                 </Typography>
                 {order.map((item, index) => (
-                  <Box key={index} className="order-detail-item">
-                    <Typography variant="body2" className="order-detail-text">
-                      {item.quantity}x {item.name} <br />
-                      {item.size}, {item.sugar} sugar, {item.ice} ice
-                      {item.toppings.length > 0 && (
-                        <>
-                          <br />
-                          Toppings: {item.toppings.join(", ")}
-                        </>
-                      )}
-                    </Typography>
-                    <Typography variant="body2" className="order-detail-price">
-                      ${item.itemPrice.toFixed(2)}
-                    </Typography>
+                  <Box
+                    key={index}
+                    className="order-detail-item"
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Box>
+                      <Typography variant="body2" className="order-detail-text">
+                        <Box>
+                          <span
+                            style={{
+                              color: "#b0855b",
+                              fontSize: "20px",
+                              padding: " 0px 20px",
+                            }}
+                          >
+                            {item.quantity}x{" "}
+                          </span>
+                          <span
+                            style={{
+                              color: "#8e857c",
+                              fontSize: "20px",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            {item.name}
+                          </span>
+                        </Box>{" "}
+                        <br />
+                        <Box
+                          sx={{
+                            marginLeft: "66px",
+                            color: "#bab1a8",
+                            fontWeight: "bold",
+                          }}
+                        >
+                          {item.size}, {item.sugar} sugar, {item.ice} ice,
+                          {item.toppings.length > 0 && (
+                            <>{item.toppings.join(", ")}</>
+                          )}
+                        </Box>
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: "flex", alignItems: "center" }}>
+                      <IconButton
+                        onClick={() => handleAdjustQuantity(index, -1)}
+                        size="small"
+                      >
+                        <RemoveIcon />
+                      </IconButton>
+                      <Typography sx={{ mx: 1 }}>{item.quantity}</Typography>
+                      <IconButton
+                        onClick={() => handleAdjustQuantity(index, 1)}
+                        size="small"
+                      >
+                        <AddIcon />
+                      </IconButton>
+                      <Typography
+                        variant="body2"
+                        className="order-detail-price"
+                        sx={{ mx: 2 }}
+                      >
+                        ${item.itemPrice.toFixed(2)}
+                      </Typography>
+                      <IconButton
+                        onClick={() => handleRemoveItem(index)}
+                        size="small"
+                        color="error"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
                   </Box>
                 ))}
               </Box>
