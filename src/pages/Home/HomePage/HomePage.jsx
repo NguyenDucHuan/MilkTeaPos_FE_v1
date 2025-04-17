@@ -20,6 +20,7 @@ import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import DeleteIcon from "@mui/icons-material/Delete";
+import Footer from "../../../components/Footer/Footer";
 
 export default function HomePage() {
   const dispatch = useDispatch();
@@ -365,6 +366,7 @@ export default function HomePage() {
         customization={customization}
         setCustomization={setCustomization}
       />
+      <Footer />
     </Box>
   );
 }
