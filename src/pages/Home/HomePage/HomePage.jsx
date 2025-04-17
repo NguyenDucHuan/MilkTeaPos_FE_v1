@@ -6,8 +6,6 @@ import {
   CardMedia,
   Divider,
   Grid,
-  Tab,
-  Tabs,
   Typography,
   IconButton,
 } from "@mui/material";
@@ -21,15 +19,20 @@ import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Footer from "../../../components/Footer/Footer";
-import Header from"../../../components/Header/Header";
+import Header from "../../../components/Header/Header";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
+import LocalDrinkIcon from "@mui/icons-material/LocalDrink";
+import StarIcon from "@mui/icons-material/Star";
+import AppleIcon from "@mui/icons-material/Apple";
 
 export default function HomePage() {
   const dispatch = useDispatch();
   const { item, isLoading, error } = useSelector((state) => state.item);
-  const [tabValue, setTabValue] = useState(0);
   const [order, setOrder] = useState([]);
   const [openModal, setOpenModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const [customization, setCustomization] = useState({
     size: "Medium",
     sizePrice: 0,
@@ -43,16 +46,13 @@ export default function HomePage() {
     dispatch(listItemApi());
   }, [dispatch]);
 
-  const handleTabChange = (event, newValue) => {
-    setTabValue(newValue);
-  };
-
   const handleOpenModal = (item) => {
     setSelectedItem(item);
     setCustomization({
-      size: item.options.sizes[1]?.label || "Medium",
-      sizePrice: item.options.sizes[1]?.priceModifier || 0,
-      sugar: item.options.sugarLevels[4] || "100%",
+      size: item.options.sizes[0]?.label || "Medium",
+      sizePrice: item.options.sizes[0]?.priceModifier || 0,
+      sugar:
+        item.options.sugarLevels[item.options.sugarLevels.length - 1] || "100%",
       ice: item.options.iceLevels[2] || "Regular",
       toppings: [],
       quantity: 1,
@@ -94,12 +94,12 @@ export default function HomePage() {
 
   const handleAdjustQuantity = (index, change) => {
     const updatedOrder = [...order];
-    const newQuantity = updatedOrder[index].quantity + change;
-    if (newQuantity < 1) return;
-    updatedOrder[index].quantity = newQuantity;
-    const basePrice =
-      updatedOrder[index].itemPrice / updatedOrder[index].quantity;
-    updatedOrder[index].itemPrice = basePrice * newQuantity;
+    const currentQuantity = updatedOrder[index].quantity; 
+    const newQuantity = currentQuantity + change;
+    if (newQuantity < 1) return; 
+    const basePrice = updatedOrder[index].itemPrice / currentQuantity;
+    updatedOrder[index].quantity = newQuantity; 
+    updatedOrder[index].itemPrice = basePrice * newQuantity; 
     setOrder(updatedOrder);
   };
 
@@ -115,123 +115,213 @@ export default function HomePage() {
     return subtotal * 0.08;
   };
 
+  const categories = [
+    {
+      displayName: "Combo Deals",
+      apiName: "Combo",
+      description: "Save with our special combo packages",
+      icon: <CardGiftcardIcon sx={{ fontSize: 40, color: "#8a5a2a" }} />,
+    },
+    {
+      displayName: "Classic Milk Teas",
+      apiName: "Classic",
+      description: "Our traditional milk tea favorites",
+      icon: <LocalDrinkIcon sx={{ fontSize: 40, color: "#8a5a2a" }} />,
+    },
+    {
+      displayName: "Special Milk Teas",
+      apiName: "Special",
+      description: "Unique flavors and premium ingredients",
+      icon: <StarIcon sx={{ fontSize: 40, color: "#8a5a2a" }} />,
+    },
+    {
+      displayName: "Fruit Milk Teas",
+      apiName: "Fruit",
+      description: "Refreshing fruit flavored milk teas",
+      icon: <AppleIcon sx={{ fontSize: 40, color: "#8a5a2a" }} />,
+    },
+  ];
+
+  const getFilteredItems = () => {
+    if (!selectedCategory) return item;
+    const selectedCategoryObj = categories.find(
+      (cat) => cat.displayName === selectedCategory
+    );
+    if (!selectedCategoryObj) return [];
+    return item.filter((i) => i.category === selectedCategoryObj.apiName);
+  };
+
+  const handleCategoryClick = (category) => {
+    setSelectedCategory(category);
+  };
+
+  const handleBackToCategories = () => {
+    setSelectedCategory(null);
+  };
+
   const subtotal = calculateSubtotal();
   const tax = calculateTax(subtotal);
   const total = subtotal + tax;
 
   return (
     <Box className="home-page">
-      <Header/>
+      <Header />
       <Grid container spacing={2} className="home-page-grid">
         <Grid size={7} className="menu-section">
           <Typography className="menu-title">Menu Items</Typography>
-          <Tabs
-            value={tabValue}
-            onChange={handleTabChange}
-            variant="fullWidth"
-            className="menu-tabs"
-          >
-            <Tab label="ALL ITEMS" className="menu-tab" />
-            <Tab label="CLASSIC" className="menu-tab" />
-            <Tab label="SPECIAL" className="menu-tab" />
-            <Tab label="FRUIT" className="menu-tab" />
-          </Tabs>
-
           <Box className="menu-items-container">
             <Divider className="menu-divider" />
             {isLoading ? (
               <Typography>Đang tải...</Typography>
             ) : error ? (
               <Typography color="error">Lỗi: {error}</Typography>
-            ) : item.length > 0 ? (
-              <Grid container spacing={2} className="menu-items-grid">
-                {item.map((item) => (
-                  <Grid key={item.id}>
-                    <Card sx={{ maxWidth: 345 }} className="menu-item">
-                      <CardMedia
-                        className="menu-item-image-placeholder"
-                        component="img"
-                        src={item.image}
-                        alt={item.name}
-                        sx={{
-                          width: "100%",
-                          height: "150px",
-                          maxWidth: "250px",
-                          objectFit: "cover",
-                        }}
-                      />
-                      <CardContent className="menu-item-content">
-                        <Typography
-                          variant="h6"
-                          className="menu-item-name"
-                          sx={{ marginTop: "5px", color: "#8a5a2a" }}
-                        >
-                          {item.name}
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          className="menu-item-description"
-                          sx={{ marginTop: "5px" }}
-                        >
-                          {item.description}
-                        </Typography>
-
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexDirection: "row",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            marginTop: "5px",
-                          }}
-                        >
-                          <Typography
-                            variant="h6"
-                            color="text.primary"
-                            className="menu-item-price"
-                            sx={{ marginTop: "5px", color: "#8a5a2a" }}
-                          >
-                            ${item.basePrice.toFixed(2)}
+            ) : selectedCategory === null ? (
+              <Grid container spacing={2} className="category-grid">
+                {categories.map((category) => (
+                  <Grid item xs={6} key={category.displayName}>
+                    <Card
+                      sx={{
+                        cursor: "pointer",
+                        backgroundColor: "#f9f5f1",
+                        borderRadius: "15px",
+                        boxShadow: "none",
+                      }}
+                      onClick={() => handleCategoryClick(category.displayName)}
+                    >
+                      <CardContent sx={{ display: "flex", alignItems: "center" }}>
+                        <Box sx={{ mr: 2 }}>{category.icon}</Box>
+                        <Box>
+                          <Typography variant="h6" sx={{ color: "#8a5a2a", fontWeight: "bold" }}>
+                            {category.displayName}
                           </Typography>
-                          <Box className="menu-item-actions">
-                            <button
-                              onClick={() => handleOpenModal(item)}
-                              className="menu-item-add-button"
-                            >
-                              Add
-                            </button>
-                          </Box>
+                          <Typography variant="body2" sx={{ color: "#8a5a2a" }}>
+                            {category.description}
+                          </Typography>
                         </Box>
                       </CardContent>
                     </Card>
                   </Grid>
                 ))}
               </Grid>
+            ) : getFilteredItems().length > 0 ? (
+              <>
+                <Button
+                  startIcon={<ArrowBackIcon />}
+                  onClick={handleBackToCategories}
+                  sx={{ mb: 2, color: "#8a5a2a" }}
+                >
+                  Back to Categories
+                </Button>
+                <Grid container spacing={2} className="menu-items-grid">
+                  {getFilteredItems().map((item) => (
+                    <Grid key={item.id}>
+                      <Card sx={{ maxWidth: 345, borderRadius: "15px" }} className="menu-item">
+                        <CardMedia
+                          className="menu-item-image-placeholder"
+                          component="img"
+                          src={item.image}
+                          alt={item.name}
+                          sx={{
+                            width: "100%",
+                            height: "150px",
+                            maxWidth: "250px",
+                            objectFit: "cover",
+                          }}
+                        />
+                        <CardContent className="menu-item-content">
+                          <Typography
+                            variant="h6"
+                            className="menu-item-name"
+                            sx={{ marginTop: "5px", color: "#8a5a2a" }}
+                          >
+                            {item.name}
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            className="menu-item-description"
+                            sx={{ marginTop: "5px" }}
+                          >
+                            {item.description}
+                          </Typography>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              marginTop: "5px",
+                            }}
+                          >
+                            <Typography
+                              variant="h6"
+                              color="text.primary"
+                              className="menu-item-price"
+                              sx={{ marginTop: "5px", color: "#8a5a2a" }}
+                            >
+                              ${item.basePrice.toFixed(2)}
+                            </Typography>
+                            <Box className="menu-item-actions">
+                              <button
+                                onClick={() => handleOpenModal(item)}
+                                className="menu-item-add-button"
+                              >
+                                Add
+                              </button>
+                            </Box>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              </>
             ) : (
-              <Typography>Không có món nào để hiển thị.</Typography>
+              <Box>
+                <Button
+                  startIcon={<ArrowBackIcon />}
+                  onClick={handleBackToCategories}
+                  sx={{ mb: 2, color: "#8a5a2a" }}
+                >
+                  Back to Categories
+                </Button>
+                <Typography
+                  variant="h6"
+                  sx={{ color: "#8a5a2a", fontWeight: "bold" }}
+                >
+                  No items available in this category
+                </Typography>
+              </Box>
             )}
           </Box>
         </Grid>
         <Grid size={5} className="order-section">
           <Typography variant="h6" className="order-title">
-            CURRENT ORDER
+            Current Order
           </Typography>
           {order.length === 0 ? (
             <Box className="order-empty-message">
-              <Box sx={{ textAlign: "center", marginTop: "-6%" }}>
+              <Box sx={{ textAlign: "center", marginTop: "10%" }}>
                 <ShoppingBagIcon
                   className="order-empty-icon"
                   sx={{
-                    color: "#786c5f",
+                    color: "#8a5a2a",
                     fontSize: "50px",
-                    marginBottom: "5px",
+                    marginBottom: "10px",
                   }}
                 />
-                <Typography variant="body1" className="order-empty-text">
+                <Typography
+                  variant="body1"
+                  className="order-empty-text"
+                  sx={{ color: "#8a5a2a", fontWeight: "bold" }}
+                >
                   No items in order yet
                 </Typography>
-                <Typography variant="body2" className="order-empty-subtext">
+                <Typography
+                  variant="body2"
+                  className="order-empty-subtext"
+                  sx={{ color: "#8a5a2a" }}
+                >
                   Add items from the menu to get started
                 </Typography>
               </Box>
@@ -276,7 +366,7 @@ export default function HomePage() {
                             style={{
                               color: "#b0855b",
                               fontSize: "20px",
-                              padding: " 0px 20px",
+                              padding: "0px 20px",
                             }}
                           >
                             {item.quantity}x{" "}
@@ -290,7 +380,7 @@ export default function HomePage() {
                           >
                             {item.name}
                           </span>
-                        </Box>{" "}
+                        </Box>
                         <br />
                         <Box
                           sx={{
@@ -299,9 +389,14 @@ export default function HomePage() {
                             fontWeight: "bold",
                           }}
                         >
-                          {item.size}, {item.sugar} sugar, {item.ice} ice,
+                          {item.size}, {item.sugar} sugar, {item.ice} ice
                           {item.toppings.length > 0 && (
-                            <>{item.toppings.join(", ")}</>
+                            <>, {item.toppings.join(", ")}</>
+                          )}
+                          {item.isCombo && (
+                            <Box>
+                              Combo: {item.comboItems.map((ci) => ci.name).join(", ")}
+                            </Box>
                           )}
                         </Box>
                       </Typography>

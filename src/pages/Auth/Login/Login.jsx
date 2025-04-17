@@ -1,18 +1,45 @@
 import { Box, Button, TextField, Typography, Link } from "@mui/material";
-import React from "react";
+import React, { useState } from "react";
 import "./Login.css";
 import LocalPhoneIcon from "@mui/icons-material/LocalPhone";
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import HttpsIcon from '@mui/icons-material/Https';
-import { useNavigate } from "react-router-dom";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import HttpsIcon from "@mui/icons-material/Https";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import IconButton from "@mui/material/IconButton";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
+
+const schema = yup
+  .object({
+    phone: yup
+      .string()
+      .required("Số điện thoại là bắt buộc")
+      .matches(/^[0-9]+$/, "Số điện thoại không hợp lệ")
+      .min(10, "Số điện thoại phải có ít nhất 10 chữ số")
+      .max(11, "Số điện thoại không được quá 11 số"),
+    username: yup.string().required("Tên đăng nhập là bắt buộc"),
+    password: yup.string().required("Mật khẩu là bắt buộc"),
+  })
+  .required();
 
 export default function Login() {
-  const navigate = useNavigate();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(schema),
+  });
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Xử lý đăng nhập ở đây
-    navigate("/"); // Chuyển hướng về trang chủ sau khi đăng nhập thành công
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleClickShowPassword = () => {
+    setShowPassword((prev) => !prev);
+  };
+
+  const onSubmit = (data) => {
+    console.log(data);
   };
 
   return (
@@ -28,7 +55,7 @@ export default function Login() {
         </Box>
 
         <Box className="login__container__form">
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit(onSubmit)}>
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <LocalPhoneIcon className="login__icon" />
               <TextField
@@ -39,6 +66,9 @@ export default function Login() {
                 margin="normal"
                 required
                 className="login__input"
+                {...register("phone")}
+                error={!!errors.phone}
+                helperText={errors.phone ? errors.phone.message : ""}
               />
             </Box>
             <Box sx={{ display: "flex", alignItems: "center" }}>
@@ -51,18 +81,35 @@ export default function Login() {
                 margin="normal"
                 required
                 className="login__input"
+                {...register("username")}
+                error={!!errors.username}
+                helperText={errors.username ? errors.username.message : ""}
               />
             </Box>
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <HttpsIcon className="login__icon" />
               <TextField
                 label="Mật khẩu"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 variant="standard"
                 fullWidth
                 margin="normal"
                 required
                 className="login__input"
+                {...register("password")}
+                error={!!errors.password}
+                helperText={errors.password ? errors.password.message : ""}
+                InputProps={{
+                  endAdornment: (
+                    <IconButton
+                      aria-label="toggle password visibility"
+                      onClick={handleClickShowPassword}
+                      edge="end"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  ),
+                }}
               />
             </Box>
             <Button
@@ -71,10 +118,11 @@ export default function Login() {
               type="submit"
               fullWidth
               sx={{ mt: 3 }}
+              className="login__button"
             >
               Đăng nhập
             </Button>
-            <Box sx={{ mt: 2, textAlign: 'center' }}>
+            <Box sx={{ mt: 2, textAlign: "center" }}>
               <Link href="/auth/register" variant="body2">
                 Chưa có tài khoản? Đăng ký ngay
               </Link>
