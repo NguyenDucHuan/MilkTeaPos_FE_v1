@@ -10,7 +10,6 @@ import {
   Tabs,
   Typography,
   IconButton,
-  colors,
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -341,10 +340,15 @@ export default function HomePage() {
                   variant="outlined"
                   onClick={handleClearOrder}
                   className="order-clear-button"
+                  fullWidth
                 >
                   Clear
                 </Button>
-                <Button variant="contained" className="order-checkout-button">
+                <Button
+                  variant="contained"
+                  className="order-checkout-button"
+                  fullWidth
+                >
                   CHECKOUT
                 </Button>
               </Box>

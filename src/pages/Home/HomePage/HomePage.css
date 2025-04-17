@@ -258,33 +258,37 @@ button.menu-item-add-button {
   margin-top: 16px;
   display: flex;
   justify-content: space-between;
+  padding: 10px 0px;
+  gap: 10px;
+  width: 100%;
+  height: 50px;
 }
 
 .order-clear-button {
-  border-color: #ff4d4d;
-  color: #ff4d4d;
-  border-radius: 4px;
+  border-color: #ff4d4d !important;
+  color: #ff4d4d !important;
   padding: 8px 16px;
   text-transform: none;
-  font-size: 14px;
+  font-size: 14px ;
   font-weight: 500;
+  border-radius: 8px !important;
 }
 
 .order-clear-button:hover {
-  border-color: #e63939;
-  color: #e63939;
+  border-color: #e63939 !important;
+  color: #e63939 !important;
 }
 
-.order-checkout-button {
-  background-color: #6b4e31;
+button.order-checkout-button {
+  background-color: #8a5a2a !important;
   color: #fff;
-  border-radius: 4px;
+  border-radius: 8px;
   padding: 8px 16px;
   text-transform: none;
   font-size: 14px;
   font-weight: 500;
 }
 
-.order-checkout-button:hover {
-  background-color: #543d27;
+button.order-checkout-button:hover {
+  background-color: #6b4423 !important;
 }
