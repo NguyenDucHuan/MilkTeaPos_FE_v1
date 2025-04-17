@@ -75,7 +75,7 @@ export default function Login() {
               Đăng nhập
             </Button>
             <Box sx={{ mt: 2, textAlign: 'center' }}>
-              <Link href="/register" variant="body2">
+              <Link href="/auth/register" variant="body2">
                 Chưa có tài khoản? Đăng ký ngay
               </Link>
             </Box>
