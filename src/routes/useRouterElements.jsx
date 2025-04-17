@@ -6,6 +6,7 @@ import HomePage from "../pages/Home/HomePage/HomePage";
 import StaffLayout from "../layouts/StaffLayout/StaffLayout";
 import AuthLayout from "../layouts/AuthLayout/AuthLayout";
 import AdminLayout from "../layouts/AdminLayout/AdminLayout";
+import OrderList from "../pages/orderlist/OrderList";
 
 export default function useRouterElements() {
   const element = useRoutes([
@@ -34,10 +35,10 @@ export default function useRouterElements() {
           index: true,
           element: <HomePage />,
         },
-        // {
-        //   path: PATH.Booking,
-        //   element: <Booking />,
-        // },
+        {
+          path: PATH.ORDERS,
+          element: <OrderList />,
+        },
       ],
     },
 

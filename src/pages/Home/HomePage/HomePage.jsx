@@ -21,6 +21,7 @@ import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Footer from "../../../components/Footer/Footer";
+import Header from"../../../components/Header/Header";
 
 export default function HomePage() {
   const dispatch = useDispatch();
@@ -120,6 +121,7 @@ export default function HomePage() {
 
   return (
     <Box className="home-page">
+      <Header/>
       <Grid container spacing={2} className="home-page-grid">
         <Grid size={7} className="menu-section">
           <Typography className="menu-title">Menu Items</Typography>
