@@ -14,23 +14,14 @@
 }
 
 .menu-title {
-  font-size: 24px;
-  font-weight: bold;
+  font-size: 24px !important;
+  font-weight: bold !important;
   color: #8a5a2a;
-  margin-bottom: 20px;
+  margin-bottom: 20px !important;
 }
 
 .menu-divider {
   margin: 20px 0;
-}
-
-.category-grid .MuiCard-root {
-  display: "flex",
-  align-items: "center",
-  background-color: #f9f5f1;
-  border-radius: 15px;
-  box-shadow: none;
-  transition: background-color 0.3s;
 }
 
 .category-grid .MuiCard-root:hover {
@@ -40,6 +31,7 @@
 .menu-items-grid .MuiCard-root {
   border-radius: 15px;
   box-shadow: none;
+  justify-content: center !important;
 }
 
 .menu-item-image-placeholder {
@@ -86,10 +78,10 @@
 }
 
 .order-title {
-  font-size: 24px;
-  font-weight: bold;
+  font-size: 24px !important;
+  font-weight: bold !important;
   color: #8a5a2a;
-  margin-bottom: 20px;
+  margin-bottom: 20px !important;
 }
 
 .order-empty-message {
@@ -112,7 +104,6 @@
   font-size: 14px;
   color: #8a5a2a;
 }
-
 .order-summary {
   background-color: #f9f5f1;
   border-radius: 15px;
@@ -121,10 +112,10 @@
 }
 
 .order-summary-title {
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 16px !important;
+  font-weight: bold !important;
   color: #8a5a2a;
-  margin-bottom: 10px;
+  margin-bottom: 10px !important;
 }
 
 .order-summary-item,
@@ -134,6 +125,28 @@
   font-size: 14px;
   color: #8a5a2a;
   margin-bottom: 5px;
+  margin-top: 5px !important;
+  flex: 1;
+}
+
+.order-summary-tax {
+  margin-top: 5px !important;
+  border-bottom: 1px solid #f0e6d9;
+  line-height: 20px !important;
+}
+
+.order-summary-total {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: #8a5a2a;
+  margin-top: 5px !important;
+}
+
+.order-summary > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
 }
 
 .order-details-title {
@@ -160,22 +173,24 @@
 }
 
 .order-actions {
+  display: flex;
   margin-top: 20px;
+  padding: 10px 0px;
 }
 
-.order-clear-button {
+button.order-clear-button {
   border-radius: 10px;
   color: #8a5a2a;
-  border-color: #8a5a2a;
-  margin-bottom: 10px;
+  border-color: #c38c88 !important;
 }
 
-.order-checkout-button {
+button.order-checkout-button {
   border-radius: 10px;
   background-color: #8a5a2a;
   color: #fff;
+  margin-left: 10px;
 }
 
-.order-checkout-button:hover {
+button.order-checkout-button:hover {
   background-color: #6e4722;
 }

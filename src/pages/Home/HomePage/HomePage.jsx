@@ -18,17 +18,18 @@ import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import DeleteIcon from "@mui/icons-material/Delete";
-import Footer from "../../../components/Footer/Footer";
-import Header from "../../../components/Header/Header";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
 import LocalDrinkIcon from "@mui/icons-material/LocalDrink";
 import StarIcon from "@mui/icons-material/Star";
 import AppleIcon from "@mui/icons-material/Apple";
+import { listCategory } from "../../../store/slices/categorySlice";
 
 export default function HomePage() {
   const dispatch = useDispatch();
   const { item, isLoading, error } = useSelector((state) => state.item);
+  const { category: categories } = useSelector((state) => state.category);
+
   const [order, setOrder] = useState([]);
   const [openModal, setOpenModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -44,6 +45,7 @@ export default function HomePage() {
 
   useEffect(() => {
     dispatch(listItemApi());
+    dispatch(listCategory());
   }, [dispatch]);
 
   const handleOpenModal = (item) => {
@@ -94,12 +96,12 @@ export default function HomePage() {
 
   const handleAdjustQuantity = (index, change) => {
     const updatedOrder = [...order];
-    const currentQuantity = updatedOrder[index].quantity; 
+    const currentQuantity = updatedOrder[index].quantity;
     const newQuantity = currentQuantity + change;
-    if (newQuantity < 1) return; 
+    if (newQuantity < 1) return;
     const basePrice = updatedOrder[index].itemPrice / currentQuantity;
-    updatedOrder[index].quantity = newQuantity; 
-    updatedOrder[index].itemPrice = basePrice * newQuantity; 
+    updatedOrder[index].quantity = newQuantity;
+    updatedOrder[index].itemPrice = basePrice * newQuantity;
     setOrder(updatedOrder);
   };
 
@@ -114,33 +116,6 @@ export default function HomePage() {
   const calculateTax = (subtotal) => {
     return subtotal * 0.08;
   };
-
-  const categories = [
-    {
-      displayName: "Combo Deals",
-      apiName: "Combo",
-      description: "Save with our special combo packages",
-      icon: <CardGiftcardIcon sx={{ fontSize: 40, color: "#8a5a2a" }} />,
-    },
-    {
-      displayName: "Classic Milk Teas",
-      apiName: "Classic",
-      description: "Our traditional milk tea favorites",
-      icon: <LocalDrinkIcon sx={{ fontSize: 40, color: "#8a5a2a" }} />,
-    },
-    {
-      displayName: "Special Milk Teas",
-      apiName: "Special",
-      description: "Unique flavors and premium ingredients",
-      icon: <StarIcon sx={{ fontSize: 40, color: "#8a5a2a" }} />,
-    },
-    {
-      displayName: "Fruit Milk Teas",
-      apiName: "Fruit",
-      description: "Refreshing fruit flavored milk teas",
-      icon: <AppleIcon sx={{ fontSize: 40, color: "#8a5a2a" }} />,
-    },
-  ];
 
   const getFilteredItems = () => {
     if (!selectedCategory) return item;
@@ -165,7 +140,6 @@ export default function HomePage() {
 
   return (
     <Box className="home-page">
-      <Header />
       <Grid container spacing={2} className="home-page-grid">
         <Grid size={7} className="menu-section">
           <Typography className="menu-title">Menu Items</Typography>
@@ -178,20 +152,44 @@ export default function HomePage() {
             ) : selectedCategory === null ? (
               <Grid container spacing={2} className="category-grid">
                 {categories.map((category) => (
-                  <Grid item xs={6} key={category.displayName}>
+                  <Grid item xs={4} key={category.displayName}>
                     <Card
                       sx={{
                         cursor: "pointer",
                         backgroundColor: "#f9f5f1",
                         borderRadius: "15px",
                         boxShadow: "none",
+                        marginTop: "20px",
+                        marginLeft: "30px",
+                        width: "300px",
                       }}
                       onClick={() => handleCategoryClick(category.displayName)}
                     >
-                      <CardContent sx={{ display: "flex", alignItems: "center" }}>
-                        <Box sx={{ mr: 2 }}>{category.icon}</Box>
+                      <CardContent
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          height: "150px",
+                        }}
+                      >
+                        <Box sx={{ mr: 2 }}>
+                          <img
+                            src={category.image}
+                            alt={category.displayName}
+                            style={{
+                              width: "100px",
+                              height: "100px",
+                              objectFit: "cover",
+                              borderRadius: "8px",
+                              margin: "7px 9px",
+                            }}
+                          />
+                        </Box>
                         <Box>
-                          <Typography variant="h6" sx={{ color: "#8a5a2a", fontWeight: "bold" }}>
+                          <Typography
+                            variant="h6"
+                            sx={{ color: "#8a5a2a", fontWeight: "bold" }}
+                          >
                             {category.displayName}
                           </Typography>
                           <Typography variant="body2" sx={{ color: "#8a5a2a" }}>
@@ -215,17 +213,26 @@ export default function HomePage() {
                 <Grid container spacing={2} className="menu-items-grid">
                   {getFilteredItems().map((item) => (
                     <Grid key={item.id}>
-                      <Card sx={{ maxWidth: 345, borderRadius: "15px" }} className="menu-item">
+                      <Card
+                        sx={{
+                          maxWidth: 345,
+                          borderRadius: "15px",
+                          border: "1px solid #f0e6d9",
+                          width: "280px",
+                          height: "350px",
+                        }}
+                        className="menu-item"
+                      >
                         <CardMedia
                           className="menu-item-image-placeholder"
                           component="img"
                           src={item.image}
                           alt={item.name}
                           sx={{
-                            width: "100%",
                             height: "150px",
                             maxWidth: "250px",
                             objectFit: "cover",
+                            margin: "12px 12px",
                           }}
                         />
                         <CardContent className="menu-item-content">
@@ -240,7 +247,10 @@ export default function HomePage() {
                             variant="body2"
                             color="text.secondary"
                             className="menu-item-description"
-                            sx={{ marginTop: "5px" }}
+                            sx={{
+                              marginTop: "5px",
+                              padding: "10px 10px 10px 0px",
+                            }}
                           >
                             {item.description}
                           </Typography>
@@ -328,22 +338,85 @@ export default function HomePage() {
             </Box>
           ) : (
             <>
-              <Box className="order-summary">
+              <Box
+                className="order-summary"
+                sx={{
+                  padding: "15px",
+                  backgroundColor: "#f9f5f1",
+                  borderRadius: "15px",
+                  marginBottom: "20px",
+                }}
+              >
                 <Typography variant="body1" className="order-summary-title">
                   ORDER SUMMARY
                 </Typography>
-                <Typography variant="body2" className="order-summary-item">
-                  ITEMS: {order.reduce((sum, item) => sum + item.quantity, 0)}
-                </Typography>
-                <Typography variant="body2" className="order-summary-subtotal">
-                  SUBTOTAL: ${subtotal.toFixed(2)}
-                </Typography>
-                <Typography variant="body2" className="order-summary-tax">
-                  TAX (8%): ${tax.toFixed(2)}
-                </Typography>
-                <Typography variant="body2" className="order-summary-total">
-                  TOTAL: ${total.toFixed(2)}
-                </Typography>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mb: "5px",
+                  }}
+                >
+                  <Typography variant="body2" className="order-summary-item">
+                    ITEMS:
+                  </Typography>
+                  <Typography variant="body2" className="order-summary-item">
+                    {order.reduce((sum, item) => sum + item.quantity, 0)}
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mb: "5px",
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    className="order-summary-subtotal"
+                  >
+                    SUBTOTAL:
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    className="order-summary-subtotal"
+                  >
+                    ${subtotal.toFixed(2)}
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mb: "5px",
+                    borderBottom: "1px solid #f0e6d9",
+                  }}
+                >
+                  <Typography variant="body2" className="order-summary-tax">
+                    TAX (8%):
+                  </Typography>
+                  <Typography variant="body2" className="order-summary-tax">
+                    ${tax.toFixed(2)}
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mt: "5px",
+                  }}
+                >
+                  <Typography variant="body2" className="order-summary-total">
+                    TOTAL:
+                  </Typography>
+                  <Typography variant="body2" className="order-summary-total">
+                    ${total.toFixed(2)}
+                  </Typography>
+                </Box>
               </Box>
               <Box className="order-details">
                 <Typography variant="body1" className="order-details-title">
@@ -395,7 +468,8 @@ export default function HomePage() {
                           )}
                           {item.isCombo && (
                             <Box>
-                              Combo: {item.comboItems.map((ci) => ci.name).join(", ")}
+                              Combo:{" "}
+                              {item.comboItems.map((ci) => ci.name).join(", ")}
                             </Box>
                           )}
                         </Box>
@@ -463,7 +537,6 @@ export default function HomePage() {
         customization={customization}
         setCustomization={setCustomization}
       />
-      <Footer />
     </Box>
   );
 }
