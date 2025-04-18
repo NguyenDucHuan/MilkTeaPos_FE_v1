@@ -1,18 +1,15 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import fetcher from "../../apis/fetcher";
 
-export const listItemApi = createAsyncThunk(
-  "item/getItem",
-  async () => {
-    try {
-      const response = await fetcher.get("/milktea");
-      console.log("Item response:", response);
-      return response;
-    } catch (error) {
-      throw error.response ? error.response.data.message : error.message;
-    }
+export const listItemApi = createAsyncThunk("item/listItemApi", async () => {
+  try {
+    const response = await fetcher.get("/milktea");
+    console.log("Item response:", response);
+    return response;
+  } catch (error) {
+    throw error.response ? error.response.data.message : error.message;
   }
-);
+});
 
 const itemSlice = createSlice({
   name: "item",
