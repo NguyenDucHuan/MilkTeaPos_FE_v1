@@ -1,0 +1,57 @@
+.dashboard-admin {
+    padding: 70px;
+  }
+  
+  .dashboard-admin__cards {
+    margin-bottom: 20px;
+  }
+  
+  .dashboard-admin__card {
+    background-color: #fffbf2;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    height: 150px;
+    
+  }
+  
+  .dashboard__title {
+    font-size: 20px !important;
+    color: #9b8d7c;
+    font-weight: bold !important;
+
+  }
+  
+  .dashboard__number {
+    font-size: 24px !important;
+    font-weight: bold !important;
+    color: #8a5c33;
+  }
+  
+  .dashboard-admin__charts {
+    margin-top: 20px;
+  }
+  
+  .dashboard-admin__chart {
+    background-color: #fffbf2;
+    padding: 40px !important;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    height: 500px; 
+  }
+  
+  .chart-button {
+    background-color: #f5e8c7;
+    border: none;
+    padding: 5px 10px;
+    margin-left: 5px;
+    border-radius: 5px;
+    cursor: pointer;
+    color: #8a5c33;
+  }
+  
+  .chart-button.active {
+    background-color: #ac8e6f;
+    color: white;
+  }
