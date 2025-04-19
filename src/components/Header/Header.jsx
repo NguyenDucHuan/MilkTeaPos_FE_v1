@@ -29,17 +29,20 @@ import {
   Logout as LogoutIcon,
   Menu as MenuIcon,
   Close as CloseIcon,
+  ArrowDropDown as ArrowDropDownIcon,
 } from '@mui/icons-material';
 
-const HEADER_HEIGHT = 80; // Define header height constant
+const HEADER_HEIGHT = 80;
 
-const Header = () => {
+const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
+  const [categoryAnchorEl, setCategoryAnchorEl] = useState(null);
+  const [mobileCategoryOpen, setMobileCategoryOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -62,19 +65,50 @@ const Header = () => {
     setAnchorEl(null);
   };
 
+  const handleCategoryMenuOpen = (event) => {
+    setCategoryAnchorEl(event.currentTarget);
+  };
+
+  const handleCategoryMenuClose = () => {
+    setCategoryAnchorEl(null);
+  };
+
   const handleMobileMenuToggle = () => {
     setMobileMenuOpen(!mobileMenuOpen);
+    setMobileCategoryOpen(false);
+  };
+
+  const handleMobileCategoryToggle = () => {
+    setMobileCategoryOpen(!mobileCategoryOpen);
   };
 
   const handleNavigation = (path) => {
     navigate(path);
     setMobileMenuOpen(false);
+    setMobileCategoryOpen(false);
     handleMenuClose();
+    handleCategoryMenuClose();
+  };
+
+  const handleCategorySelect = (categoryName) => {
+    setSelectedCategory(categoryName);
+    setMobileMenuOpen(false);
+    setMobileCategoryOpen(false);
+    handleCategoryMenuClose();
   };
 
   const menuItems = [
     { text: 'Trang chủ', icon: HomeIcon, path: PATH.HOME },
-    { text: 'Thực đơn', icon: MenuBookIcon, path: '/menu' },
+    {
+      text: 'Thực đơn',
+      icon: MenuBookIcon,
+      path: '/menu',
+      hasSubmenu: true,
+      submenu: categories.map((cat) => ({
+        text: cat.displayName,
+        displayName: cat.displayName,
+      })),
+    },
     { text: 'Nhân viên', icon: GroupIcon, path: '/staff' },
     { text: 'Cài đặt', icon: SettingsIcon, path: '/settings' },
   ];
@@ -87,9 +121,9 @@ const Header = () => {
 
   return (
     <>
-      <AppBar 
-        position="fixed" 
-        sx={{ 
+      <AppBar
+        position="fixed"
+        sx={{
           backgroundColor: isScrolled ? 'rgba(255, 255, 255, 0.95)' : 'transparent',
           backdropFilter: isScrolled ? 'blur(8px)' : 'none',
           boxShadow: isScrolled ? 1 : 0,
@@ -98,19 +132,18 @@ const Header = () => {
         }}
       >
         <Toolbar sx={{ height: HEADER_HEIGHT }}>
-          {/* Logo */}
           <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 0 }}>
-            <Link 
-              to={PATH.HOME} 
-              style={{ 
-                textDecoration: 'none', 
-                display: 'flex', 
+            <Link
+              to={PATH.HOME}
+              style={{
+                textDecoration: 'none',
+                display: 'flex',
                 alignItems: 'center',
-                gap: 16
+                gap: 16,
               }}
             >
-              <Avatar 
-                sx={{ 
+              <Avatar
+                sx={{
                   bgcolor: '#895a2a',
                   width: 40,
                   height: 40,
@@ -138,30 +171,92 @@ const Header = () => {
             </Link>
           </Box>
 
-          {/* Desktop Menu */}
           {!isMobile && (
             <Box sx={{ ml: 4, display: 'flex', gap: 2 }}>
-              {menuItems.map((item) => (
-                <Button
-                  key={item.text}
-                  startIcon={<item.icon />}
-                  onClick={() => handleNavigation(item.path)}
-                  sx={{
-                    color: '#895a2a',
-                    '&:hover': {
-                      backgroundColor: 'rgba(137, 90, 42, 0.08)',
-                    },
-                  }}
-                >
-                  {item.text}
-                </Button>
-              ))}
+              {menuItems.map((item) =>
+                item.hasSubmenu ? (
+                  <Box key={item.text}>
+                    <Button
+                      startIcon={<item.icon />}
+                      endIcon={<ArrowDropDownIcon />}
+                      onMouseEnter={handleCategoryMenuOpen}
+                      onClick={() => handleNavigation(item.path)}
+                      sx={{
+                        color: '#895a2a',
+                        '&:hover': {
+                          backgroundColor: 'rgba(137, 90, 42, 0.08)',
+                        },
+                      }}
+                    >
+                      {item.text}
+                    </Button>
+                    <Menu
+                      anchorEl={categoryAnchorEl}
+                      open={Boolean(categoryAnchorEl)}
+                      onClose={handleCategoryMenuClose}
+                      MenuListProps={{
+                        onMouseLeave: handleCategoryMenuClose,
+                      }}
+                      PaperProps={{
+                        elevation: 3,
+                        sx: {
+                          mt: 1.5,
+                          minWidth: 200,
+                          borderRadius: 2,
+                        },
+                      }}
+                    >
+                      {isLoading ? (
+                        <MenuItem disabled>
+                          <ListItemText primary="Đang tải..." />
+                        </MenuItem>
+                      ) : error ? (
+                        <MenuItem disabled>
+                          <ListItemText primary="Lỗi tải danh mục" />
+                        </MenuItem>
+                      ) : item.submenu.length === 0 ? (
+                        <MenuItem disabled>
+                          <ListItemText primary="Không có danh mục" />
+                        </MenuItem>
+                      ) : (
+                        item.submenu.map((subItem) => (
+                          <MenuItem
+                            key={subItem.text}
+                            onClick={() => handleCategorySelect(subItem.displayName)}
+                            sx={{
+                              py: 1.5,
+                              '&:hover': {
+                                backgroundColor: 'rgba(137, 90, 42, 0.08)',
+                              },
+                            }}
+                          >
+                            <ListItemText primary={subItem.text} />
+                          </MenuItem>
+                        ))
+                      )}
+                    </Menu>
+                  </Box>
+                ) : (
+                  <Button
+                    key={item.text}
+                    startIcon={<item.icon />}
+                    onClick={() => handleNavigation(item.path)}
+                    sx={{
+                      color: '#895a2a',
+                      '&:hover': {
+                        backgroundColor: 'rgba(137, 90, 42, 0.08)',
+                      },
+                    }}
+                  >
+                    {item.text}
+                  </Button>
+                )
+              )}
             </Box>
           )}
 
           <Box sx={{ flexGrow: 1 }} />
 
-          {/* User Menu */}
           {!isMobile ? (
             <>
               <IconButton
@@ -221,10 +316,8 @@ const Header = () => {
         </Toolbar>
       </AppBar>
 
-      {/* Toolbar placeholder to prevent content from going under AppBar */}
       <Toolbar sx={{ height: HEADER_HEIGHT }} />
 
-      {/* Mobile Menu */}
       <Drawer
         anchor="right"
         open={mobileMenuOpen}
@@ -233,30 +326,90 @@ const Header = () => {
           sx: {
             width: 280,
             p: 2,
-            mt: `${HEADER_HEIGHT}px`, // Add margin-top equal to header height
+            mt: `${HEADER_HEIGHT}px`,
           },
         }}
       >
         <List>
-          {menuItems.map((item) => (
-            <ListItem
-              key={item.text}
-              button
-              onClick={() => handleNavigation(item.path)}
-              sx={{
-                borderRadius: 1,
-                mb: 1,
-                '&:hover': {
-                  backgroundColor: 'rgba(137, 90, 42, 0.08)',
-                },
-              }}
-            >
-              <ListItemIcon>
-                <item.icon sx={{ color: '#895a2a' }} />
-              </ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItem>
-          ))}
+          {menuItems.map((item) =>
+            item.hasSubmenu ? (
+              <React.Fragment key={item.text}>
+                <ListItem
+                  button
+                  onClick={handleMobileCategoryToggle}
+                  sx={{
+                    borderRadius: 1,
+                    mb: 1,
+                    '&:hover': {
+                      backgroundColor: 'rgba(137, 90, 42, 0.08)',
+                    },
+                  }}
+                >
+                  <ListItemIcon>
+                    <item.icon sx={{ color: '#895a2a' }} />
+                  </ListItemIcon>
+                  <ListItemText primary={item.text} />
+                  {mobileCategoryOpen ? (
+                    <ArrowDropDownIcon />
+                  ) : (
+                    <ArrowDropDownIcon sx={{ transform: 'rotate(-90deg)' }} />
+                  )}
+                </ListItem>
+                {mobileCategoryOpen && (
+                  <List sx={{ pl: 4 }}>
+                    {isLoading ? (
+                      <ListItem disabled>
+                        <ListItemText primary="Đang tải..." />
+                      </ListItem>
+                    ) : error ? (
+                      <ListItem disabled>
+                        <ListItemText primary="Lỗi tải danh mục" />
+                      </ListItem>
+                    ) : item.submenu.length === 0 ? (
+                      <ListItem disabled>
+                        <ListItemText primary="Không có danh mục" />
+                      </ListItem>
+                    ) : (
+                      item.submenu.map((subItem) => (
+                        <ListItem
+                          key={subItem.text}
+                          button
+                          onClick={() => handleCategorySelect(subItem.displayName)}
+                          sx={{
+                            borderRadius: 1,
+                            mb: 1,
+                            '&:hover': {
+                              backgroundColor: 'rgba(137, 90, 42, 0.08)',
+                            },
+                          }}
+                        >
+                          <ListItemText primary={subItem.text} />
+                        </ListItem>
+                      ))
+                    )}
+                  </List>
+                )}
+              </React.Fragment>
+            ) : (
+              <ListItem
+                key={item.text}
+                button
+                onClick={() => handleNavigation(item.path)}
+                sx={{
+                  borderRadius: 1,
+                  mb: 1,
+                  '&:hover': {
+                    backgroundColor: 'rgba(137, 90, 42, 0.08)',
+                  },
+                }}
+              >
+                <ListItemIcon>
+                  <item.icon sx={{ color: '#895a2a' }} />
+                </ListItemIcon>
+                <ListItemText primary={item.text} />
+              </ListItem>
+            )
+          )}
           <Box sx={{ height: 1, bgcolor: 'divider', my: 2 }} />
           {userMenuItems.map((item) => (
             <ListItem
