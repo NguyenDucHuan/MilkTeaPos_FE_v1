@@ -12,8 +12,8 @@ import {
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import "./HomePage.css";
+import ModalCheckout from "../../../components/Modal/ModalCheckout";
 import CustomizationModal from "../../../components/Modal/CustomizationModal";
-import { listItemApi } from "../../../store/slices/itemSlice";
 import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
@@ -24,16 +24,18 @@ import LocalDrinkIcon from "@mui/icons-material/LocalDrink";
 import StarIcon from "@mui/icons-material/Star";
 import AppleIcon from "@mui/icons-material/Apple";
 import { listCategory } from "../../../store/slices/categorySlice";
+import { listItemApi } from "../../../store/slices/itemSlice";
+import { useOutletContext } from "react-router-dom";
 
 export default function HomePage() {
   const dispatch = useDispatch();
   const { item, isLoading, error } = useSelector((state) => state.item);
   const { category: categories } = useSelector((state) => state.category);
-
+  const [openCheckout, setOpenCheckout] = useState(false);
   const [order, setOrder] = useState([]);
   const [openModal, setOpenModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const { selectedCategory, setSelectedCategory } = useOutletContext();
   const [customization, setCustomization] = useState({
     size: "Medium",
     sizePrice: 0,
@@ -47,6 +49,14 @@ export default function HomePage() {
     dispatch(listItemApi());
     dispatch(listCategory());
   }, [dispatch]);
+
+  const handleOpenCheckoutModal = () => {
+    setOpenCheckout(true);
+  };
+
+  const handleCloseCheckoutModal = () => {
+    setOpenCheckout(false);
+  };
 
   const handleOpenModal = (item) => {
     setSelectedItem(item);
@@ -520,6 +530,8 @@ export default function HomePage() {
                   variant="contained"
                   className="order-checkout-button"
                   fullWidth
+                  onClick={handleOpenCheckoutModal}
+                  disabled={order.length === 0}
                 >
                   CHECKOUT
                 </Button>
@@ -536,6 +548,11 @@ export default function HomePage() {
         onAddToOrder={handleAddToOrder}
         customization={customization}
         setCustomization={setCustomization}
+      />
+      <ModalCheckout
+        open={openCheckout}
+        onClose={handleCloseCheckoutModal}
+        order={order}
       />
     </Box>
   );
