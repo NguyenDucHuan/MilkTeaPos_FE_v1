@@ -1,0 +1,9 @@
+
+.sidebar {
+    width: 200px;
+    height: 100vh;
+    background-color: #8B5A2B; /* Brown color from the image */
+    position: fixed;
+    top: 0;
+    left: 0;
+  }

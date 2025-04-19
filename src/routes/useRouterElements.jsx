@@ -7,6 +7,7 @@ import StaffLayout from "../layouts/StaffLayout/StaffLayout";
 import AuthLayout from "../layouts/AuthLayout/AuthLayout";
 import AdminLayout from "../layouts/AdminLayout/AdminLayout";
 import OrderList from "../pages/orderlist/OrderList";
+import DashboardAdmin from "../pages/Admin/DashboardAdmin/DashboardAdmin";
 
 export default function useRouterElements() {
   const element = useRoutes([
@@ -47,10 +48,11 @@ export default function useRouterElements() {
       path: PATH.ADMIN,
       element: <AdminLayout />,
       children: [
-        // {
-        //   path: PATH.Dasboard,
-        //   element: <Dasboard />,
-        // },
+        {
+          index: true,
+          path: PATH.Dasboard,
+          element: <DashboardAdmin />,
+        },
       ],
     },
   ]);
