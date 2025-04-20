@@ -10,7 +10,7 @@ import OrderList from "../pages/orderlist/OrderList";
 import DashboardAdmin from "../pages/Admin/DashboardAdmin/DashboardAdmin";
 
 export default function useRouterElements() {
-  const element = useRoutes([
+  const routeElements = useRoutes([
     // auth
     {
       path: PATH.AUTH,
@@ -56,5 +56,5 @@ export default function useRouterElements() {
       ],
     },
   ]);
-  return element;
+  return routeElements;
 }

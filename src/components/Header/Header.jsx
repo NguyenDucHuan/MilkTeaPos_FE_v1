@@ -115,7 +115,7 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
 
   const userMenuItems = [
     { text: 'Thông tin cá nhân', icon: PersonIcon, path: '/profile' },
-    { text: 'Đơn hàng', icon: ShoppingCartIcon, path: '/orders' },
+    { text: 'Đơn hàng', icon: ShoppingCartIcon, path: PATH.ORDERS },
     { text: 'Đăng xuất', icon: LogoutIcon, path: PATH.LOGIN },
   ];
 

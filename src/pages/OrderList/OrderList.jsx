@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import Header from '../../components/Header/Header';
 import {
   Box,
   Container,
@@ -133,161 +132,144 @@ const OrderList = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Header></Header>
+    <Box sx={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Typography variant="h4" sx={{ mb: 4, color: '#895a2a', fontWeight: 'bold' }}>
+          Danh sách đơn hàng
+        </Typography>
 
-      <Typography variant="h4" sx={{ mb: 4, color: '#895a2a', fontWeight: 'bold' }}>
-        Danh sách đơn hàng
-      </Typography>
-
-      {/* Search and Filters */}
-      <Box sx={{ mb: 3 }}>
-        <TextField
-          fullWidth
-          variant="outlined"
-          placeholder="Tìm kiếm theo mã đơn hàng hoặc tên khách hàng..."
-          value={searchTerm}
-          onChange={handleSearch}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
-          sx={{
-            maxWidth: 500,
-            '& .MuiOutlinedInput-root': {
-              '&:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: '#895a2a',
+        {/* Search and Filters */}
+        <Box sx={{ mb: 3 }}>
+          <TextField
+            fullWidth
+            variant="outlined"
+            placeholder="Tìm kiếm theo mã đơn hàng hoặc tên khách hàng..."
+            value={searchTerm}
+            onChange={handleSearch}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+            sx={{
+              maxWidth: 500,
+              '& .MuiOutlinedInput-root': {
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: '#895a2a',
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: '#895a2a',
+                },
               },
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                borderColor: '#895a2a',
-              },
-            },
-          }}
-        />
-      </Box>
+            }}
+          />
+        </Box>
 
-      {/* Orders Table */}
-      <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3 }}>
-        <Table>
-          <TableHead>
-            <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-              <TableCell>Mã đơn hàng</TableCell>
-              <TableCell>Khách hàng</TableCell>
-              <TableCell>Ngày đặt</TableCell>
-              <TableCell>Tổng tiền</TableCell>
-              <TableCell>Trạng thái</TableCell>
-              <TableCell align="center">Chi tiết</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredOrders
-              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((order) => {
-                const StatusIcon = statusColors[order.status].icon;
-                return (
-                  <TableRow key={order.id} hover>
-                    <TableCell>{order.id}</TableCell>
-                    <TableCell>{order.customerName}</TableCell>
-                    <TableCell>{formatDate(order.orderDate)}</TableCell>
-                    <TableCell>{formatCurrency(order.total)}</TableCell>
-                    <TableCell>
-                      <Chip
-                        icon={<StatusIcon />}
-                        label={statusColors[order.status].label}
-                        color={statusColors[order.status].color}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      <IconButton
-                        onClick={() => handleViewDetails(order)}
-                        sx={{ color: '#895a2a' }}
-                      >
-                        <VisibilityIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-          </TableBody>
-        </Table>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={filteredOrders.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          labelRowsPerPage="Số dòng mỗi trang:"
-        />
-      </TableContainer>
+        {/* Orders Table */}
+        <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3 }}>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                <TableCell>Mã đơn hàng</TableCell>
+                <TableCell>Khách hàng</TableCell>
+                <TableCell>Ngày đặt</TableCell>
+                <TableCell>Tổng tiền</TableCell>
+                <TableCell>Trạng thái</TableCell>
+                <TableCell align="center">Chi tiết</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredOrders
+                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                .map((order) => {
+                  const StatusIcon = statusColors[order.status].icon;
+                  return (
+                    <TableRow key={order.id} hover>
+                      <TableCell>{order.id}</TableCell>
+                      <TableCell>{order.customerName}</TableCell>
+                      <TableCell>{formatDate(order.orderDate)}</TableCell>
+                      <TableCell>{formatCurrency(order.total)}</TableCell>
+                      <TableCell>
+                        <Chip
+                          icon={<StatusIcon />}
+                          label={statusColors[order.status].label}
+                          color={statusColors[order.status].color}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell align="center">
+                        <IconButton
+                          onClick={() => handleViewDetails(order)}
+                          sx={{ color: '#895a2a' }}
+                        >
+                          <VisibilityIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+            </TableBody>
+          </Table>
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={filteredOrders.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            labelRowsPerPage="Số dòng mỗi trang:"
+          />
+        </TableContainer>
 
-      {/* Order Details */}
-      {selectedOrder && (
-        <Card sx={{ mb: 4, boxShadow: 3 }}>
-          <CardContent>
-            <Typography variant="h6" sx={{ mb: 2, color: '#895a2a' }}>
-              Chi tiết đơn hàng {selectedOrder.id}
-            </Typography>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Thông tin khách hàng
-                </Typography>
-                <Box sx={{ mt: 1 }}>
-                  <Typography>Tên: {selectedOrder.customerName}</Typography>
-                  <Typography>SĐT: {selectedOrder.phone}</Typography>
-                  <Typography>Địa chỉ: {selectedOrder.address}</Typography>
-                </Box>
+        {/* Order Details */}
+        {selectedOrder && (
+          <Card sx={{ mb: 4, boxShadow: 3 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2, color: '#895a2a' }}>
+                Chi tiết đơn hàng {selectedOrder.id}
+              </Typography>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Thông tin khách hàng
+                  </Typography>
+                  <Box sx={{ mt: 1 }}>
+                    <Typography>Tên: {selectedOrder.customerName}</Typography>
+                    <Typography>SĐT: {selectedOrder.phone}</Typography>
+                    <Typography>Địa chỉ: {selectedOrder.address}</Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Thông tin đơn hàng
+                  </Typography>
+                  <Box sx={{ mt: 1 }}>
+                    <Typography>Ngày đặt: {formatDate(selectedOrder.orderDate)}</Typography>
+                    <Typography>Phương thức thanh toán: {selectedOrder.paymentMethod}</Typography>
+                    <Typography>Tổng tiền: {formatCurrency(selectedOrder.total)}</Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Sản phẩm
+                  </Typography>
+                  <Box sx={{ mt: 1 }}>
+                    {selectedOrder.items.map((item, index) => (
+                      <Typography key={index}>
+                        {item.name} x {item.quantity} - {formatCurrency(item.price * item.quantity)}
+                      </Typography>
+                    ))}
+                  </Box>
+                </Grid>
               </Grid>
-              <Grid item xs={12} md={6}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Thông tin đơn hàng
-                </Typography>
-                <Box sx={{ mt: 1 }}>
-                  <Typography>Ngày đặt: {formatDate(selectedOrder.orderDate)}</Typography>
-                  <Typography>Phương thức thanh toán: {selectedOrder.paymentMethod}</Typography>
-                  <Typography>Tổng tiền: {formatCurrency(selectedOrder.total)}</Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                  Danh sách sản phẩm
-                </Typography>
-                <TableContainer component={Paper} variant="outlined">
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Sản phẩm</TableCell>
-                        <TableCell align="right">Số lượng</TableCell>
-                        <TableCell align="right">Đơn giá</TableCell>
-                        <TableCell align="right">Thành tiền</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {selectedOrder.items.map((item, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{item.name}</TableCell>
-                          <TableCell align="right">{item.quantity}</TableCell>
-                          <TableCell align="right">{formatCurrency(item.price)}</TableCell>
-                          <TableCell align="right">
-                            {formatCurrency(item.price * item.quantity)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
-      )}
-    </Container>
+            </CardContent>
+          </Card>
+        )}
+      </Container>
+    </Box>
   );
 };
 
