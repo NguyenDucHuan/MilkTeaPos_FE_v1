@@ -8,6 +8,7 @@ import AuthLayout from "../layouts/AuthLayout/AuthLayout";
 import AdminLayout from "../layouts/AdminLayout/AdminLayout";
 import OrderList from "../pages/orderlist/OrderList";
 import DashboardAdmin from "../pages/Admin/DashboardAdmin/DashboardAdmin";
+import Profile from "../pages/Profile/Profile";
 
 export default function useRouterElements() {
   const routeElements = useRoutes([
@@ -40,6 +41,10 @@ export default function useRouterElements() {
           path: PATH.ORDERS,
           element: <OrderList />,
         },
+        {
+          path: PATH.PROFILE,
+          element: <Profile />,
+        },
       ],
     },
 
@@ -50,7 +55,7 @@ export default function useRouterElements() {
       children: [
         {
           index: true,
-          path: PATH.Dasboard,
+          path: PATH.ADMIN,
           element: <DashboardAdmin />,
         },
       ],

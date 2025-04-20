@@ -1,23 +1,11 @@
 import React, { useState } from 'react';
 import {
-  Box,
   Container,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TablePagination,
   Typography,
-  Chip,
+  Avatar,
   IconButton,
-  TextField,
   InputAdornment,
-  Card,
-  CardContent,
-  Grid,
+  TextField,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -63,22 +51,22 @@ const mockOrders = [
 
 const statusColors = {
   pending: {
-    color: 'warning',
+    color: 'bg-yellow-100 text-yellow-800',
     icon: PendingIcon,
     label: 'Đang xử lý',
   },
   processing: {
-    color: 'info',
+    color: 'bg-blue-100 text-blue-800',
     icon: ShippingIcon,
     label: 'Đang giao',
   },
   delivered: {
-    color: 'success',
+    color: 'bg-green-100 text-green-800',
     icon: CheckCircleIcon,
     label: 'Đã giao',
   },
   cancelled: {
-    color: 'error',
+    color: 'bg-red-100 text-red-800',
     icon: CancelIcon,
     label: 'Đã hủy',
   },
@@ -90,13 +78,8 @@ const OrderList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-  const handleChangePage = (event, newPage) => {
+  const handleChangePage = (newPage) => {
     setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
   };
 
   const handleSearch = (event) => {
@@ -105,7 +88,7 @@ const OrderList = () => {
   };
 
   const handleViewDetails = (order) => {
-    setSelectedOrder(order);
+    setSelectedOrder(order === selectedOrder ? null : order);
   };
 
   const filteredOrders = mockOrders.filter((order) =>
@@ -131,145 +114,216 @@ const OrderList = () => {
     }).format(amount);
   };
 
+  const OrderStatus = ({ status }) => {
+    const StatusIcon = statusColors[status].icon;
+    return (
+      <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${statusColors[status].color}`}>
+        <StatusIcon className="w-4 h-4" />
+        <span className="text-sm font-medium">{statusColors[status].label}</span>
+      </div>
+    );
+  };
+
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Typography variant="h4" sx={{ mb: 4, color: '#895a2a', fontWeight: 'bold' }}>
-          Danh sách đơn hàng
-        </Typography>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <Container maxWidth="lg">
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-6">
+            <Typography variant="h4" className="text-gray-800 font-bold">
+              Danh sách đơn hàng
+            </Typography>
+            <TextField
+              placeholder="Tìm kiếm đơn hàng..."
+              value={searchTerm}
+              onChange={handleSearch}
+              className="w-80"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon className="text-gray-400" />
+                  </InputAdornment>
+                ),
+                className: "bg-gray-50 rounded-lg",
+              }}
+            />
+          </div>
 
-        {/* Search and Filters */}
-        <Box sx={{ mb: 3 }}>
-          <TextField
-            fullWidth
-            variant="outlined"
-            placeholder="Tìm kiếm theo mã đơn hàng hoặc tên khách hàng..."
-            value={searchTerm}
-            onChange={handleSearch}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-            sx={{
-              maxWidth: 500,
-              '& .MuiOutlinedInput-root': {
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#895a2a',
-                },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#895a2a',
-                },
-              },
-            }}
-          />
-        </Box>
-
-        {/* Orders Table */}
-        <TableContainer component={Paper} sx={{ mb: 4, boxShadow: 3 }}>
-          <Table>
-            <TableHead>
-              <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                <TableCell>Mã đơn hàng</TableCell>
-                <TableCell>Khách hàng</TableCell>
-                <TableCell>Ngày đặt</TableCell>
-                <TableCell>Tổng tiền</TableCell>
-                <TableCell>Trạng thái</TableCell>
-                <TableCell align="center">Chi tiết</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredOrders
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((order) => {
-                  const StatusIcon = statusColors[order.status].icon;
-                  return (
-                    <TableRow key={order.id} hover>
-                      <TableCell>{order.id}</TableCell>
-                      <TableCell>{order.customerName}</TableCell>
-                      <TableCell>{formatDate(order.orderDate)}</TableCell>
-                      <TableCell>{formatCurrency(order.total)}</TableCell>
-                      <TableCell>
-                        <Chip
-                          icon={<StatusIcon />}
-                          label={statusColors[order.status].label}
-                          color={statusColors[order.status].color}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell align="center">
+          {/* Orders List */}
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Mã đơn hàng
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Khách hàng
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ngày đặt
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tổng tiền
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Trạng thái
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Chi tiết
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredOrders
+                  .slice(page * rowsPerPage, (page + 1) * rowsPerPage)
+                  .map((order) => (
+                    <tr key={order.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {order.id}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {order.customerName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(order.orderDate)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                        {formatCurrency(order.total)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <OrderStatus status={order.status} />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
                         <IconButton
                           onClick={() => handleViewDetails(order)}
-                          sx={{ color: '#895a2a' }}
+                          className="text-primary hover:text-primary-dark"
                         >
                           <VisibilityIcon />
                         </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-            </TableBody>
-          </Table>
-          <TablePagination
-            rowsPerPageOptions={[5, 10, 25]}
-            component="div"
-            count={filteredOrders.length}
-            rowsPerPage={rowsPerPage}
-            page={page}
-            onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            labelRowsPerPage="Số dòng mỗi trang:"
-          />
-        </TableContainer>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
 
-        {/* Order Details */}
-        {selectedOrder && (
-          <Card sx={{ mb: 4, boxShadow: 3 }}>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2, color: '#895a2a' }}>
-                Chi tiết đơn hàng {selectedOrder.id}
-              </Typography>
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Thông tin khách hàng
-                  </Typography>
-                  <Box sx={{ mt: 1 }}>
-                    <Typography>Tên: {selectedOrder.customerName}</Typography>
-                    <Typography>SĐT: {selectedOrder.phone}</Typography>
-                    <Typography>Địa chỉ: {selectedOrder.address}</Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Thông tin đơn hàng
-                  </Typography>
-                  <Box sx={{ mt: 1 }}>
-                    <Typography>Ngày đặt: {formatDate(selectedOrder.orderDate)}</Typography>
-                    <Typography>Phương thức thanh toán: {selectedOrder.paymentMethod}</Typography>
-                    <Typography>Tổng tiền: {formatCurrency(selectedOrder.total)}</Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Sản phẩm
-                  </Typography>
-                  <Box sx={{ mt: 1 }}>
-                    {selectedOrder.items.map((item, index) => (
-                      <Typography key={index}>
-                        {item.name} x {item.quantity} - {formatCurrency(item.price * item.quantity)}
-                      </Typography>
-                    ))}
-                  </Box>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
-        )}
+          {/* Pagination */}
+          <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
+            <div className="flex items-center">
+              <span className="text-sm text-gray-700">
+                Hiển thị {page * rowsPerPage + 1} đến{' '}
+                {Math.min((page + 1) * rowsPerPage, filteredOrders.length)} trong{' '}
+                {filteredOrders.length} kết quả
+              </span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => handleChangePage(page - 1)}
+                disabled={page === 0}
+                className="relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Trước
+              </button>
+              <button
+                onClick={() => handleChangePage(page + 1)}
+                disabled={(page + 1) * rowsPerPage >= filteredOrders.length}
+                className="relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Sau
+              </button>
+            </div>
+          </div>
+
+          {/* Order Details */}
+          {selectedOrder && (
+            <div className="mt-6 bg-white rounded-lg shadow p-6 border border-gray-200">
+              <div className="flex justify-between items-start mb-4">
+                <Typography variant="h6" className="text-gray-900 font-bold">
+                  Chi tiết đơn hàng {selectedOrder.id}
+                </Typography>
+                <OrderStatus status={selectedOrder.status} />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Customer Info */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-gray-900">Thông tin khách hàng</h3>
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                    <p className="text-sm text-gray-600">
+                      Tên: <span className="text-gray-900">{selectedOrder.customerName}</span>
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      SĐT: <span className="text-gray-900">{selectedOrder.phone}</span>
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Địa chỉ: <span className="text-gray-900">{selectedOrder.address}</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Order Info */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-gray-900">Thông tin đơn hàng</h3>
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                    <p className="text-sm text-gray-600">
+                      Ngày đặt: <span className="text-gray-900">{formatDate(selectedOrder.orderDate)}</span>
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Phương thức thanh toán: <span className="text-gray-900">{selectedOrder.paymentMethod}</span>
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Tổng tiền: <span className="text-gray-900 font-medium">{formatCurrency(selectedOrder.total)}</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Order Items */}
+                <div className="md:col-span-2 space-y-4">
+                  <h3 className="text-lg font-medium text-gray-900">Chi tiết sản phẩm</h3>
+                  <div className="bg-gray-50 rounded-lg overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sản phẩm</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Số lượng</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Đơn giá</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Thành tiền</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {selectedOrder.items.map((item, index) => (
+                          <tr key={index}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.name}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{item.quantity}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                              {formatCurrency(item.price)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
+                              {formatCurrency(item.price * item.quantity)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-gray-50">
+                        <tr>
+                          <td colSpan="3" className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
+                            Tổng cộng:
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-primary font-bold text-right">
+                            {formatCurrency(selectedOrder.total)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </Container>
-    </Box>
+    </div>
   );
 };
 
