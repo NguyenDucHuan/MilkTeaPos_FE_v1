@@ -31,10 +31,13 @@ import {
   Close as CloseIcon,
   ArrowDropDown as ArrowDropDownIcon,
 } from '@mui/icons-material';
+import { useDispatch } from "react-redux";  // Import useDispatch
+import { logout } from "../../store/slices/authSlice"; // Import logout action
 
 const HEADER_HEIGHT = 80;
 
 const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
+  const dispatch = useDispatch();  // Initialize dispatch hook
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
@@ -56,6 +59,12 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const handleLogout = () => {
+    dispatch(logout());  // Gọi action logout từ Redux
+    localStorage.removeItem("accessToken");  // Xóa token khỏi localStorage
+    navigate(PATH.LOGIN); // Điều hướng đến trang đăng nhập sau khi đăng xuất
+  };
 
   const handleMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -116,7 +125,7 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
   const userMenuItems = [
     { text: 'Thông tin cá nhân', icon: PersonIcon, path: '/profile' },
     { text: 'Đơn hàng', icon: ShoppingCartIcon, path: PATH.ORDERS },
-    { text: 'Đăng xuất', icon: LogoutIcon, path: PATH.LOGIN },
+    { text: 'Đăng xuất', icon: LogoutIcon, path: '#', onClick: handleLogout }, // Gọi handleLogout khi nhấn đăng xuất
   ];
 
   return (
@@ -287,7 +296,7 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
                 {userMenuItems.map((item) => (
                   <MenuItem
                     key={item.text}
-                    onClick={() => handleNavigation(item.path)}
+                    onClick={item.onClick || (() => handleNavigation(item.path))}
                     sx={{
                       py: 1.5,
                       '&:hover': {
@@ -415,7 +424,7 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
             <ListItem
               key={item.text}
               button
-              onClick={() => handleNavigation(item.path)}
+              onClick={item.onClick || (() => handleNavigation(item.path))}
               sx={{
                 borderRadius: 1,
                 mb: 1,
