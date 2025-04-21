@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { PATH } from '../../routes/path';
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { PATH } from "../../routes/path";
 import {
   AppBar,
   Toolbar,
@@ -18,7 +18,7 @@ import {
   Avatar,
   useTheme,
   useMediaQuery,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Home as HomeIcon,
   MenuBook as MenuBookIcon,
@@ -30,16 +30,17 @@ import {
   Menu as MenuIcon,
   Close as CloseIcon,
   ArrowDropDown as ArrowDropDownIcon,
-} from '@mui/icons-material';
-import { useDispatch } from "react-redux";  // Import useDispatch
-import { logout } from "../../store/slices/authSlice"; // Import logout action
+} from "@mui/icons-material";
+import { useDispatch, useSelector } from "react-redux";
+import { logout } from "../../store/slices/authSlice";
 
 const HEADER_HEIGHT = 80;
 
-const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
-  const dispatch = useDispatch();  // Initialize dispatch hook
+const Header = ({ setSelectedCategory, isLoading, error }) => {
+  const categories = useSelector((state) => state.category.category);
+  const dispatch = useDispatch();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -56,14 +57,14 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
       }
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const handleLogout = () => {
-    dispatch(logout());  // Gọi action logout từ Redux
-    localStorage.removeItem("accessToken");  // Xóa token khỏi localStorage
-    navigate(PATH.LOGIN); // Điều hướng đến trang đăng nhập sau khi đăng xuất
+    dispatch(logout());
+    localStorage.removeItem("accessToken");
+    navigate(PATH.LOGIN);
   };
 
   const handleMenuOpen = (event) => {
@@ -107,25 +108,27 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
   };
 
   const menuItems = [
-    { text: 'Trang chủ', icon: HomeIcon, path: PATH.HOME },
+    { text: "Trang chủ", icon: HomeIcon, path: PATH.HOME },
     {
-      text: 'Thực đơn',
+      text: "Thực đơn",
       icon: MenuBookIcon,
-      path: '/menu',
+      path: "/menu",
       hasSubmenu: true,
-      submenu: categories.map((cat) => ({
-        text: cat.displayName,
-        displayName: cat.displayName,
-      })),
+      submenu: Array.isArray(categories)
+        ? categories.map((cat) => ({
+            text: cat.categoryName,
+       
+          }))
+        : [],
     },
-    { text: 'Nhân viên', icon: GroupIcon, path: '/staff' },
-    { text: 'Cài đặt', icon: SettingsIcon, path: '/settings' },
+    { text: "Nhân viên", icon: GroupIcon, path: "/staff" },
+    { text: "Cài đặt", icon: SettingsIcon, path: "/settings" },
   ];
 
   const userMenuItems = [
-    { text: 'Thông tin cá nhân', icon: PersonIcon, path: '/profile' },
-    { text: 'Đơn hàng', icon: ShoppingCartIcon, path: PATH.ORDERS },
-    { text: 'Đăng xuất', icon: LogoutIcon, path: '#', onClick: handleLogout }, // Gọi handleLogout khi nhấn đăng xuất
+    { text: "Thông tin cá nhân", icon: PersonIcon, path: "/profile" },
+    { text: "Đơn hàng", icon: ShoppingCartIcon, path: PATH.ORDERS },
+    { text: "Đăng xuất", icon: LogoutIcon, path: "#", onClick: handleLogout },
   ];
 
   return (
@@ -133,32 +136,34 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
       <AppBar
         position="fixed"
         sx={{
-          backgroundColor: isScrolled ? 'rgba(255, 255, 255, 0.95)' : 'transparent',
-          backdropFilter: isScrolled ? 'blur(8px)' : 'none',
+          backgroundColor: isScrolled
+            ? "rgba(255, 255, 255, 0.95)"
+            : "transparent",
+          backdropFilter: isScrolled ? "blur(8px)" : "none",
           boxShadow: isScrolled ? 1 : 0,
-          transition: 'all 0.3s ease-in-out',
+          transition: "all 0.3s ease-in-out",
           zIndex: (theme) => theme.zIndex.drawer + 1,
         }}
       >
         <Toolbar sx={{ height: HEADER_HEIGHT }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 0 }}>
+          <Box sx={{ display: "flex", alignItems: "center", flexGrow: 0 }}>
             <Link
               to={PATH.HOME}
               style={{
-                textDecoration: 'none',
-                display: 'flex',
-                alignItems: 'center',
+                textDecoration: "none",
+                display: "flex",
+                alignItems: "center",
                 gap: 16,
               }}
             >
               <Avatar
                 sx={{
-                  bgcolor: '#895a2a',
+                  bgcolor: "#895a2a",
                   width: 40,
                   height: 40,
-                  transition: 'transform 0.2s',
-                  '&:hover': {
-                    transform: 'scale(1.1)',
+                  transition: "transform 0.2s",
+                  "&:hover": {
+                    transform: "scale(1.1)",
                   },
                 }}
               >
@@ -167,11 +172,11 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
               <Typography
                 variant="h5"
                 sx={{
-                  fontWeight: 'bold',
-                  color: '#895a2a',
-                  transition: 'color 0.2s',
-                  '&:hover': {
-                    color: '#6b4423',
+                  fontWeight: "bold",
+                  color: "#895a2a",
+                  transition: "color 0.2s",
+                  "&:hover": {
+                    color: "#6b4423",
                   },
                 }}
               >
@@ -181,7 +186,7 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
           </Box>
 
           {!isMobile && (
-            <Box sx={{ ml: 4, display: 'flex', gap: 2 }}>
+            <Box sx={{ ml: 4, display: "flex", gap: 2 }}>
               {menuItems.map((item) =>
                 item.hasSubmenu ? (
                   <Box key={item.text}>
@@ -191,9 +196,9 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
                       onMouseEnter={handleCategoryMenuOpen}
                       onClick={() => handleNavigation(item.path)}
                       sx={{
-                        color: '#895a2a',
-                        '&:hover': {
-                          backgroundColor: 'rgba(137, 90, 42, 0.08)',
+                        color: "#895a2a",
+                        "&:hover": {
+                          backgroundColor: "rgba(137, 90, 42, 0.08)",
                         },
                       }}
                     >
@@ -212,6 +217,7 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
                           mt: 1.5,
                           minWidth: 200,
                           borderRadius: 2,
+                          bgcolor: "#fff",
                         },
                       }}
                     >
@@ -231,11 +237,16 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
                         item.submenu.map((subItem) => (
                           <MenuItem
                             key={subItem.text}
-                            onClick={() => handleCategorySelect(subItem.displayName)}
+                            onClick={() =>
+                              handleCategorySelect(subItem.displayName)
+                            }
                             sx={{
                               py: 1.5,
-                              '&:hover': {
-                                backgroundColor: 'rgba(137, 90, 42, 0.08)',
+                              color: "#6b4423", // Màu chữ nổi bật
+                              fontWeight: 500, // Chữ đậm hơn
+                              "&:hover": {
+                                backgroundColor: "#b0855b", // Màu nền hover
+                                color: "#fff", // Chữ trắng khi hover
                               },
                             }}
                           >
@@ -251,9 +262,9 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
                     startIcon={<item.icon />}
                     onClick={() => handleNavigation(item.path)}
                     sx={{
-                      color: '#895a2a',
-                      '&:hover': {
-                        backgroundColor: 'rgba(137, 90, 42, 0.08)',
+                      color: "#895a2a",
+                      "&:hover": {
+                        backgroundColor: "rgba(137, 90, 42, 0.08)",
                       },
                     }}
                   >
@@ -272,13 +283,13 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
                 onClick={handleMenuOpen}
                 sx={{
                   ml: 2,
-                  transition: 'transform 0.2s',
-                  '&:hover': {
-                    transform: 'scale(1.1)',
+                  transition: "transform 0.2s",
+                  "&:hover": {
+                    transform: "scale(1.1)",
                   },
                 }}
               >
-                <Avatar sx={{ bgcolor: '#895a2a' }}>U</Avatar>
+                <Avatar sx={{ bgcolor: "#895a2a" }}>U</Avatar>
               </IconButton>
               <Menu
                 anchorEl={anchorEl}
@@ -290,22 +301,28 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
                     mt: 1.5,
                     minWidth: 200,
                     borderRadius: 2,
+                    bgcolor: "#fff",
                   },
                 }}
               >
                 {userMenuItems.map((item) => (
                   <MenuItem
                     key={item.text}
-                    onClick={item.onClick || (() => handleNavigation(item.path))}
+                    onClick={
+                      item.onClick || (() => handleNavigation(item.path))
+                    }
                     sx={{
                       py: 1.5,
-                      '&:hover': {
-                        backgroundColor: 'rgba(137, 90, 42, 0.08)',
+                      color: "#6b4423", // Màu chữ nổi bật
+                      fontWeight: 500, // Chữ đậm hơn
+                      "&:hover": {
+                        backgroundColor: "#b0855b", // Màu nền hover
+                        color: "#fff", // Chữ trắng khi hover
                       },
                     }}
                   >
                     <ListItemIcon>
-                      <item.icon sx={{ color: '#895a2a' }} />
+                      <item.icon sx={{ color: "#6b4423" }} />
                     </ListItemIcon>
                     <ListItemText primary={item.text} />
                   </MenuItem>
@@ -317,7 +334,7 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
               edge="end"
               color="inherit"
               onClick={handleMobileMenuToggle}
-              sx={{ color: '#895a2a' }}
+              sx={{ color: "#895a2a" }}
             >
               {mobileMenuOpen ? <CloseIcon /> : <MenuIcon />}
             </IconButton>
@@ -336,6 +353,7 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
             width: 280,
             p: 2,
             mt: `${HEADER_HEIGHT}px`,
+            bgcolor: "#fff",
           },
         }}
       >
@@ -349,19 +367,21 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
                   sx={{
                     borderRadius: 1,
                     mb: 1,
-                    '&:hover': {
-                      backgroundColor: 'rgba(137, 90, 42, 0.08)',
+                    color: "#6b4423", // Màu chữ nổi bật
+                    "&:hover": {
+                      backgroundColor: "#b0855b", // Màu nền hover
+                      color: "#fff", // Chữ trắng khi hover
                     },
                   }}
                 >
                   <ListItemIcon>
-                    <item.icon sx={{ color: '#895a2a' }} />
+                    <item.icon sx={{ color: "#6b4423" }} />
                   </ListItemIcon>
                   <ListItemText primary={item.text} />
                   {mobileCategoryOpen ? (
                     <ArrowDropDownIcon />
                   ) : (
-                    <ArrowDropDownIcon sx={{ transform: 'rotate(-90deg)' }} />
+                    <ArrowDropDownIcon sx={{ transform: "rotate(-90deg)" }} />
                   )}
                 </ListItem>
                 {mobileCategoryOpen && (
@@ -383,12 +403,17 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
                         <ListItem
                           key={subItem.text}
                           button
-                          onClick={() => handleCategorySelect(subItem.displayName)}
+                          onClick={() =>
+                            handleCategorySelect(subItem.displayName)
+                          }
                           sx={{
                             borderRadius: 1,
                             mb: 1,
-                            '&:hover': {
-                              backgroundColor: 'rgba(137, 90, 42, 0.08)',
+                            color: "#6b4423", // Màu chữ nổi bật
+                            fontWeight: 500, // Chữ đậm hơn
+                            "&:hover": {
+                              backgroundColor: "#b0855b", // Màu nền hover
+                              color: "#fff", // Chữ trắng khi hover
                             },
                           }}
                         >
@@ -407,19 +432,22 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
                 sx={{
                   borderRadius: 1,
                   mb: 1,
-                  '&:hover': {
-                    backgroundColor: 'rgba(137, 90, 42, 0.08)',
+                  color: "#6b4423", // Màu chữ nổi bật
+                  fontWeight: 500, // Chữ đậm hơn
+                  "&:hover": {
+                    backgroundColor: "#b0855b", // Màu nền hover
+                    color: "#fff", // Chữ trắng khi hover
                   },
                 }}
               >
                 <ListItemIcon>
-                  <item.icon sx={{ color: '#895a2a' }} />
+                  <item.icon sx={{ color: "#6b4423" }} />
                 </ListItemIcon>
                 <ListItemText primary={item.text} />
               </ListItem>
             )
           )}
-          <Box sx={{ height: 1, bgcolor: 'divider', my: 2 }} />
+          <Box sx={{ height: 1, bgcolor: "divider", my: 2 }} />
           {userMenuItems.map((item) => (
             <ListItem
               key={item.text}
@@ -428,13 +456,16 @@ const Header = ({ setSelectedCategory, categories, isLoading, error }) => {
               sx={{
                 borderRadius: 1,
                 mb: 1,
-                '&:hover': {
-                  backgroundColor: 'rgba(137, 90, 42, 0.08)',
+                color: "#6b4423", // Màu chữ nổi bật
+                fontWeight: 500, // Chữ đậm hơn
+                "&:hover": {
+                  backgroundColor: "#b0855b", // Màu nền hover
+                  color: "#fff", // Chữ trắng khi hover
                 },
               }}
             >
               <ListItemIcon>
-                <item.icon sx={{ color: '#895a2a' }} />
+                <item.icon sx={{ color: "#6b4423" }} />
               </ListItemIcon>
               <ListItemText primary={item.text} />
             </ListItem>
