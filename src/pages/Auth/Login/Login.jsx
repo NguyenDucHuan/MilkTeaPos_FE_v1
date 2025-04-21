@@ -6,6 +6,7 @@ import { Email, Lock } from "@mui/icons-material";
 import { loginApi } from "../../../store/slices/authSlice";  // Đảm bảo bạn đang sử dụng đúng action
 import { PATH } from "../../../routes/path";
 import "./Login.css";
+import toast from "react-hot-toast";
 
 const Login = () => {
   const dispatch = useDispatch();
@@ -34,25 +35,47 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const result = await dispatch(loginApi(formData));
-
-      // Kiểm tra nếu login thành công
-      if (result?.payload?.accessToken) {
-        // Lưu accessToken vào localStorage khi đăng nhập thành công
-        localStorage.setItem("accessToken", result.payload.accessToken);
-
-        // Điều hướng về trang HOME sau khi login thành công
+      const result = await dispatch(loginApi(formData)).unwrap(); // Sử dụng unwrap để xử lý lỗi dễ dàng hơn
+  
+      // Đăng nhập thành công
+      if (result?.accessToken) {
+        // Lưu accessToken vào localStorage
+        localStorage.setItem("accessToken", result.accessToken);
+  
+        // Hiển thị toast thành công
+        toast.success("Đăng nhập thành công!", {
+          position: "top-right",
+          autoClose: 2000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+  
+        // Điều hướng về trang HOME
         navigate(PATH.HOME, { replace: true });
-      } else {
-        console.log("Login failed: ", result?.error || "Unknown error");
       }
     } catch (error) {
+      // Đăng nhập thất bại
+      // Lấy thông điệp lỗi từ error (được trả về từ rejectWithValue trong loginApi)
+      const errorMessage = error?.message || "Đăng nhập thất bại. Vui lòng thử lại.";
+  
+      // Hiển thị toast lỗi
+      toast.error(errorMessage, {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+  
       console.error("Login error:", error);
     }
   };
 
   return (
-    <Box className="login">
+    <Box className="login" >
       <Box className="login__container">
         <Box className="login__header">
           <Typography variant="h4" className="login__title">

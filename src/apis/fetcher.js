@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const fetcher = axios.create({
-  baseURL: import.meta.env.VITE_API_URL, // Sử dụng URL từ .env
+  baseURL: import.meta.env.VITE_API_URL,
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
@@ -35,7 +35,9 @@ fetcher.interceptors.response.use(
       data: error.response?.data,
       message: error.message,
     });
-    return Promise.reject(error);
+    const errorMessage =
+    error.response?.data?.message || "Có lỗi xảy ra. Vui lòng thử lại.";
+  return Promise.reject({ message: errorMessage });
   }
 );
 

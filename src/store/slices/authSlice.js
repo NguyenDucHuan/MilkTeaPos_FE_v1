@@ -9,7 +9,9 @@ export const loginApi = createAsyncThunk(
       const response = await fetcher.post("/authen/login", credentials); // Gọi API login
       return response.data; // Trả về dữ liệu người dùng và token
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message); // Trả về lỗi nếu có
+      const errorMessage =
+      error.response?.data?.message || "Đăng nhập thất bại. Vui lòng thử lại.";
+    return rejectWithValue(errorMessage);
     }
   }
 );
