@@ -8,6 +8,7 @@ export const PATH = {
     // Home (Staff)
     HOME: "/",
     ORDERS: "/orders",
+    PROFILE: "/profile",
   
     // Admin
     ADMIN: "/dashboard"

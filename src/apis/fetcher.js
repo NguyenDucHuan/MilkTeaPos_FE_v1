@@ -1,47 +1,43 @@
 import axios from "axios";
 
-export const fetcher = axios.create({
+const fetcher = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
-  timeout: 10000,
   headers: {
     "Content-Type": "application/json",
+    Accept: "application/json",
   },
+  timeout: 10000,
 });
 
-// Interceptor cho request
 fetcher.interceptors.request.use(
   (config) => {
-    const userJson = localStorage.getItem("currentUser");
-    if (!userJson) return config;
-
-    try {
-      const currentUser = JSON.parse(userJson);
-
-      if (currentUser?.accessToken) {
-        config.headers.Authorization = `Bearer ${currentUser.accessToken}`;
-      }
-    } catch (error) {
-      console.error("Error parsing currentUser from localStorage:", error);
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
+    console.log("Request details:", {
+      url: config.baseURL + config.url, // Log URL đầy đủ
+      method: config.method,
+      headers: config.headers,
+      data: config.data,
+    });
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Interceptor cho response
 fetcher.interceptors.response.use(
-  (response) => {
-    // Trả về dữ liệu từ response
-    return response.data;
-  },
+  (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      console.error("Unauthorized, logging out...");
-
-      localStorage.removeItem("currentUser");
-      window.location.href = "/auth/login";
-    }
-    return Promise.reject(error.response?.data || error.message);
+    console.error("Response error details:", {
+      url: error.config.url,
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+    });
+    const errorMessage =
+    error.response?.data?.message || "Có lỗi xảy ra. Vui lòng thử lại.";
+  return Promise.reject({ message: errorMessage });
   }
 );
 

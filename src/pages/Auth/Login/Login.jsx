@@ -1,135 +1,152 @@
-import { Box, Button, TextField, Typography, Link } from "@mui/material";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { Box, TextField, Button, Typography, Link, InputAdornment, Alert } from "@mui/material";
+import { Email, Lock } from "@mui/icons-material";
+import { loginApi } from "../../../store/slices/authSlice";  // Đảm bảo bạn đang sử dụng đúng action
+import { PATH } from "../../../routes/path";
 import "./Login.css";
-import LocalPhoneIcon from "@mui/icons-material/LocalPhone";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import HttpsIcon from "@mui/icons-material/Https";
-import { useForm } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
-import IconButton from "@mui/material/IconButton";
-import { Visibility, VisibilityOff } from "@mui/icons-material";
+import toast from "react-hot-toast";
 
-const schema = yup
-  .object({
-    phone: yup
-      .string()
-      .required("Số điện thoại là bắt buộc")
-      .matches(/^[0-9]+$/, "Số điện thoại không hợp lệ")
-      .min(10, "Số điện thoại phải có ít nhất 10 chữ số")
-      .max(11, "Số điện thoại không được quá 11 số"),
-    username: yup.string().required("Tên đăng nhập là bắt buộc"),
-    password: yup.string().required("Mật khẩu là bắt buộc"),
-  })
-  .required();
+const Login = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { isAuthenticated, error, loading } = useSelector((state) => state.auth);
 
-export default function Login() {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm({
-    resolver: yupResolver(schema),
+  const [formData, setFormData] = useState({
+    phoneOrEmail: "",
+    password: "",
   });
 
-  const [showPassword, setShowPassword] = useState(false);
+  useEffect(() => {
+    // Nếu người dùng đã đăng nhập, chuyển hướng ngay đến trang Home
+    if (isAuthenticated) {
+      navigate(PATH.HOME, { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
-  const handleClickShowPassword = () => {
-    setShowPassword((prev) => !prev);
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
   };
 
-  const onSubmit = (data) => {
-    console.log(data);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const result = await dispatch(loginApi(formData)).unwrap(); // Sử dụng unwrap để xử lý lỗi dễ dàng hơn
+  
+      // Đăng nhập thành công
+      if (result?.accessToken) {
+        // Lưu accessToken vào localStorage
+        localStorage.setItem("accessToken", result.accessToken);
+  
+        // Hiển thị toast thành công
+        toast.success("Đăng nhập thành công!", {
+          position: "top-right",
+          autoClose: 2000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+  
+        // Điều hướng về trang HOME
+        navigate(PATH.HOME, { replace: true });
+      }
+    } catch (error) {
+      // Đăng nhập thất bại
+      // Lấy thông điệp lỗi từ error (được trả về từ rejectWithValue trong loginApi)
+      const errorMessage = error?.message || "Đăng nhập thất bại. Vui lòng thử lại.";
+  
+      // Hiển thị toast lỗi
+      toast.error(errorMessage, {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+  
+      console.error("Login error:", error);
+    }
   };
 
   return (
-    <Box className="login">
+    <Box className="login" >
       <Box className="login__container">
         <Box className="login__header">
           <Typography variant="h4" className="login__title">
             Đăng nhập
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Vui lòng đăng nhập để tiếp tục
+          <Typography variant="body2" className="login__subtitle">
+            Chào mừng trở lại! Vui lòng đăng nhập để tiếp tục.
           </Typography>
         </Box>
-
-        <Box className="login__container__form">
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <LocalPhoneIcon className="login__icon" />
-              <TextField
-                label="Số điện thoại"
-                type="tel"
-                variant="standard"
-                fullWidth
-                margin="normal"
-                required
-                className="login__input"
-                {...register("phone")}
-                error={!!errors.phone}
-                helperText={errors.phone ? errors.phone.message : ""}
-              />
-            </Box>
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <AccountCircleIcon className="login__icon" />
-              <TextField
-                label="Tên đăng nhập"
-                type="text"
-                variant="standard"
-                fullWidth
-                margin="normal"
-                required
-                className="login__input"
-                {...register("username")}
-                error={!!errors.username}
-                helperText={errors.username ? errors.username.message : ""}
-              />
-            </Box>
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <HttpsIcon className="login__icon" />
-              <TextField
-                label="Mật khẩu"
-                type={showPassword ? "text" : "password"}
-                variant="standard"
-                fullWidth
-                margin="normal"
-                required
-                className="login__input"
-                {...register("password")}
-                error={!!errors.password}
-                helperText={errors.password ? errors.password.message : ""}
-                InputProps={{
-                  endAdornment: (
-                    <IconButton
-                      aria-label="toggle password visibility"
-                      onClick={handleClickShowPassword}
-                      edge="end"
-                    >
-                      {showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  ),
-                }}
-              />
-            </Box>
-            <Button
-              variant="contained"
-              color="primary"
-              type="submit"
-              fullWidth
-              sx={{ mt: 3 }}
-              className="login__button"
-            >
-              Đăng nhập
-            </Button>
-            <Box sx={{ mt: 2, textAlign: "center" }}>
-              <Link href="/auth/register" variant="body2">
-                Chưa có tài khoản? Đăng ký ngay
+        <form className="login__container__form" onSubmit={handleSubmit}>
+          {error && (
+            <Alert severity="error" className="login__error">
+              {error}
+            </Alert>
+          )}
+          <TextField
+            fullWidth
+            label="Email hoặc số điện thoại"
+            name="phoneOrEmail"
+            type="text"
+            value={formData.phoneOrEmail}
+            onChange={handleChange}
+            required
+            className="login__input"
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Email className="login__icon" />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <TextField
+            fullWidth
+            label="Mật khẩu"
+            name="password"
+            type="password"
+            value={formData.password}
+            onChange={handleChange}
+            required
+            className="login__input"
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Lock className="login__icon" />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Button
+            type="submit"
+            variant="contained"
+            fullWidth
+            className="login__button"
+            disabled={loading}
+          >
+            {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+          </Button>
+          <Box className="login__footer">
+            <Typography>
+              Chưa có tài khoản?{" "}
+              <Link href={PATH.REGISTER} underline="hover">
+                Đăng ký ngay
               </Link>
-            </Box>
-          </form>
-        </Box>
+            </Typography>
+          </Box>
+        </form>
       </Box>
     </Box>
   );
-}
+};
+
+export default Login;
+// import React, { useState, useEffect } from "react";
