@@ -3,8 +3,7 @@ import fetcher from "../../apis/fetcher";
 
 export const listItemApi = createAsyncThunk("item/listItemApi", async () => {
   try {
-    const response = await fetcher.get("/milktea");
-    console.log("Item response:", response);
+    const response = await fetcher.get("https://67dabbe235c87309f52dc7a7.mockapi.io/milktea");
     return response;
   } catch (error) {
     throw error.response ? error.response.data.message : error.message;

@@ -161,55 +161,67 @@ export default function HomePage() {
               <Typography color="error">Lỗi: {error}</Typography>
             ) : selectedCategory === null ? (
               <Grid container spacing={2} className="category-grid">
-                {categories.map((category) => (
-                  <Grid item xs={4} key={category.displayName}>
-                    <Card
-                      sx={{
-                        cursor: "pointer",
-                        backgroundColor: "#f9f5f1",
-                        borderRadius: "15px",
-                        boxShadow: "none",
-                        marginTop: "20px",
-                        marginLeft: "30px",
-                        width: "300px",
-                      }}
-                      onClick={() => handleCategoryClick(category.displayName)}
-                    >
-                      <CardContent
+                {Array.isArray(categories) && categories.length > 0 ? (
+                  categories.map((category) => (
+                    <Grid item xs={4} key={category.categoryName}>
+                      <Card
                         sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          height: "150px",
+                          cursor: "pointer",
+                          backgroundColor: "#f9f5f1",
+                          borderRadius: "15px",
+                          boxShadow: "none",
+                          marginTop: "20px",
+                          marginLeft: "30px",
+                          width: "300px",
                         }}
+                        onClick={() =>
+                          handleCategoryClick(category.categoryName)
+                        }
                       >
-                        <Box sx={{ mr: 2 }}>
-                          <img
-                            src={category.image}
-                            alt={category.displayName}
-                            style={{
-                              width: "100px",
-                              height: "100px",
-                              objectFit: "cover",
-                              borderRadius: "8px",
-                              margin: "7px 9px",
-                            }}
-                          />
-                        </Box>
-                        <Box>
-                          <Typography
-                            variant="h6"
-                            sx={{ color: "#8a5a2a", fontWeight: "bold" }}
-                          >
-                            {category.displayName}
-                          </Typography>
-                          <Typography variant="body2" sx={{ color: "#8a5a2a" }}>
-                            {category.description}
-                          </Typography>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
+                        <CardContent
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            height: "150px",
+                          }}
+                        >
+                          <Box sx={{ mr: 2 }}>
+                            <img
+                              src={
+                                category.image ||
+                                "https://via.placeholder.com/100"
+                              }
+                              alt={category.categoryName}
+                              style={{
+                                width: "100px",
+                                height: "100px",
+                                objectFit: "cover",
+                                borderRadius: "8px",
+                                margin: "7px 9px",
+                              }}
+                            />
+                          </Box>
+                          <Box>
+                            <Typography
+                              variant="h6"
+                              sx={{ color: "#8a5a2a", fontWeight: "bold" }}
+                            >
+                              {category.categoryName}
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              sx={{ color: "#8a5a2a" }}
+                            >
+                              {category.description}
+                            </Typography>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))
+                ) : (
+                  <Typography>Không có danh mục nào</Typography>
+                )}
               </Grid>
             ) : getFilteredItems().length > 0 ? (
               <>
@@ -218,7 +230,7 @@ export default function HomePage() {
                   onClick={handleBackToCategories}
                   sx={{ mb: 2, color: "#8a5a2a" }}
                 >
-                  Back to Categories
+                  Quay lại Danh mục
                 </Button>
                 <Grid container spacing={2} className="menu-items-grid">
                   {getFilteredItems().map((item) => (
@@ -236,7 +248,7 @@ export default function HomePage() {
                         <CardMedia
                           className="menu-item-image-placeholder"
                           component="img"
-                          src={item.image}
+                          src={item.image || "https://via.placeholder.com/150"}
                           alt={item.name}
                           sx={{
                             height: "150px",
@@ -286,7 +298,7 @@ export default function HomePage() {
                                 onClick={() => handleOpenModal(item)}
                                 className="menu-item-add-button"
                               >
-                                Add
+                                Thêm
                               </button>
                             </Box>
                           </Box>
@@ -303,7 +315,7 @@ export default function HomePage() {
                   onClick={handleBackToCategories}
                   sx={{ mb: 2, color: "#8a5a2a" }}
                 >
-                  Back to Categories
+                  Quay lại Danh mục
                 </Button>
                 <Typography
                   variant="h6"
