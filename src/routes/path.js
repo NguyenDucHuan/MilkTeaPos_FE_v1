@@ -11,5 +11,6 @@ export const PATH = {
     PROFILE: "/profile",
   
     // Admin
-    ADMIN: "/dashboard"
+    ADMIN: "/admin",
+    ACCOUNT: "accounts",
   };

@@ -11,6 +11,8 @@ import DashboardAdmin from "../pages/Admin/DashboardAdmin/DashboardAdmin";
 import Profile from "../pages/Profile/Profile";
 import ProtectedRoute from "../components/ProtectedRoute";
 
+import AccountList from "../pages/Admin/Accounts/List";
+import AccountForm from "../pages/Admin/Accounts/Form";
 
 export default function useRouterElements() {
   const routeElements = useRoutes([
@@ -76,6 +78,18 @@ export default function useRouterElements() {
           index: true,
           path: PATH.ADMIN,
           element: <DashboardAdmin />,
+        },
+        {
+          path: "accounts",
+          element: <AccountList />,
+        },
+        {
+          path: "accounts/new",
+          element: <AccountForm />,
+        },
+        {
+          path: "accounts/:id/edit",
+          element: <AccountForm />,
         },
       ],
     },
