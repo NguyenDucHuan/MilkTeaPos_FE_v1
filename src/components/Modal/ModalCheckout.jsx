@@ -13,7 +13,7 @@ import "./ModalCheckout.css";
 import { useDispatch, useSelector } from "react-redux";
 import { listPaymentApi } from "../../store/slices/paymentSlice";
 
-export default function ModalCheckout({ open, onClose, order }) {
+export default function ModalCheckout({ open, onClose, order, total }) {
   const dispatch = useDispatch();
   const { payment, isLoading, error } = useSelector((state) => state.payment);
   const [paymentMethod, setPaymentMethod] = useState("");
@@ -27,14 +27,6 @@ export default function ModalCheckout({ open, onClose, order }) {
   const handleChange = (event) => {
     setPaymentMethod(event.target.value);
   };
-
-  // Hàm tính tổng tiền từ order
-  const calculateTotal = () => {
-    if (!order || order.length === 0) return 0;
-    return order.reduce((total, item) => total + item.itemPrice, 0);
-  };
-
-  const total = calculateTotal();
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -110,15 +102,15 @@ export default function ModalCheckout({ open, onClose, order }) {
             </Typography>
             <Box className="modal-checkout__details-content">
               {order && order.length > 0 ? (
-                order.map((item, index) => (
+                order.map((item) => (
                   <Typography
-                    key={index}
+                    key={item.orderItemId}
                     variant="body2"
                     component="p"
                     className="modal-checkout__details-item"
                   >
-                    {item.quantity} x {item.name}{" "}
-                    <span>${item.itemPrice.toFixed(2)}</span>
+                    {item.quantity} x {item.product.productName}{" "}
+                    <span>${(item.price * item.quantity).toFixed(2)}</span>
                   </Typography>
                 ))
               ) : (
@@ -148,11 +140,10 @@ export default function ModalCheckout({ open, onClose, order }) {
           </Button>
           <Button
             variant="contained"
-            onClick={() => alert("Đơn hàng đã được xác nhận!")}
-            sx={{ ml: 2 }}
-            disabled={!paymentMethod}
+            color="primary"
+            disabled={!paymentMethod || order.length === 0}
           >
-            Xác nhận
+            Thanh toán
           </Button>
         </Box>
       </Box>

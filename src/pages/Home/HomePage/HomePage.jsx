@@ -22,15 +22,14 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { listCategory } from "../../../store/slices/categorySlice";
 import { listItemApi } from "../../../store/slices/itemSlice";
 import { useOutletContext } from "react-router-dom";
-import { listOrderApi } from "../../../store/slices/orderSlice";
+import { addToCartApi, getCartApi, updateCartItemQuantity, removeFromCartApi, updateCartQuantityApi, addToCart } from "../../../store/slices/orderSlice";
 
 export default function HomePage() {
   const dispatch = useDispatch();
   const { item, isLoading, error } = useSelector((state) => state.item);
   const { category: categories, isLoading: categoryLoading, error: categoryError } = useSelector((state) => state.category);
-  const { order: serverOrder, isLoading: orderLoading, error: orderError } = useSelector((state) => state.order);
+  const { cart = [], isLoading: orderLoading, error: orderError } = useSelector((state) => state.order);
   const [openCheckout, setOpenCheckout] = useState(false);
-  const [order, setOrder] = useState([]);
   const [openModal, setOpenModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const { selectedCategory, setSelectedCategory } = useOutletContext();
@@ -52,18 +51,14 @@ export default function HomePage() {
         }
       }
     });
-    dispatch(listOrderApi());
+    dispatch(getCartApi());
   }, [dispatch]);
 
   useEffect(() => {
-    console.log("selectedCategory:", selectedCategory);
-    console.log("categories:", categories);
-    console.log("item:", item);
     if (selectedCategory && categories.length > 0) {
       const selectedCategoryObj = categories.find(
         (cat) => cat.categoryName === selectedCategory
       );
-      console.log("selectedCategoryObj:", selectedCategoryObj);
       if (selectedCategoryObj) {
         dispatch(listItemApi({ CategoryId: selectedCategoryObj.categoryId }));
       }
@@ -96,58 +91,90 @@ export default function HomePage() {
     setSelectedItem(null);
   };
 
-  const handleAddToOrder = (customizedItem) => {
-    const existingItemIndex = order.findIndex(
-      (orderItem) =>
-        orderItem.name === customizedItem.name &&
-        orderItem.size === customizedItem.size &&
-        orderItem.sugar === customizedItem.sugar &&
-        orderItem.ice === customizedItem.ice &&
-        JSON.stringify(orderItem.toppings.sort()) ===
-          JSON.stringify(customizedItem.toppings.sort())
-    );
+  const handleAddToOrder = async (customizedItem) => {
+    try {
+      // First update local state for immediate UI feedback
+      dispatch(addToCart({
+        product: customizedItem,
+        quantity: customizedItem.quantity
+      }));
 
-    if (existingItemIndex !== -1) {
-      const updatedOrder = [...order];
-      updatedOrder[existingItemIndex].quantity += customizedItem.quantity;
-      updatedOrder[existingItemIndex].itemPrice +=
-        customizedItem.itemPrice * customizedItem.quantity;
-      setOrder(updatedOrder);
-    } else {
-      setOrder([...order, customizedItem]);
+      // Then call API to update server
+      await dispatch(addToCartApi({
+        masterId: customizedItem.productId,
+        productId: customizedItem.productId,
+        quantity: customizedItem.quantity
+      })).unwrap();
+      
+      // Refresh cart after adding item
+      await dispatch(getCartApi()).unwrap();
+      handleCloseModal();
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      // If API call fails, remove the item from local state
+      dispatch(updateCartItemQuantity({
+        productId: customizedItem.productId,
+        quantity: 0
+      }));
     }
-    handleCloseModal();
-  };
-
-  const handleRemoveItem = (index) => {
-    setOrder(order.filter((_, i) => i !== index));
-  };
-
-  const handleAdjustQuantity = (index, change) => {
-    const updatedOrder = [...order];
-    const currentQuantity = updatedOrder[index].quantity;
-    const newQuantity = currentQuantity + change;
-    if (newQuantity < 1) return;
-    const basePrice = updatedOrder[index].itemPrice / currentQuantity;
-    updatedOrder[index].quantity = newQuantity;
-    updatedOrder[index].itemPrice = basePrice * newQuantity;
-    setOrder(updatedOrder);
-  };
-
-  const handleClearOrder = () => {
-    setOrder([]);
   };
 
   const calculateSubtotal = () => {
-    return order.reduce((total, item) => total + item.itemPrice, 0);
+    if (!Array.isArray(cart) || cart.length === 0) return 0;
+    return cart.reduce((total, item) => {
+      const itemPrice = item.product?.price || 0;
+      return total + (itemPrice * item.quantity);
+    }, 0);
+  };
+
+  const handleUpdateQuantity = async (item, newQuantity, e) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    try {
+      if (newQuantity < item.quantity) {
+        // Khi giảm số lượng (luôn giảm 1)
+        await dispatch(removeFromCartApi({
+          productId: item.product.productId,
+          quantity: 1
+        })).unwrap();
+
+        // Cập nhật state local
+        dispatch(updateCartItemQuantity({
+          productId: item.product.productId,
+          quantity: newQuantity
+        }));
+      } else if (newQuantity > item.quantity) {
+        // Khi tăng số lượng (luôn tăng 1)
+        await dispatch(addToCartApi({
+          masterId: item.product.productId,
+          productId: item.product.productId,
+          quantity: 1
+        })).unwrap();
+
+        // Cập nhật state local
+        dispatch(updateCartItemQuantity({
+          productId: item.product.productId,
+          quantity: newQuantity
+        }));
+      }
+
+      // Làm mới giỏ hàng để đảm bảo đồng bộ
+      await dispatch(getCartApi()).unwrap();
+    } catch (error) {
+      console.error("Error updating quantity:", error);
+      // Nếu có lỗi, khôi phục lại state local
+      dispatch(updateCartItemQuantity({
+        productId: item.product.productId,
+        quantity: item.quantity
+      }));
+    }
   };
 
   const getFilteredItems = () => {
     if (!Array.isArray(item)) {
       return [];
     }
-    console.log("getFilteredItems result:", item);
-    return item; // Trả về item trực tiếp vì API đã lọc theo CategoryId
+    return item;
   };
 
   const handleCategoryClick = (category) => {
@@ -164,9 +191,9 @@ export default function HomePage() {
   return (
     <Box className="home-page">
       <Grid container spacing={2} className="home-page-grid">
-        <Grid size={7} className="menu-section">
-          <Typography className="menu-title">Menu Items</Typography>
-          <Box className="menu-items-container">
+        <Grid item xs={12} md={7} className="menu-section">
+          <Box className="menu-container">
+            <Typography variant="h4" className="menu-title">Menu Items</Typography>
             <Divider className="menu-divider" />
             {categoryLoading ? (
               <Typography>Đang tải danh mục...</Typography>
@@ -180,52 +207,24 @@ export default function HomePage() {
               <Grid container spacing={2} className="category-grid">
                 {Array.isArray(categories) && categories.length > 0 ? (
                   categories.map((category) => (
-                    <Grid item xs={4} key={category.categoryId}>
+                    <Grid item xs={12} sm={6} md={4} key={category.categoryId}>
                       <Card
-                        sx={{
-                          cursor: "pointer",
-                          backgroundColor: "#f9f5f1",
-                          borderRadius: "15px",
-                          boxShadow: "none",
-                          marginTop: "20px",
-                          marginLeft: "30px",
-                          width: "300px",
-                        }}
-                        onClick={() =>
-                          handleCategoryClick(category.categoryName)
-                        }
+                        className="category-card"
+                        onClick={() => handleCategoryClick(category.categoryName)}
                       >
-                        <CardContent
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            height: "150px",
-                          }}
-                        >
-                          <Box sx={{ mr: 2 }}>
+                        <CardContent className="category-content">
+                          <Box className="category-image">
                             <img
                               src={category.image}
                               alt={category.categoryName}
-                              style={{
-                                width: "100px",
-                                height: "100px",
-                                objectFit: "cover",
-                                borderRadius: "8px",
-                                margin: "7px 9px",
-                              }}
+                              className="category-img"
                             />
                           </Box>
-                          <Box>
-                            <Typography
-                              variant="h6"
-                              sx={{ color: "#8a5a2a", fontWeight: "bold" }}
-                            >
+                          <Box className="category-info">
+                            <Typography variant="h6" className="category-name">
                               {category.categoryName}
                             </Typography>
-                            <Typography
-                              variant="body2"
-                              sx={{ color: "#8a5a2a" }}
-                            >
+                            <Typography variant="body2" className="category-description">
                               {category.description}
                             </Typography>
                           </Box>
@@ -242,79 +241,33 @@ export default function HomePage() {
                 <Button
                   startIcon={<ArrowBackIcon />}
                   onClick={handleBackToCategories}
-                  sx={{ mb: 2, color: "#8a5a2a" }}
+                  className="back-button"
                 >
                   Quay lại Danh mục
                 </Button>
                 <Grid container spacing={2} className="menu-items-grid">
                   {getFilteredItems().map((item) => (
-                    <Grid key={item.productId}>
+                    <Grid item xs={12} sm={6} md={4} key={item.productId}>
                       <Card
-                        sx={{
-                          maxWidth: 345,
-                          borderRadius: "15px",
-                          border: "1px solid #f0e6d9",
-                          width: "280px",
-                          height: "350px",
-                        }}
-                        className="menu-item"
+                        className="menu-item-card"
+                        onClick={() => handleOpenModal(item)}
                       >
-                        <CardMedia
-                          className="menu-item-image-placeholder"
-                          component="img"
-                          src={item.imageUrl || "https://via.placeholder.com/150"}
-                          alt={item.productName}
-                          sx={{
-                            height: "150px",
-                            maxWidth: "250px",
-                            objectFit: "cover",
-                            margin: "12px 12px",
-                          }}
-                        />
-                        <CardContent className="menu-item-content">
-                          <Typography
-                            variant="h6"
-                            className="menu-item-name"
-                            sx={{ marginTop: "5px", color: "#8a5a2a" }}
-                          >
-                            {item.productName}
-                          </Typography>
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            className="menu-item-description"
-                            sx={{
-                              marginTop: "5px",
-                              padding: "10px 10px 10px 0px",
-                            }}
-                          >
-                            {item.description}
-                          </Typography>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              flexDirection: "row",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              marginTop: "5px",
-                            }}
-                          >
-                            <Typography
-                              variant="h6"
-                              color="text.primary"
-                              className="menu-item-price"
-                              sx={{ marginTop: "5px", color: "#8a5a2a" }}
-                            >
-                              ${item.price.toFixed(2)}
+                        <CardContent>
+                          <Box className="menu-item-content">
+                            <img
+                              src={item.imageUrl}
+                              alt={item.productName}
+                              className="menu-item-image"
+                            />
+                            <Typography variant="h6" className="menu-item-name">
+                              {item.productName}
                             </Typography>
-                            <Box className="menu-item-actions">
-                              <button
-                                onClick={() => handleOpenModal(item)}
-                                className="menu-item-add-button"
-                              >
-                                Thêm
-                              </button>
-                            </Box>
+                            <Typography variant="body2" className="menu-item-description">
+                              {item.description}
+                            </Typography>
+                            <Typography variant="h6" className="menu-item-price">
+                              ${item.price}
+                            </Typography>
                           </Box>
                         </CardContent>
                       </Card>
@@ -323,231 +276,159 @@ export default function HomePage() {
                 </Grid>
               </>
             ) : (
-              <Box>
-                <Button
-                  startIcon={<ArrowBackIcon />}
-                  onClick={handleBackToCategories}
-                  sx={{ mb: 2, color: "#8a5a2a" }}
-                >
-                  Quay lại Danh mục
-                </Button>
-                <Typography
-                  variant="h6"
-                  sx={{ color: "#8a5a2a", fontWeight: "bold" }}
-                >
-                  Không có món nào trong danh mục này
-                </Typography>
-              </Box>
+              <Typography>Không có sản phẩm nào trong danh mục này</Typography>
             )}
           </Box>
         </Grid>
-        <Grid size={5} className="order-section">
-          <Typography variant="h6" className="order-title">
-            Đơn hàng hiện tại
-          </Typography>
-          {order.length === 0 ? (
-            <Box className="order-empty-message">
-              <Box sx={{ textAlign: "center", marginTop: "10%" }}>
-                <ShoppingBagIcon
-                  className="order-empty-icon"
-                  sx={{
-                    color: "#8a5a2a",
-                    fontSize: "50px",
-                    marginBottom: "10px",
-                  }}
-                />
-                <Typography
-                  variant="body1"
-                  className="order-empty-text"
-                  sx={{ color: "#8a5a2a", fontWeight: "bold" }}
-                >
-                  Chưa có món nào trong đơn hàng
-                </Typography>
-                <Typography
-                  variant="body2"
-                  className="order-empty-subtext"
-                  sx={{ color: "#8a5a2a" }}
-                >
-                  Thêm món từ menu để bắt đầu
-                </Typography>
-              </Box>
-            </Box>
-          ) : (
-            <>
-              <Box
-                className="order-summary"
-                sx={{
-                  padding: "15px",
-                  backgroundColor: "#f9f5f1",
-                  borderRadius: "15px",
-                  marginBottom: "20px",
-                }}
-              >
-                <Typography variant="body1" className="order-summary-title">
-                  TÓM TẮT ĐƠN HÀNG
-                </Typography>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    mb: "5px",
-                  }}
-                >
-                  <Typography variant="body2" className="order-summary-item">
-                    SỐ MÓN:
-                  </Typography>
-                  <Typography variant="body2" className="order-summary-item">
-                    {order.reduce((sum, item) => sum + item.quantity, 0)}
-                  </Typography>
-                </Box>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    mb: "5px",
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    className="order-summary-subtotal"
-                  >
-                    TỔNG CỘNG:
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    className="order-summary-subtotal"
-                  >
-                    ${subtotal.toFixed(2)}
-                  </Typography>
-                </Box>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    mt: "5px",
-                  }}
-                >
-                  <Typography variant="body2" className="order-summary-total">
-                    THÀNH TIỀN:
-                  </Typography>
-                  <Typography variant="body2" className="order-summary-total">
-                    ${total.toFixed(2)}
-                  </Typography>
-                </Box>
-              </Box>
-              <Box className="order-details">
-                <Typography variant="body1" className="order-details-title">
-                  CHI TIẾT ĐƠN HÀNG
-                </Typography>
-                {order.map((item, index) => (
-                  <Box
-                    key={index}
-                    className="order-detail-item"
+
+        <Grid item xs={12} md={5} className="order-section">
+          <Box className="order-container">
+            <Typography variant="h4" className="order-title">Đơn hàng hiện tại</Typography>
+            <Divider className="order-divider" />
+            {orderLoading ? (
+              <Typography>Đang tải giỏ hàng...</Typography>
+            ) : orderError ? (
+              <Typography color="error">Lỗi: {orderError}</Typography>
+            ) : !cart || cart.length === 0 ? (
+              <Box className="order-empty-message">
+                <Box sx={{ textAlign: "center", marginTop: "10%" }}>
+                  <ShoppingBagIcon
+                    className="order-empty-icon"
                     sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
+                      color: "#8a5a2a",
+                      fontSize: "50px",
+                      marginBottom: "10px",
                     }}
+                  />
+                  <Typography
+                    variant="body1"
+                    className="order-empty-text"
+                    sx={{ color: "#8a5a2a", fontWeight: "bold" }}
                   >
-                    <Box>
-                      <Typography variant="body2" className="order-detail-text">
-                        <Box>
-                          <span
-                            style={{
-                              color: "#b0855b",
-                              fontSize: "20px",
-                              padding: "0px 20px",
-                            }}
-                          >
-                            {item.quantity}x{" "}
-                          </span>
-                          <span
-                            style={{
-                              color: "#8e857c",
-                              fontSize: "20px",
-                              fontWeight: "bold",
-                            }}
-                          >
-                            {item.name}
-                          </span>
-                        </Box>
-                        <br />
-                        <Box
-                          sx={{
-                            marginLeft: "66px",
-                            color: "#bab1a8",
-                            fontWeight: "bold",
-                          }}
-                        >
-                          {item.size}, {item.sugar} đường, {item.ice} đá
-                          {item.toppings.length > 0 && (
-                            <>, {item.toppings.join(", ")}</>
-                          )}
-                          {item.isCombo && (
-                            <Box>
-                              Combo:{" "}
-                              {item.comboItems.map((ci) => ci.name).join(", ")}
-                            </Box>
-                          )}
-                        </Box>
+                    Chưa có món nào trong đơn hàng
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    className="order-empty-subtext"
+                    sx={{ color: "#8a5a2a" }}
+                  >
+                    Thêm món từ menu để bắt đầu
+                  </Typography>
+                </Box>
+              </Box>
+            ) : (
+              <>
+                <Box className="order-summary">
+                  <Typography variant="body1" className="order-summary-title">
+                    TÓM TẮT ĐƠN HÀNG
+                  </Typography>
+                  <Box className="order-summary-content">
+                    <Box className="order-summary-item">
+                      <Typography variant="body2">SỐ MÓN:</Typography>
+                      <Typography variant="body2">
+                        {cart.reduce((sum, item) => sum + (item.quantity || 0), 0)}
                       </Typography>
                     </Box>
-                    <Box sx={{ display: "flex", alignItems: "center" }}>
-                      <IconButton
-                        onClick={() => handleAdjustQuantity(index, -1)}
-                        size="small"
-                      >
-                        <RemoveIcon />
-                      </IconButton>
-                      <Typography sx={{ mx: 1 }}>{item.quantity}</Typography>
-                      <IconButton
-                        onClick={() => handleAdjustQuantity(index, 1)}
-                        size="small"
-                      >
-                        <AddIcon />
-                      </IconButton>
-                      <Typography
-                        variant="body2"
-                        className="order-detail-price"
-                        sx={{ mx: 2 }}
-                      >
-                        ${item.itemPrice.toFixed(2)}
-                      </Typography>
-                      <IconButton
-                        onClick={() => handleRemoveItem(index)}
-                        size="small"
-                        color="error"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
+                    <Box className="order-summary-item">
+                      <Typography variant="body2">TỔNG CỘNG:</Typography>
+                      <Typography variant="body2">${subtotal.toFixed(2)}</Typography>
+                    </Box>
+                    <Box className="order-summary-item">
+                      <Typography variant="body2">THÀNH TIỀN:</Typography>
+                      <Typography variant="body2">${subtotal.toFixed(2)}</Typography>
                     </Box>
                   </Box>
-                ))}
-              </Box>
-              <Box className="order-actions">
-                <Button
-                  variant="outlined"
-                  onClick={handleClearOrder}
-                  className="order-clear-button"
-                  fullWidth
-                >
-                  Xóa đơn
-                </Button>
-                <Button
-                  variant="contained"
-                  className="order-checkout-button"
-                  fullWidth
-                  onClick={handleOpenCheckoutModal}
-                  disabled={order.length === 0}
-                >
-                  THANH TOÁN
-                </Button>
-              </Box>
-            </>
-          )}
+                </Box>
+                <Box className="order-details">
+                  <Typography variant="body1" className="order-details-title">
+                    CHI TIẾT ĐƠN HÀNG
+                  </Typography>
+                  {cart.map((item) => (
+                    <Box key={item.orderItemId} className="order-detail-item">
+                      <Box className="order-detail-info">
+                        <Box component="span" className="order-detail-text">
+                          <span className="order-detail-quantity">
+                            {item.quantity}x
+                          </span>
+                          <span className="order-detail-name">
+                            {item.product?.productName || 'Unknown Product'}
+                          </span>
+                        </Box>
+                      </Box>
+                      <Box className="order-detail-actions">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            const newQuantity = Math.max(0, item.quantity - 1);
+                            if (newQuantity !== item.quantity) {
+                              handleUpdateQuantity(item, newQuantity, e);
+                            }
+                          }}
+                        >
+                          <RemoveIcon />
+                        </IconButton>
+                        <Typography className="order-detail-quantity">
+                          {item.quantity}
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            const newQuantity = item.quantity + 1;
+                            handleUpdateQuantity(item, newQuantity, e);
+                          }}
+                        >
+                          <AddIcon />
+                        </IconButton>
+                        <Typography className="order-detail-price">
+                          ${((item.product?.price || 0) * item.quantity).toFixed(2)}
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            handleUpdateQuantity(item, 0, e);
+                          }}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+                <Box className="order-actions">
+                  <Button
+                    variant="outlined"
+                    className="order-clear-button"
+                    onClick={() => {
+                      cart.forEach(item => {
+                        if (item.product?.productId) {
+                          dispatch(updateCartItemQuantity({
+                            productId: item.product.productId,
+                            quantity: 0
+                          }));
+                          dispatch(removeFromCartApi({
+                            productId: item.product.productId,
+                            quantity: item.quantity
+                          }));
+                        }
+                      });
+                    }}
+                    fullWidth
+                  >
+                    Xóa đơn
+                  </Button>
+                  <Button
+                    variant="contained"
+                    className="order-checkout-button"
+                    fullWidth
+                    onClick={handleOpenCheckoutModal}
+                    disabled={!cart || cart.length === 0}
+                  >
+                    THANH TOÁN
+                  </Button>
+                </Box>
+              </>
+            )}
+          </Box>
         </Grid>
       </Grid>
 
@@ -555,14 +436,15 @@ export default function HomePage() {
         open={openModal}
         onClose={handleCloseModal}
         item={selectedItem}
-        onAddToOrder={handleAddToOrder}
         customization={customization}
         setCustomization={setCustomization}
+        onAddToOrder={handleAddToOrder}
       />
       <ModalCheckout
         open={openCheckout}
         onClose={handleCloseCheckoutModal}
-        order={order}
+        order={cart || []}
+        total={total}
       />
     </Box>
   );

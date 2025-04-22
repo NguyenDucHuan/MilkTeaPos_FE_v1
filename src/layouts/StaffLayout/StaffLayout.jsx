@@ -4,6 +4,7 @@ import Footer from "../../components/Footer/Footer";
 import Header from "../../components/Header/Header";
 import { useDispatch, useSelector } from "react-redux";
 import { listCategory } from "../../store/slices/categorySlice";
+import "./StaffLayout.css";
 
 export default function StaffLayout() {
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -20,14 +21,16 @@ export default function StaffLayout() {
   }, [dispatch]);
 
   return (
-    <div>
+    <div className="staff-layout">
       <Header
         setSelectedCategory={setSelectedCategory}
         categories={categories}
         isLoading={isLoading}
         error={error}
       />
-      <Outlet context={{ selectedCategory, setSelectedCategory }} />
+      <main className="staff-main">
+        <Outlet context={{ selectedCategory, setSelectedCategory }} />
+      </main>
       <Footer />
     </div>
   );
