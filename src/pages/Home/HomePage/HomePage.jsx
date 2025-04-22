@@ -22,11 +22,13 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { listCategory } from "../../../store/slices/categorySlice";
 import { listItemApi } from "../../../store/slices/itemSlice";
 import { useOutletContext } from "react-router-dom";
+import { listOrderApi } from "../../../store/slices/orderSlice";
 
 export default function HomePage() {
   const dispatch = useDispatch();
   const { item, isLoading, error } = useSelector((state) => state.item);
   const { category: categories } = useSelector((state) => state.category);
+  const { order: serverOrder, isLoading: orderLoading, error: orderError } = useSelector((state) => state.order);
   const [openCheckout, setOpenCheckout] = useState(false);
   const [order, setOrder] = useState([]);
   const [openModal, setOpenModal] = useState(false);
@@ -44,8 +46,7 @@ export default function HomePage() {
   useEffect(() => {
     dispatch(listItemApi());
     dispatch(listCategory());
-    console.log("categories:", categories);
-    console.log("items:", item);
+    dispatch(listOrderApi());
   }, [dispatch]);
 
   const handleOpenCheckoutModal = () => {
@@ -127,30 +128,26 @@ export default function HomePage() {
 
   const getFilteredItems = () => {
     if (!Array.isArray(item)) {
-      console.error("state.item không phải mảng:", item);
       return [];
     }
     if (!Array.isArray(categories)) {
-      console.error("state.category không phải mảng:", categories);
       return [];
     }
     if (!selectedCategory) return item;
-  
+
     // Tìm danh mục được chọn dựa trên displayName
     const selectedCategoryObj = categories.find(
       (cat) => cat.categoryName === selectedCategory
     );
-  
+
     if (!selectedCategoryObj) {
-      console.warn("Không tìm thấy danh mục:", selectedCategory);
       return [];
     }
-  
+
     // Lọc sản phẩm dựa trên categoryName
     const filteredItems = item.filter(
       (i) => i.category === selectedCategoryObj.categoryName
     );
-    console.log("filteredItems:", filteredItems);
     return filteredItems;
   };
 
@@ -163,8 +160,7 @@ export default function HomePage() {
   };
 
   const subtotal = calculateSubtotal();
-  const tax = calculateTax(subtotal);
-  const total = subtotal + tax;
+  const total = subtotal ;
 
   return (
     <Box className="home-page">
@@ -192,7 +188,9 @@ export default function HomePage() {
                           marginLeft: "30px",
                           width: "300px",
                         }}
-                        onClick={() => handleCategoryClick(category.categoryName)}
+                        onClick={() =>
+                          handleCategoryClick(category.categoryName)
+                        }
                       >
                         <CardContent
                           sx={{
@@ -430,12 +428,7 @@ export default function HomePage() {
                     borderBottom: "1px solid #f0e6d9",
                   }}
                 >
-                  <Typography variant="body2" className="order-summary-tax">
-                    THUẾ (8%):
-                  </Typography>
-                  <Typography variant="body2" className="order-summary-tax">
-                    ${tax.toFixed(2)}
-                  </Typography>
+         
                 </Box>
                 <Box
                   sx={{
@@ -446,7 +439,7 @@ export default function HomePage() {
                   }}
                 >
                   <Typography variant="body2" className="order-summary-total">
-                    TỔNG:
+                    THÀNH TIỀN:
                   </Typography>
                   <Typography variant="body2" className="order-summary-total">
                     ${total.toFixed(2)}
