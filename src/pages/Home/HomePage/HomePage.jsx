@@ -28,7 +28,8 @@ export default function HomePage() {
   const dispatch = useDispatch();
   const { item, isLoading, error } = useSelector((state) => state.item);
   const { category: categories, isLoading: categoryLoading, error: categoryError } = useSelector((state) => state.category);
-  const { cart = [], isLoading: orderLoading, error: orderError } = useSelector((state) => state.order);
+  const orderState = useSelector((state) => state.order);
+  const { cart = [], offers = [], isLoading: orderLoading, error: orderError } = orderState;
   const [openCheckout, setOpenCheckout] = useState(false);
   const [openModal, setOpenModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -122,9 +123,14 @@ export default function HomePage() {
   const calculateSubtotal = () => {
     if (!Array.isArray(cart) || cart.length === 0) return 0;
     return cart.reduce((total, item) => {
-      const itemPrice = item.product?.price || 0;
-      return total + (itemPrice * item.quantity);
+      const itemPrice = item.price || item.product?.prize || 0;
+      const itemQuantity = item.quantity || 0;
+      return total + (itemPrice * itemQuantity);
     }, 0);
+  };
+
+  const calculateTotal = () => {
+    return calculateSubtotal();
   };
 
   const handleUpdateQuantity = async (item, newQuantity, e) => {
@@ -186,7 +192,7 @@ export default function HomePage() {
   };
 
   const subtotal = calculateSubtotal();
-  const total = subtotal;
+  const total = calculateTotal();
 
   return (
     <Box className="home-page">
@@ -207,7 +213,7 @@ export default function HomePage() {
               <Grid container spacing={2} className="category-grid">
                 {Array.isArray(categories) && categories.length > 0 ? (
                   categories.map((category) => (
-                    <Grid item xs={12} sm={6} md={4} key={category.categoryId}>
+                    <Grid item xs={12} md={4} key={category.categoryId}>
                       <Card
                         className="category-card"
                         onClick={() => handleCategoryClick(category.categoryName)}
@@ -247,7 +253,7 @@ export default function HomePage() {
                 </Button>
                 <Grid container spacing={2} className="menu-items-grid">
                   {getFilteredItems().map((item) => (
-                    <Grid item xs={12} sm={6} md={4} key={item.productId}>
+                    <Grid item xs={12} md={4} key={item.productId}>
                       <Card
                         className="menu-item-card"
                         onClick={() => handleOpenModal(item)}
@@ -276,7 +282,20 @@ export default function HomePage() {
                 </Grid>
               </>
             ) : (
-              <Typography>Không có sản phẩm nào trong danh mục này</Typography>
+              <>
+                <Button
+                  startIcon={<ArrowBackIcon />}
+                  onClick={handleBackToCategories}
+                  className="back-button"
+                >
+                  Quay lại Danh mục
+                </Button>
+                <Box className="empty-menu-message">
+                  <Typography variant="h6" color="textSecondary">
+                    Không có sản phẩm nào trong danh mục này
+                  </Typography>
+                </Box>
+              </>
             )}
           </Box>
         </Grid>
@@ -331,11 +350,13 @@ export default function HomePage() {
                     </Box>
                     <Box className="order-summary-item">
                       <Typography variant="body2">TỔNG CỘNG:</Typography>
-                      <Typography variant="body2">${subtotal.toFixed(2)}</Typography>
+                      <Typography variant="body2">${calculateSubtotal().toFixed(2)}</Typography>
                     </Box>
                     <Box className="order-summary-item">
                       <Typography variant="body2">THÀNH TIỀN:</Typography>
-                      <Typography variant="body2">${subtotal.toFixed(2)}</Typography>
+                      <Typography variant="body2" fontWeight="bold">
+                        ${calculateTotal().toFixed(2)}
+                      </Typography>
                     </Box>
                   </Box>
                 </Box>
@@ -380,7 +401,7 @@ export default function HomePage() {
                           <AddIcon />
                         </IconButton>
                         <Typography className="order-detail-price">
-                          ${((item.product?.price || 0) * item.quantity).toFixed(2)}
+                          ${((item.price || item.product?.prize || 0) * item.quantity).toFixed(2)}
                         </Typography>
                         <IconButton
                           size="small"

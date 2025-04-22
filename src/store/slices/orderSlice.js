@@ -36,7 +36,7 @@ export const addToCartApi = createAsyncThunk(
   }
 );
 
-// Get cart
+// Get cart items
 export const getCartApi = createAsyncThunk(
   "order/getCartApi",
   async (_, { rejectWithValue }) => {
