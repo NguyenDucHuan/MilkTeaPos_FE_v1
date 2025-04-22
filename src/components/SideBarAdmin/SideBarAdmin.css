@@ -1,0 +1,37 @@
+.admin-sidebar {
+  width: 200px;
+  min-height: 100vh;
+  background-color: #895a2a;
+  color: #fff;
+  padding-top: 16px;
+  position: fixed;
+}
+
+.admin-sidebar__title {
+  padding: 0 16px;
+  font-weight: bold;
+  font-size: 20px;
+  margin-bottom: 16px;
+}
+
+.admin-sidebar__item {
+  cursor: pointer;
+  color: #fff;
+  transition: background-color 0.2s;
+  border-radius: 4px;
+  margin: 4px 8px;
+  padding: 8px;
+}
+
+.admin-sidebar__item:hover {
+  background-color: #6b4423;
+}
+
+.admin-sidebar__item.active {
+  background-color: #6b4423;
+}
+
+.admin-sidebar__icon {
+  color: #fff;
+  min-width: 40px;
+}
