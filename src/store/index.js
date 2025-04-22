@@ -2,12 +2,18 @@ import { configureStore } from "@reduxjs/toolkit";
 import itemSlice from "./slices/itemSlice";
 import categorySlice from "./slices/categorySlice";
 import authReducer from "./slices/authSlice"; // Import default export
+import paymentSlice from "./slices/paymentSlice"; 
+import orderSlice from "./slices/orderSlice"; 
+import statisticSlice from "./slices/statisticSlice";
 
 export const store = configureStore({
   reducer: {
     item: itemSlice,
     category: categorySlice,
-    auth: authReducer, // Sử dụng reducer từ authSlice
+    auth: authReducer, 
+    payment: paymentSlice,
+    order: orderSlice,
+    statistic: statisticSlice, 
   },
 });
 
