@@ -44,6 +44,8 @@ export default function AccountList() {
                 <Table>
                     <TableHead>
                         <TableRow>
+                            <TableCell>No.</TableCell>
+                            <TableCell>ID</TableCell>
                             <TableCell>Full Name</TableCell>
                             <TableCell>Username</TableCell>
                             <TableCell>Email</TableCell>
@@ -54,8 +56,10 @@ export default function AccountList() {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {accounts.map((account) => (
+                        {accounts.map((account, index) => (
                             <TableRow key={account.id}>
+                                <TableCell>{index + 1}</TableCell>         
+                                <TableCell>{account.id}</TableCell>
                                 <TableCell>{account.fullName}</TableCell>
                                 <TableCell>{account.username}</TableCell>
                                 <TableCell>{account.email}</TableCell>
