@@ -101,7 +101,9 @@ const Header = ({ setSelectedCategory, isLoading, error }) => {
   };
 
   const handleCategorySelect = (categoryName) => {
+    console.log("Selected category:", categoryName);
     setSelectedCategory(categoryName);
+    navigate(PATH.HOME);
     setMobileMenuOpen(false);
     setMobileCategoryOpen(false);
     handleCategoryMenuClose();
@@ -117,7 +119,6 @@ const Header = ({ setSelectedCategory, isLoading, error }) => {
       submenu: Array.isArray(categories)
         ? categories.map((cat) => ({
             text: cat.categoryName,
-       
           }))
         : [],
     },
@@ -237,16 +238,14 @@ const Header = ({ setSelectedCategory, isLoading, error }) => {
                         item.submenu.map((subItem) => (
                           <MenuItem
                             key={subItem.text}
-                            onClick={() =>
-                              handleCategorySelect(subItem.displayName)
-                            }
+                            onClick={() => handleCategorySelect(subItem.text)}
                             sx={{
                               py: 1.5,
-                              color: "#6b4423", // Màu chữ nổi bật
-                              fontWeight: 500, // Chữ đậm hơn
+                              color: "#6b4423",
+                              fontWeight: 500,
                               "&:hover": {
-                                backgroundColor: "#b0855b", // Màu nền hover
-                                color: "#fff", // Chữ trắng khi hover
+                                backgroundColor: "#b0855b",
+                                color: "#fff",
                               },
                             }}
                           >
@@ -313,11 +312,11 @@ const Header = ({ setSelectedCategory, isLoading, error }) => {
                     }
                     sx={{
                       py: 1.5,
-                      color: "#6b4423", // Màu chữ nổi bật
-                      fontWeight: 500, // Chữ đậm hơn
+                      color: "#6b4423",
+                      fontWeight: 500,
                       "&:hover": {
-                        backgroundColor: "#b0855b", // Màu nền hover
-                        color: "#fff", // Chữ trắng khi hover
+                        backgroundColor: "#b0855b",
+                        color: "#fff",
                       },
                     }}
                   >
@@ -367,10 +366,10 @@ const Header = ({ setSelectedCategory, isLoading, error }) => {
                   sx={{
                     borderRadius: 1,
                     mb: 1,
-                    color: "#6b4423", // Màu chữ nổi bật
+                    color: "#6b4423",
                     "&:hover": {
-                      backgroundColor: "#b0855b", // Màu nền hover
-                      color: "#fff", // Chữ trắng khi hover
+                      backgroundColor: "#b0855b",
+                      color: "#fff",
                     },
                   }}
                 >
@@ -403,17 +402,15 @@ const Header = ({ setSelectedCategory, isLoading, error }) => {
                         <ListItem
                           key={subItem.text}
                           button
-                          onClick={() =>
-                            handleCategorySelect(subItem.displayName)
-                          }
+                          onClick={() => handleCategorySelect(subItem.text)}
                           sx={{
                             borderRadius: 1,
                             mb: 1,
-                            color: "#6b4423", // Màu chữ nổi bật
-                            fontWeight: 500, // Chữ đậm hơn
+                            color: "#6b4423",
+                            fontWeight: 500,
                             "&:hover": {
-                              backgroundColor: "#b0855b", // Màu nền hover
-                              color: "#fff", // Chữ trắng khi hover
+                              backgroundColor: "#b0855b",
+                              color: "#fff",
                             },
                           }}
                         >
@@ -432,11 +429,11 @@ const Header = ({ setSelectedCategory, isLoading, error }) => {
                 sx={{
                   borderRadius: 1,
                   mb: 1,
-                  color: "#6b4423", // Màu chữ nổi bật
-                  fontWeight: 500, // Chữ đậm hơn
+                  color: "#6b4423",
+                  fontWeight: 500,
                   "&:hover": {
-                    backgroundColor: "#b0855b", // Màu nền hover
-                    color: "#fff", // Chữ trắng khi hover
+                    backgroundColor: "#b0855b",
+                    color: "#fff",
                   },
                 }}
               >
@@ -456,11 +453,11 @@ const Header = ({ setSelectedCategory, isLoading, error }) => {
               sx={{
                 borderRadius: 1,
                 mb: 1,
-                color: "#6b4423", // Màu chữ nổi bật
-                fontWeight: 500, // Chữ đậm hơn
+                color: "#6b4423",
+                fontWeight: 500,
                 "&:hover": {
-                  backgroundColor: "#b0855b", // Màu nền hover
-                  color: "#fff", // Chữ trắng khi hover
+                  backgroundColor: "#b0855b",
+                  color: "#fff",
                 },
               }}
             >
