@@ -27,7 +27,7 @@ import { listOrderApi } from "../../../store/slices/orderSlice";
 export default function HomePage() {
   const dispatch = useDispatch();
   const { item, isLoading, error } = useSelector((state) => state.item);
-  const { category: categories } = useSelector((state) => state.category);
+  const { category: categories, isLoading: categoryLoading, error: categoryError } = useSelector((state) => state.category);
   const { order: serverOrder, isLoading: orderLoading, error: orderError } = useSelector((state) => state.order);
   const [openCheckout, setOpenCheckout] = useState(false);
   const [order, setOrder] = useState([]);
@@ -44,10 +44,31 @@ export default function HomePage() {
   });
 
   useEffect(() => {
-    dispatch(listItemApi());
-    dispatch(listCategory());
+    dispatch(listCategory()).then((result) => {
+      if (result.meta.requestStatus === "fulfilled" && result.payload.length > 0) {
+        if (!selectedCategory && result.payload[0]) {
+          setSelectedCategory(result.payload[0].categoryName);
+          dispatch(listItemApi({ CategoryId: result.payload[0].categoryId }));
+        }
+      }
+    });
     dispatch(listOrderApi());
   }, [dispatch]);
+
+  useEffect(() => {
+    console.log("selectedCategory:", selectedCategory);
+    console.log("categories:", categories);
+    console.log("item:", item);
+    if (selectedCategory && categories.length > 0) {
+      const selectedCategoryObj = categories.find(
+        (cat) => cat.categoryName === selectedCategory
+      );
+      console.log("selectedCategoryObj:", selectedCategoryObj);
+      if (selectedCategoryObj) {
+        dispatch(listItemApi({ CategoryId: selectedCategoryObj.categoryId }));
+      }
+    }
+  }, [dispatch, selectedCategory, categories]);
 
   const handleOpenCheckoutModal = () => {
     setOpenCheckout(true);
@@ -60,11 +81,10 @@ export default function HomePage() {
   const handleOpenModal = (item) => {
     setSelectedItem(item);
     setCustomization({
-      size: item.options.sizes[0]?.label || "Medium",
-      sizePrice: item.options.sizes[0]?.priceModifier || 0,
-      sugar:
-        item.options.sugarLevels[item.options.sugarLevels.length - 1] || "100%",
-      ice: item.options.iceLevels[2] || "Regular",
+      size: "Medium",
+      sizePrice: 0,
+      sugar: "100%",
+      ice: "Regular",
       toppings: [],
       quantity: 1,
     });
@@ -122,33 +142,12 @@ export default function HomePage() {
     return order.reduce((total, item) => total + item.itemPrice, 0);
   };
 
-  const calculateTax = (subtotal) => {
-    return subtotal * 0.08;
-  };
-
   const getFilteredItems = () => {
     if (!Array.isArray(item)) {
       return [];
     }
-    if (!Array.isArray(categories)) {
-      return [];
-    }
-    if (!selectedCategory) return item;
-
-    // Tìm danh mục được chọn dựa trên displayName
-    const selectedCategoryObj = categories.find(
-      (cat) => cat.categoryName === selectedCategory
-    );
-
-    if (!selectedCategoryObj) {
-      return [];
-    }
-
-    // Lọc sản phẩm dựa trên categoryName
-    const filteredItems = item.filter(
-      (i) => i.category === selectedCategoryObj.categoryName
-    );
-    return filteredItems;
+    console.log("getFilteredItems result:", item);
+    return item; // Trả về item trực tiếp vì API đã lọc theo CategoryId
   };
 
   const handleCategoryClick = (category) => {
@@ -160,7 +159,7 @@ export default function HomePage() {
   };
 
   const subtotal = calculateSubtotal();
-  const total = subtotal ;
+  const total = subtotal;
 
   return (
     <Box className="home-page">
@@ -169,8 +168,12 @@ export default function HomePage() {
           <Typography className="menu-title">Menu Items</Typography>
           <Box className="menu-items-container">
             <Divider className="menu-divider" />
-            {isLoading ? (
-              <Typography>Đang tải...</Typography>
+            {categoryLoading ? (
+              <Typography>Đang tải danh mục...</Typography>
+            ) : categoryError ? (
+              <Typography color="error">Lỗi: {categoryError}</Typography>
+            ) : isLoading ? (
+              <Typography>Đang tải sản phẩm...</Typography>
             ) : error ? (
               <Typography color="error">Lỗi: {error}</Typography>
             ) : selectedCategory === null ? (
@@ -245,7 +248,7 @@ export default function HomePage() {
                 </Button>
                 <Grid container spacing={2} className="menu-items-grid">
                   {getFilteredItems().map((item) => (
-                    <Grid key={item.id}>
+                    <Grid key={item.productId}>
                       <Card
                         sx={{
                           maxWidth: 345,
@@ -259,8 +262,8 @@ export default function HomePage() {
                         <CardMedia
                           className="menu-item-image-placeholder"
                           component="img"
-                          src={item.image || "https://via.placeholder.com/150"}
-                          alt={item.name}
+                          src={item.imageUrl || "https://via.placeholder.com/150"}
+                          alt={item.productName}
                           sx={{
                             height: "150px",
                             maxWidth: "250px",
@@ -274,7 +277,7 @@ export default function HomePage() {
                             className="menu-item-name"
                             sx={{ marginTop: "5px", color: "#8a5a2a" }}
                           >
-                            {item.name}
+                            {item.productName}
                           </Typography>
                           <Typography
                             variant="body2"
@@ -302,7 +305,7 @@ export default function HomePage() {
                               className="menu-item-price"
                               sx={{ marginTop: "5px", color: "#8a5a2a" }}
                             >
-                              ${item.basePrice.toFixed(2)}
+                              ${item.price.toFixed(2)}
                             </Typography>
                             <Box className="menu-item-actions">
                               <button
@@ -418,17 +421,6 @@ export default function HomePage() {
                   >
                     ${subtotal.toFixed(2)}
                   </Typography>
-                </Box>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    mb: "5px",
-                    borderBottom: "1px solid #f0e6d9",
-                  }}
-                >
-         
                 </Box>
                 <Box
                   sx={{

@@ -1,15 +1,19 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import fetcher from "../../apis/fetcher";
-import axios from "axios";
 
-export const listItemApi = createAsyncThunk("item/listItemApi", async () => {
-  try {
-    const response = await axios.get("https://67dabbe235c87309f52dc7a7.mockapi.io/milktea");
-    return response.data;
-  } catch (error) {
-    throw error.response ? error.response.data.message : error.message;
+
+export const listItemApi = createAsyncThunk(
+  "item/listItemApi",
+  async ({ CategoryId }) => {
+    try {
+      const response = await fetcher.get(`/products?CategoryId=${CategoryId}`);
+      console.log("responsesáhahsihasiuhauihuihsa", response.data);
+      return response.data.data.items; // Chỉ trả về mảng items
+    } catch (error) {
+      throw error.response ? error.response.data.message : error.message;
+    }
   }
-});
+);
 
 const itemSlice = createSlice({
   name: "item",
