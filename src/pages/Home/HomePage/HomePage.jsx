@@ -19,10 +19,6 @@ import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
-import LocalDrinkIcon from "@mui/icons-material/LocalDrink";
-import StarIcon from "@mui/icons-material/Star";
-import AppleIcon from "@mui/icons-material/Apple";
 import { listCategory } from "../../../store/slices/categorySlice";
 import { listItemApi } from "../../../store/slices/itemSlice";
 import { useOutletContext } from "react-router-dom";
@@ -48,6 +44,8 @@ export default function HomePage() {
   useEffect(() => {
     dispatch(listItemApi());
     dispatch(listCategory());
+    console.log("categories:", categories);
+    console.log("items:", item);
   }, [dispatch]);
 
   const handleOpenCheckoutModal = () => {
@@ -128,12 +126,32 @@ export default function HomePage() {
   };
 
   const getFilteredItems = () => {
+    if (!Array.isArray(item)) {
+      console.error("state.item không phải mảng:", item);
+      return [];
+    }
+    if (!Array.isArray(categories)) {
+      console.error("state.category không phải mảng:", categories);
+      return [];
+    }
     if (!selectedCategory) return item;
+  
+    // Tìm danh mục được chọn dựa trên displayName
     const selectedCategoryObj = categories.find(
-      (cat) => cat.displayName === selectedCategory
+      (cat) => cat.categoryName === selectedCategory
     );
-    if (!selectedCategoryObj) return [];
-    return item.filter((i) => i.category === selectedCategoryObj.apiName);
+  
+    if (!selectedCategoryObj) {
+      console.warn("Không tìm thấy danh mục:", selectedCategory);
+      return [];
+    }
+  
+    // Lọc sản phẩm dựa trên categoryName
+    const filteredItems = item.filter(
+      (i) => i.category === selectedCategoryObj.categoryName
+    );
+    console.log("filteredItems:", filteredItems);
+    return filteredItems;
   };
 
   const handleCategoryClick = (category) => {
@@ -163,7 +181,7 @@ export default function HomePage() {
               <Grid container spacing={2} className="category-grid">
                 {Array.isArray(categories) && categories.length > 0 ? (
                   categories.map((category) => (
-                    <Grid item xs={4} key={category.categoryName}>
+                    <Grid item xs={4} key={category.categoryId}>
                       <Card
                         sx={{
                           cursor: "pointer",
@@ -174,9 +192,7 @@ export default function HomePage() {
                           marginLeft: "30px",
                           width: "300px",
                         }}
-                        onClick={() =>
-                          handleCategoryClick(category.categoryName)
-                        }
+                        onClick={() => handleCategoryClick(category.categoryName)}
                       >
                         <CardContent
                           sx={{
@@ -187,10 +203,7 @@ export default function HomePage() {
                         >
                           <Box sx={{ mr: 2 }}>
                             <img
-                              src={
-                                category.image ||
-                                "https://via.placeholder.com/100"
-                              }
+                              src={category.image}
                               alt={category.categoryName}
                               style={{
                                 width: "100px",
@@ -321,7 +334,7 @@ export default function HomePage() {
                   variant="h6"
                   sx={{ color: "#8a5a2a", fontWeight: "bold" }}
                 >
-                  No items available in this category
+                  Không có món nào trong danh mục này
                 </Typography>
               </Box>
             )}
@@ -329,7 +342,7 @@ export default function HomePage() {
         </Grid>
         <Grid size={5} className="order-section">
           <Typography variant="h6" className="order-title">
-            Current Order
+            Đơn hàng hiện tại
           </Typography>
           {order.length === 0 ? (
             <Box className="order-empty-message">
@@ -347,14 +360,14 @@ export default function HomePage() {
                   className="order-empty-text"
                   sx={{ color: "#8a5a2a", fontWeight: "bold" }}
                 >
-                  No items in order yet
+                  Chưa có món nào trong đơn hàng
                 </Typography>
                 <Typography
                   variant="body2"
                   className="order-empty-subtext"
                   sx={{ color: "#8a5a2a" }}
                 >
-                  Add items from the menu to get started
+                  Thêm món từ menu để bắt đầu
                 </Typography>
               </Box>
             </Box>
@@ -370,7 +383,7 @@ export default function HomePage() {
                 }}
               >
                 <Typography variant="body1" className="order-summary-title">
-                  ORDER SUMMARY
+                  TÓM TẮT ĐƠN HÀNG
                 </Typography>
                 <Box
                   sx={{
@@ -381,7 +394,7 @@ export default function HomePage() {
                   }}
                 >
                   <Typography variant="body2" className="order-summary-item">
-                    ITEMS:
+                    SỐ MÓN:
                   </Typography>
                   <Typography variant="body2" className="order-summary-item">
                     {order.reduce((sum, item) => sum + item.quantity, 0)}
@@ -399,7 +412,7 @@ export default function HomePage() {
                     variant="body2"
                     className="order-summary-subtotal"
                   >
-                    SUBTOTAL:
+                    TỔNG CỘNG:
                   </Typography>
                   <Typography
                     variant="body2"
@@ -418,7 +431,7 @@ export default function HomePage() {
                   }}
                 >
                   <Typography variant="body2" className="order-summary-tax">
-                    TAX (8%):
+                    THUẾ (8%):
                   </Typography>
                   <Typography variant="body2" className="order-summary-tax">
                     ${tax.toFixed(2)}
@@ -433,7 +446,7 @@ export default function HomePage() {
                   }}
                 >
                   <Typography variant="body2" className="order-summary-total">
-                    TOTAL:
+                    TỔNG:
                   </Typography>
                   <Typography variant="body2" className="order-summary-total">
                     ${total.toFixed(2)}
@@ -442,7 +455,7 @@ export default function HomePage() {
               </Box>
               <Box className="order-details">
                 <Typography variant="body1" className="order-details-title">
-                  ORDER DETAILS
+                  CHI TIẾT ĐƠN HÀNG
                 </Typography>
                 {order.map((item, index) => (
                   <Box
@@ -484,7 +497,7 @@ export default function HomePage() {
                             fontWeight: "bold",
                           }}
                         >
-                          {item.size}, {item.sugar} sugar, {item.ice} ice
+                          {item.size}, {item.sugar} đường, {item.ice} đá
                           {item.toppings.length > 0 && (
                             <>, {item.toppings.join(", ")}</>
                           )}
@@ -536,7 +549,7 @@ export default function HomePage() {
                   className="order-clear-button"
                   fullWidth
                 >
-                  Clear
+                  Xóa đơn
                 </Button>
                 <Button
                   variant="contained"
@@ -545,7 +558,7 @@ export default function HomePage() {
                   onClick={handleOpenCheckoutModal}
                   disabled={order.length === 0}
                 >
-                  CHECKOUT
+                  THANH TOÁN
                 </Button>
               </Box>
             </>
