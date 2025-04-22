@@ -14,4 +14,6 @@ export const PATH = {
     ADMIN: "/admin",
     ACCOUNT: "accounts",
     CATEGORIES: "categories",
+    PRODUCTS: "products",
+    PAYMENTS: "payments",
   };

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -14,19 +14,23 @@ import {
 } from "@mui/material";
 import { Edit as EditIcon, Add as AddIcon } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import mockCategories from "./mockCategories";
+import mockPayments from "./mockPayments";
 
-export default function CategoryList() {
+export default function PaymentMethodList() {
   const navigate = useNavigate();
+  const [methods, setMethods] = useState(mockPayments);
 
   const handleToggleStatus = (id) => {
-    console.log("Toggle status for ID:", id);
+    const updated = methods.map((item) =>
+      item.id === id ? { ...item, status: !item.status } : item
+    );
+    setMethods(updated);
   };
 
   return (
     <Box sx={{ padding: 3 }}>
       <Typography variant="h5" fontWeight="bold" gutterBottom>
-        Danh mục sản phẩm
+        Quản lý phương thức thanh toán
       </Typography>
 
       <Paper sx={{ padding: 2 }}>
@@ -36,49 +40,49 @@ export default function CategoryList() {
           alignItems="center"
           mb={2}
         >
-          <Typography variant="h6" fontWeight="medium">
-            Danh sách danh mục
-          </Typography>
+          <Typography variant="h6">Danh sách phương thức</Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={() => navigate("/admin/categories/new")}
+            onClick={() => navigate("/admin/payments/new")}
             sx={{ backgroundColor: "#8B5E3C" }}
           >
-            THÊM DANH MỤC
+            THÊM PHƯƠNG THỨC
           </Button>
         </Box>
 
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>No.</TableCell>
+              <TableCell>STT</TableCell>
               <TableCell>ID</TableCell>
-              <TableCell>Tên danh mục</TableCell>
+              <TableCell>Tên phương thức</TableCell>
               <TableCell>Mô tả</TableCell>
               <TableCell>Trạng thái</TableCell>
               <TableCell>Hành động</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {mockCategories.map((cat, index) => (
-              <TableRow key={cat.id}>
+            {methods.map((method, index) => (
+              <TableRow key={method.id}>
                 <TableCell>{index + 1}</TableCell>
-                <TableCell>{cat.id}</TableCell>
-                <TableCell>{cat.categoryName}</TableCell>
-                <TableCell>{cat.description}</TableCell>
+                <TableCell>{method.id}</TableCell>
+                <TableCell>{method.methodName}</TableCell>
+                <TableCell>{method.description}</TableCell>
                 <TableCell>
                   <Switch
-                    checked={cat.status}
-                    onChange={() => handleToggleStatus(cat.id)}
+                    checked={method.status}
+                    onChange={() => handleToggleStatus(method.id)}
                     color="primary"
                   />
                 </TableCell>
                 <TableCell>
                   <IconButton
-                    onClick={() => navigate(`/admin/categories/${cat.id}/edit`)}
+                    onClick={() =>
+                      navigate(`/admin/payments/${method.id}/edit`)
+                    }
                   >
-                    <EditIcon color="action" />
+                    <EditIcon />
                   </IconButton>
                 </TableCell>
               </TableRow>

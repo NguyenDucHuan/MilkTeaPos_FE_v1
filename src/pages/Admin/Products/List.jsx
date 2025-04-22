@@ -14,19 +14,19 @@ import {
 } from "@mui/material";
 import { Edit as EditIcon, Add as AddIcon } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import mockCategories from "./mockCategories";
+import mockProducts from "./mockProducts";
 
-export default function CategoryList() {
+export default function ProductList() {
   const navigate = useNavigate();
 
   const handleToggleStatus = (id) => {
-    console.log("Toggle status for ID:", id);
+    console.log("Toggle product status ID:", id);
   };
 
   return (
     <Box sx={{ padding: 3 }}>
       <Typography variant="h5" fontWeight="bold" gutterBottom>
-        Danh mục sản phẩm
+        Quản lý sản phẩm
       </Typography>
 
       <Paper sx={{ padding: 2 }}>
@@ -36,49 +36,51 @@ export default function CategoryList() {
           alignItems="center"
           mb={2}
         >
-          <Typography variant="h6" fontWeight="medium">
-            Danh sách danh mục
-          </Typography>
+          <Typography variant="h6">Danh sách sản phẩm</Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={() => navigate("/admin/categories/new")}
+            onClick={() => navigate("/admin/products/new")}
             sx={{ backgroundColor: "#8B5E3C" }}
           >
-            THÊM DANH MỤC
+            + THÊM SẢN PHẨM
           </Button>
         </Box>
 
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>No.</TableCell>
+              <TableCell>STT</TableCell>
               <TableCell>ID</TableCell>
-              <TableCell>Tên danh mục</TableCell>
-              <TableCell>Mô tả</TableCell>
+              <TableCell>Tên sản phẩm</TableCell>
+              <TableCell>Danh mục</TableCell>
+              <TableCell>Giá (VND)</TableCell>
               <TableCell>Trạng thái</TableCell>
               <TableCell>Hành động</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {mockCategories.map((cat, index) => (
-              <TableRow key={cat.id}>
+            {mockProducts.map((product, index) => (
+              <TableRow key={product.id}>
                 <TableCell>{index + 1}</TableCell>
-                <TableCell>{cat.id}</TableCell>
-                <TableCell>{cat.categoryName}</TableCell>
-                <TableCell>{cat.description}</TableCell>
+                <TableCell>{product.id}</TableCell>
+                <TableCell>{product.productName}</TableCell>
+                <TableCell>{product.categoryName}</TableCell>
+                <TableCell>{product.price.toLocaleString()}</TableCell>
                 <TableCell>
                   <Switch
-                    checked={cat.status}
-                    onChange={() => handleToggleStatus(cat.id)}
+                    checked={product.status}
+                    onChange={() => handleToggleStatus(product.id)}
                     color="primary"
                   />
                 </TableCell>
                 <TableCell>
                   <IconButton
-                    onClick={() => navigate(`/admin/categories/${cat.id}/edit`)}
+                    onClick={() =>
+                      navigate(`/admin/products/${product.id}/edit`)
+                    }
                   >
-                    <EditIcon color="action" />
+                    <EditIcon />
                   </IconButton>
                 </TableCell>
               </TableRow>

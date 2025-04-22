@@ -15,6 +15,11 @@ import AccountList from "../pages/Admin/Accounts/List";
 import AccountForm from "../pages/Admin/Accounts/Form";
 import CategoryList from "../pages/Admin/Categories/List";
 import CategoryForm from "../pages/Admin/Categories/Form";
+import ProductList from "../pages/Admin/Products/List";
+import ProductForm from "../pages/Admin/Products/Form";
+import PaymentList from "../pages/Admin/PaymentMethods/List";
+import PaymentForm from "../pages/Admin/PaymentMethods/Form";
+
 
 export default function useRouterElements() {
   const routeElements = useRoutes([
@@ -104,6 +109,30 @@ export default function useRouterElements() {
         {
           path: "categories/:id/edit",
           element: <CategoryForm />,
+        },
+        {
+          path: "products",
+          element: <ProductList />,
+        },
+        {
+          path: "products/new",
+          element: <ProductForm />,
+        },
+        {
+          path: "products/:id/edit",
+          element: <ProductForm />,
+        },
+        {
+          path: PATH.PAYMENTS,
+          element: <PaymentList />,
+        },
+        {
+          path: `${PATH.PAYMENTS}/new`,
+          element: <PaymentForm />,
+        },
+        {
+          path: `${PATH.PAYMENTS}/:id/edit`,
+          element: <PaymentForm />,
         },
       ],
     },
