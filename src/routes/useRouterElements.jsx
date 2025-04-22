@@ -13,6 +13,8 @@ import ProtectedRoute from "../components/ProtectedRoute";
 
 import AccountList from "../pages/Admin/Accounts/List";
 import AccountForm from "../pages/Admin/Accounts/Form";
+import CategoryList from "../pages/Admin/Categories/List";
+import CategoryForm from "../pages/Admin/Categories/Form";
 
 export default function useRouterElements() {
   const routeElements = useRoutes([
@@ -90,6 +92,18 @@ export default function useRouterElements() {
         {
           path: "accounts/:id/edit",
           element: <AccountForm />,
+        },
+        {
+          path: "categories",
+          element: <CategoryList />,
+        },
+        {
+          path: "categories/new",
+          element: <CategoryForm />,
+        },
+        {
+          path: "categories/:id/edit",
+          element: <CategoryForm />,
         },
       ],
     },
