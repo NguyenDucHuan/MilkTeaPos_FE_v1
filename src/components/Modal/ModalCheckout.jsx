@@ -12,11 +12,15 @@ import { useEffect, useState } from "react";
 import "./ModalCheckout.css";
 import { useDispatch, useSelector } from "react-redux";
 import { listPaymentApi } from "../../store/slices/paymentSlice";
+import { useNavigate } from "react-router-dom";
+import fetcher from "../../apis/fetcher";
 
 export default function ModalCheckout({ open, onClose, order, total }) {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { payment, isLoading, error } = useSelector((state) => state.payment);
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -26,6 +30,31 @@ export default function ModalCheckout({ open, onClose, order, total }) {
 
   const handleChange = (event) => {
     setPaymentMethod(event.target.value);
+  };
+
+  const handleCreateOrder = async () => {
+    try {
+      setIsProcessing(true);
+      const orderData = {
+        note: "string",
+        paymentMethodId: paymentMethod,
+        staffId: 1
+      };
+
+      const response = await fetcher.post("/order", orderData);
+      console.log("Order created:", response.data);
+
+      // Đóng modal
+      onClose();
+      
+      // Chuyển hướng đến trang danh sách đơn hàng
+      navigate("/orders");
+    } catch (error) {
+      console.error("Error creating order:", error);
+      // Có thể thêm xử lý hiển thị lỗi ở đây
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -65,7 +94,7 @@ export default function ModalCheckout({ open, onClose, order, total }) {
               labelId="payment-method-label"
               value={paymentMethod}
               onChange={handleChange}
-              disabled={isLoading || !!error}
+              disabled={isLoading || !!error || isProcessing}
             >
               {isLoading ? (
                 <MenuItem value="" disabled>
@@ -110,7 +139,7 @@ export default function ModalCheckout({ open, onClose, order, total }) {
                     className="modal-checkout__details-item"
                   >
                     {item.quantity} x {item.product.productName}{" "}
-                    <span>${(item.price * item.quantity).toFixed(2)}</span>
+                    <span>${((item.price || item.product?.prize || 0) * item.quantity).toFixed(2)}</span>
                   </Typography>
                 ))
               ) : (
@@ -135,15 +164,20 @@ export default function ModalCheckout({ open, onClose, order, total }) {
 
         {/* Footer */}
         <Box className="modal-checkout__footer">
-          <Button variant="outlined" onClick={onClose}>
+          <Button 
+            variant="outlined" 
+            onClick={onClose}
+            disabled={isProcessing}
+          >
             Hủy
           </Button>
           <Button
             variant="contained"
             color="primary"
-            disabled={!paymentMethod || order.length === 0}
+            disabled={!paymentMethod || order.length === 0 || isProcessing}
+            onClick={handleCreateOrder}
           >
-            Thanh toán
+            {isProcessing ? <CircularProgress size={24} /> : "Thanh toán"}
           </Button>
         </Box>
       </Box>

@@ -23,6 +23,7 @@ import { listCategory } from "../../../store/slices/categorySlice";
 import { listItemApi } from "../../../store/slices/itemSlice";
 import { useOutletContext } from "react-router-dom";
 import { addToCartApi, getCartApi, updateCartItemQuantity, removeFromCartApi, updateCartQuantityApi, addToCart } from "../../../store/slices/orderSlice";
+import fetcher from "../../../apis/fetcher";
 
 export default function HomePage() {
   const dispatch = useDispatch();
@@ -61,7 +62,12 @@ export default function HomePage() {
         (cat) => cat.categoryName === selectedCategory
       );
       if (selectedCategoryObj) {
-        dispatch(listItemApi({ CategoryId: selectedCategoryObj.categoryId }));
+        dispatch(listItemApi({ CategoryId: selectedCategoryObj.categoryId }))
+          .then((result) => {
+            if (result.meta.requestStatus === "rejected") {
+              console.error("Error fetching items:", result.error);
+            }
+          });
       }
     }
   }, [dispatch, selectedCategory, categories]);
@@ -178,8 +184,10 @@ export default function HomePage() {
 
   const getFilteredItems = () => {
     if (!Array.isArray(item)) {
+      console.log("item is not an array:", item);
       return [];
     }
+    console.log("Filtered items:", item);
     return item;
   };
 
@@ -193,6 +201,48 @@ export default function HomePage() {
 
   const subtotal = calculateSubtotal();
   const total = calculateTotal();
+
+  const handleCreateOrder = async () => {
+    try {
+      const orderData = {
+        totalAmount: calculateTotal(),
+        note: "string",
+        staffId: 1,
+        paymentMethodId: 1,
+        orderitems: cart.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price || item.product?.prize || 0
+        }))
+      };
+
+      await fetcher.post("/order", orderData);
+      
+      // Sau khi tạo đơn hàng thành công
+      // 1. Làm mới giỏ hàng
+      await dispatch(getCartApi());
+      
+      // 2. Làm mới danh sách sản phẩm
+      if (selectedCategory && categories.length > 0) {
+        const selectedCategoryObj = categories.find(
+          (cat) => cat.categoryName === selectedCategory
+        );
+        if (selectedCategoryObj) {
+          await dispatch(listItemApi({ CategoryId: selectedCategoryObj.categoryId }));
+        }
+      }
+      
+      // 3. Đóng modal checkout
+      setOpenCheckout(false);
+      
+      // 4. Hiển thị thông báo thành công
+      // (Bạn có thể thêm toast hoặc alert ở đây)
+      
+    } catch (error) {
+      console.error("Error creating order:", error);
+      // Xử lý lỗi ở đây
+    }
+  };
 
   return (
     <Box className="home-page">
@@ -272,7 +322,7 @@ export default function HomePage() {
                               {item.description}
                             </Typography>
                             <Typography variant="h6" className="menu-item-price">
-                              ${item.price}
+                              ${item.price || item.prize || 0}
                             </Typography>
                           </Box>
                         </CardContent>

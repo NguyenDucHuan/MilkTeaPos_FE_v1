@@ -100,11 +100,33 @@ export const removeFromCartApi = createAsyncThunk(
   }
 );
 
+// Thêm action để lấy danh sách đơn hàng
+export const fetchOrders = createAsyncThunk(
+  "order/fetchOrders",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(`${API_URL}/order`);
+      console.log("Orders response:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      return rejectWithValue(error.response?.data?.message || "Có lỗi xảy ra khi tải danh sách đơn hàng");
+    }
+  }
+);
+
 const orderSlice = createSlice({
   name: "order",
   initialState: {
     cart: [],
     offers: [],
+    orders: {
+      items: [],
+      size: 10,
+      page: 1,
+      total: 0,
+      totalPages: 0
+    },
     isLoading: false,
     error: null,
   },
@@ -196,6 +218,31 @@ const orderSlice = createSlice({
       .addCase(updateCartQuantityApi.rejected, (state, { payload }) => {
         state.isLoading = false;
         state.error = payload;
+      })
+      .addCase(fetchOrders.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchOrders.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.orders = {
+          items: action.payload.items || [],
+          size: action.payload.size || 10,
+          page: action.payload.page || 1,
+          total: action.payload.total || 0,
+          totalPages: action.payload.totalPages || 0
+        };
+      })
+      .addCase(fetchOrders.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+        state.orders = {
+          items: [],
+          size: 10,
+          page: 1,
+          total: 0,
+          totalPages: 0
+        };
       });
   },
 });
