@@ -41,18 +41,18 @@ const itemSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(listItemApi.pending, (state) => {
-        state.isLoading = true;
+      state.isLoading = true;
         state.error = null;
       })
       .addCase(listItemApi.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.error = null;
+      state.isLoading = false;
+      state.error = null;
         state.item = action.payload;
       })
       .addCase(listItemApi.rejected, (state, action) => {
-        state.isLoading = false;
+      state.isLoading = false;
         state.error = action.payload;
-      });
+    });
   },
 });
 

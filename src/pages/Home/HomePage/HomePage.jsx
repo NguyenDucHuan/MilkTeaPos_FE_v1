@@ -155,9 +155,7 @@ export default function HomePage() {
   const calculateSubtotal = () => {
     if (!Array.isArray(cart) || cart.length === 0) return 0;
     return cart.reduce((total, item) => {
-      const itemPrice = item.price || item.product?.prize || 0;
-      const itemQuantity = item.quantity || 0;
-      return total + itemPrice * itemQuantity;
+      return total + (item.price || 0);
     }, 0);
   };
 
@@ -169,25 +167,9 @@ export default function HomePage() {
     e?.preventDefault();
     e?.stopPropagation();
     try {
-      if (newQuantity < item.quantity) {
-        // Khi giảm số lượng (luôn giảm 1)
-        await dispatch(
-          removeFromCartApi({
-            productId: item.product.productId,
-            quantity: 1,
-          })
-        ).unwrap();
-
-        // Cập nhật state local
-        dispatch(
-          updateCartItemQuantity({
-            productId: item.product.productId,
-            quantity: newQuantity,
-          })
-        );
-      } else if (newQuantity > item.quantity) {
-        // Khi tăng số lượng (luôn tăng 1)
-        await dispatch(
+      if (newQuantity > item.quantity) {
+        // Tăng số lượng bằng cách thêm vào giỏ hàng
+        const response = await dispatch(
           addToCartApi({
             masterId: item.product.productId,
             productId: item.product.productId,
@@ -195,11 +177,29 @@ export default function HomePage() {
           })
         ).unwrap();
 
-        // Cập nhật state local
+        // Cập nhật state local với dữ liệu mới từ API
         dispatch(
           updateCartItemQuantity({
             productId: item.product.productId,
-            quantity: newQuantity,
+            quantity: response.quantity,
+            price: response.price // Sử dụng price từ response API
+          })
+        );
+      } else if (newQuantity < item.quantity) {
+        // Giảm số lượng bằng cách xóa khỏi giỏ hàng
+        const response = await dispatch(
+          removeFromCartApi({
+            productId: item.product.productId,
+            quantity: 1,
+          })
+        ).unwrap();
+
+        // Cập nhật state local với dữ liệu mới từ API
+        dispatch(
+          updateCartItemQuantity({
+            productId: item.product.productId,
+            quantity: response.quantity,
+            price: response.price // Sử dụng price từ response API
           })
         );
       }
@@ -207,12 +207,13 @@ export default function HomePage() {
       // Làm mới giỏ hàng để đảm bảo đồng bộ
       await dispatch(getCartApi()).unwrap();
     } catch (error) {
-      console.error("Error updating quantity:", error);
+      console.error("Lỗi khi cập nhật số lượng:", error);
       // Nếu có lỗi, khôi phục lại state local
       dispatch(
         updateCartItemQuantity({
           productId: item.product.productId,
           quantity: item.quantity,
+          price: item.price
         })
       );
     }
@@ -594,11 +595,7 @@ export default function HomePage() {
                           <AddIcon />
                         </IconButton>
                         <Typography className="order-detail-price">
-                          $
-                          {(
-                            (item.price || item.product?.prize || 0) *
-                            item.quantity
-                          ).toFixed(2)}
+                          ${(item.price || 0).toFixed(2)}
                         </Typography>
                         <IconButton
                           size="small"

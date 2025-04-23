@@ -198,9 +198,9 @@ const CustomizationModal = ({
             </Box>
           </Box>
 
-          <Box className="customization-modal__section">
-            <Typography className="customization-modal__section-title">
-              Quantity
+          {/* <Box className="customization-modal__section">
+            <Typography className="customization-modal__section-title"> */}
+              {/* Quantity
             </Typography>
             <Box className="customization-modal__quantity">
               <IconButton
@@ -217,7 +217,7 @@ const CustomizationModal = ({
                 <AddIcon />
               </IconButton>
             </Box>
-          </Box>
+          </Box> */}
 
           <Box className="customization-modal__actions">
             <Button

@@ -60,7 +60,7 @@ export const updateCartQuantityApi = createAsyncThunk(
   async ({ productId, quantity }, { rejectWithValue }) => {
     try {
       console.log("Sending update request:", { productId, quantity });
-      const response = await fetcher.put("/order-item/update", {
+      const response = await fetcher.put("/order-item/update-quantity", {
         productId,
         quantity
       });
