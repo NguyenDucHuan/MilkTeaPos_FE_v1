@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -11,17 +11,46 @@ import {
   Switch,
   IconButton,
   Button,
-} from "@mui/material";
-import { Edit as EditIcon, Add as AddIcon } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
-import mockCategories from "./mockCategories";
+  Modal,
+  Backdrop,
+  Fade,
+} from '@mui/material';
+import { Edit as EditIcon, Add as AddIcon } from '@mui/icons-material';
+import { useDispatch, useSelector } from 'react-redux';
+import { listCategory } from '../../../store/slices/categorySlice';
+import CategoryForm from './CategoryForm';
+
 export default function CategoryList() {
+  const dispatch = useDispatch();
+  const { category } = useSelector((state) => state.category);
+  const [openAddModal, setOpenAddModal] = useState(false);
+  const [openEditModal, setOpenEditModal] = useState(false);
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null);
 
-
-  const navigate = useNavigate();
+  useEffect(() => {
+    dispatch(listCategory());
+  }, [dispatch]);
 
   const handleToggleStatus = (id) => {
-    console.log("Toggle status for ID:", id);
+    console.log('Toggle status for ID:', id);
+  };
+
+  const handleOpenAddModal = () => {
+    setOpenAddModal(true);
+  };
+
+  const handleCloseAddModal = () => {
+    setOpenAddModal(false);
+  };
+
+  const handleOpenEditModal = (id) => {
+    setSelectedCategoryId(id);
+    setOpenEditModal(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setOpenEditModal(false);
+    setSelectedCategoryId(null);
   };
 
   return (
@@ -37,14 +66,11 @@ export default function CategoryList() {
           alignItems="center"
           mb={2}
         >
-          <Typography variant="h6" fontWeight="medium">
-            Danh sách danh mục
-          </Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={() => navigate("/admin/categories/new")}
-            sx={{ backgroundColor: "#8B5E3C" }}
+            onClick={handleOpenAddModal}
+            sx={{ backgroundColor: '#8B5E3C' }}
           >
             THÊM DANH MỤC
           </Button>
@@ -54,20 +80,16 @@ export default function CategoryList() {
           <TableHead>
             <TableRow>
               <TableCell>No.</TableCell>
-              <TableCell>ID</TableCell>
               <TableCell>Tên danh mục</TableCell>
-              <TableCell>Mô tả</TableCell>
               <TableCell>Trạng thái</TableCell>
               <TableCell>Hành động</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {mockCategories.map((cat, index) => (
+            {category.map((cat, index) => (
               <TableRow key={cat.id}>
                 <TableCell>{index + 1}</TableCell>
-                <TableCell>{cat.id}</TableCell>
                 <TableCell>{cat.categoryName}</TableCell>
-                <TableCell>{cat.description}</TableCell>
                 <TableCell>
                   <Switch
                     checked={cat.status}
@@ -76,9 +98,7 @@ export default function CategoryList() {
                   />
                 </TableCell>
                 <TableCell>
-                  <IconButton
-                    onClick={() => navigate(`/admin/categories/${cat.id}/edit`)}
-                  >
+                  <IconButton onClick={() => handleOpenEditModal(cat.id)}>
                     <EditIcon color="action" />
                   </IconButton>
                 </TableCell>
@@ -87,6 +107,68 @@ export default function CategoryList() {
           </TableBody>
         </Table>
       </Paper>
+
+      {/* Add Category Modal */}
+      <Modal
+        open={openAddModal}
+        onClose={handleCloseAddModal}
+        closeAfterTransition
+        BackdropComponent={Backdrop}
+        BackdropProps={{
+          timeout: 500,
+        }}
+      >
+        <Fade in={openAddModal}>
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: 600,
+              bgcolor: 'background.paper',
+              boxShadow: 24,
+              p: 4,
+              borderRadius: 2,
+            }}
+          >
+            <CategoryForm isModal={true} onClose={handleCloseAddModal} />
+          </Box>
+        </Fade>
+      </Modal>
+
+      {/* Edit Category Modal */}
+      <Modal
+        open={openEditModal}
+        onClose={handleCloseEditModal}
+        closeAfterTransition
+        BackdropComponent={Backdrop}
+        BackdropProps={{
+          timeout: 500,
+        }}
+      >
+        <Fade in={openEditModal}>
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: 600,
+              bgcolor: 'background.paper',
+              boxShadow: 24,
+              p: 4,
+              borderRadius: 2,
+            }}
+          >
+            <CategoryForm
+              isModal={true}
+              onClose={handleCloseEditModal}
+              id={selectedCategoryId}
+            />
+          </Box>
+        </Fade>
+      </Modal>
     </Box>
   );
 }

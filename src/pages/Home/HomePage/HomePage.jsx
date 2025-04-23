@@ -321,7 +321,7 @@ export default function HomePage() {
                       >
                         <Box sx={{ mr: 2 }}>
                           <img
-                            src={category.image}
+                            src={category.imageUrl}
                             alt={category.categoryName}
                             style={{
                               width: "100px",
