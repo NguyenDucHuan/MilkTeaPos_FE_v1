@@ -27,7 +27,6 @@ import {
   getCartApi,
   updateCartItemQuantity,
   removeFromCartApi,
-  updateCartQuantityApi,
   addToCart,
 } from "../../../store/slices/orderSlice";
 import fetcher from "../../../apis/fetcher";
@@ -101,13 +100,33 @@ export default function HomePage() {
   };
 
   const handleOpenModal = (item) => {
-    setSelectedItem(item);
+    const sizes = item.variants.map((variant) => ({
+      label: variant.sizeId,
+      priceModifier: variant.price - item.price,
+    }));
+  
+    const itemWithOptions = {
+      ...item,
+      basePrice: item.price,
+      options: {
+        sizes, // Chỉ sử dụng sizes từ variants, không thêm Default
+        // Comment các tùy chọn không có trong API
+        // sugarLevels: ["100%", "75%", "50%", "25%", "0%"],
+        // iceLevels: ["Regular", "Less", "None"],
+        // toppings: [
+        //   { name: "Tapioca Pearls", price: 0.5 },
+        //   { name: "Pudding", price: 0.75 },
+        // ],
+      },
+    };
+  
+    setSelectedItem(itemWithOptions);
     setCustomization({
-      size: "Medium",
-      sizePrice: 0,
-      sugar: "100%",
-      ice: "Regular",
-      toppings: [],
+      size: sizes.length > 0 ? sizes[0].label : "", 
+      sizePrice: sizes.length > 0 ? sizes[0].priceModifier : 0,
+      sugar: "100%", 
+      ice: "Regular", 
+      toppings: [], 
       quantity: 1,
     });
     setOpenModal(true);
@@ -120,29 +139,33 @@ export default function HomePage() {
 
   const handleAddToOrder = async (customizedItem) => {
     try {
-      // First update local state for immediate UI feedback
+      const selectedVariant = customizedItem.variants.find(
+        (variant) => variant.sizeId === customizedItem.size
+      );
+      const productId = selectedVariant
+        ? selectedVariant.productId
+        : customizedItem.productId;
+
       dispatch(
         addToCart({
-          product: customizedItem,
+          product: { ...customizedItem, productId },
           quantity: customizedItem.quantity,
+          size: customizedItem.size,
         })
       );
 
-      // Then call API to update server
       await dispatch(
         addToCartApi({
           masterId: customizedItem.productId,
-          productId: customizedItem.productId,
+          productId,
           quantity: customizedItem.quantity,
         })
       ).unwrap();
 
-      // Refresh cart after adding item
       await dispatch(getCartApi()).unwrap();
       handleCloseModal();
     } catch (error) {
       console.error("Error adding to cart:", error);
-      // If API call fails, remove the item from local state
       dispatch(
         updateCartItemQuantity({
           productId: customizedItem.productId,
@@ -170,15 +193,12 @@ export default function HomePage() {
     e?.stopPropagation();
     try {
       if (newQuantity < item.quantity) {
-        // Khi giảm số lượng (luôn giảm 1)
         await dispatch(
           removeFromCartApi({
             productId: item.product.productId,
             quantity: 1,
           })
         ).unwrap();
-
-        // Cập nhật state local
         dispatch(
           updateCartItemQuantity({
             productId: item.product.productId,
@@ -186,7 +206,6 @@ export default function HomePage() {
           })
         );
       } else if (newQuantity > item.quantity) {
-        // Khi tăng số lượng (luôn tăng 1)
         await dispatch(
           addToCartApi({
             masterId: item.product.productId,
@@ -194,8 +213,6 @@ export default function HomePage() {
             quantity: 1,
           })
         ).unwrap();
-
-        // Cập nhật state local
         dispatch(
           updateCartItemQuantity({
             productId: item.product.productId,
@@ -203,12 +220,9 @@ export default function HomePage() {
           })
         );
       }
-
-      // Làm mới giỏ hàng để đảm bảo đồng bộ
       await dispatch(getCartApi()).unwrap();
     } catch (error) {
       console.error("Error updating quantity:", error);
-      // Nếu có lỗi, khôi phục lại state local
       dispatch(
         updateCartItemQuantity({
           productId: item.product.productId,
@@ -223,7 +237,6 @@ export default function HomePage() {
       console.log("item is not an array:", item);
       return [];
     }
-    console.log("Filtered items:", item);
     return item;
   };
 
@@ -253,12 +266,8 @@ export default function HomePage() {
       };
 
       await fetcher.post("/order", orderData);
-
-      // Sau khi tạo đơn hàng thành công
-      // 1. Làm mới giỏ hàng
       await dispatch(getCartApi());
 
-      // 2. Làm mới danh sách sản phẩm
       if (selectedCategory && categories.length > 0) {
         const selectedCategoryObj = categories.find(
           (cat) => cat.categoryName === selectedCategory
@@ -270,14 +279,9 @@ export default function HomePage() {
         }
       }
 
-      // 3. Đóng modal checkout
       setOpenCheckout(false);
-
-      // 4. Hiển thị thông báo thành công
-      // (Bạn có thể thêm toast hoặc alert ở đây)
     } catch (error) {
       console.error("Error creating order:", error);
-      // Xử lý lỗi ở đây
     }
   };
 
@@ -506,7 +510,6 @@ export default function HomePage() {
                   <Typography variant="body1" className="order-summary-title">
                     TÓM TẮT ĐƠN HÀNG
                   </Typography>
-
                   <Box className="order-summary-item">
                     <Typography variant="body2">SỐ MÓN:</Typography>
                     <Typography variant="body2">
@@ -562,7 +565,8 @@ export default function HomePage() {
                               fontWeight: "bold",
                             }}
                           >
-                            {item.product?.productName || "Unknown Product"}
+                            {item.product?.productName || "Unknown Product"} (
+                            {item.size || "Default"})
                           </span>
                         </Box>
                       </Box>
