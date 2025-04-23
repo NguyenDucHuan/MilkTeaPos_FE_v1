@@ -14,7 +14,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import AccountList from "../pages/Admin/Accounts/List";
 import AccountForm from "../pages/Admin/Accounts/Form";
 import CategoryList from "../pages/Admin/Categories/List";
-import CategoryForm from "../pages/Admin/Categories/Form";
+import CategoryForm from "../pages/Admin/Categories/CategoryForm";
 import ProductList from "../pages/Admin/Products/List";
 import ProductForm from "../pages/Admin/Products/Form";
 import PaymentList from "../pages/Admin/PaymentMethods/List";
