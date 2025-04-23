@@ -1,18 +1,15 @@
 import { Avatar, Box, Typography } from "@mui/material";
 import React from "react";
 import "./HeaderAdmin.css";
+
+import PageTitle from "../PageTitle";
+
 export default function HeaderAdmin() {
   return (
     <>
       <Box className="header-admin">
         <Box className="header-admin__title">
-          <Typography
-            variant="h5"
-            component="h2"
-            className="header-admin__title-text"
-          >
-            Dasboard
-          </Typography>
+          <PageTitle />
         </Box>
         <Box className="header-admin__user">
           <Avatar

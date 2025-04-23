@@ -11,5 +11,10 @@ export const PATH = {
     PROFILE: "/profile",
   
     // Admin
-    ADMIN: "/dashboard"
+    ADMIN: "/admin",
+    ACCOUNT: "accounts",
+    CATEGORIES: "categories",
+    PRODUCTS: "products",
+    PAYMENTS: "payments",
+    ORDERS_ADMIN: "orders",
   };

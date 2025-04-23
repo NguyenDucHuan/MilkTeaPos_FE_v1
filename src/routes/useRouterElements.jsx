@@ -11,6 +11,16 @@ import DashboardAdmin from "../pages/Admin/DashboardAdmin/DashboardAdmin";
 import Profile from "../pages/Profile/Profile";
 import ProtectedRoute from "../components/ProtectedRoute";
 
+import AccountList from "../pages/Admin/Accounts/List";
+import AccountForm from "../pages/Admin/Accounts/Form";
+import CategoryList from "../pages/Admin/Categories/List";
+import CategoryForm from "../pages/Admin/Categories/Form";
+import ProductList from "../pages/Admin/Products/List";
+import ProductForm from "../pages/Admin/Products/Form";
+import PaymentList from "../pages/Admin/PaymentMethods/List";
+import PaymentForm from "../pages/Admin/PaymentMethods/Form";
+import OrderListAdmin from "../pages/Admin/Orders/List";
+
 
 export default function useRouterElements() {
   const routeElements = useRoutes([
@@ -76,6 +86,58 @@ export default function useRouterElements() {
           index: true,
           path: PATH.ADMIN,
           element: <DashboardAdmin />,
+        },
+        {
+          path: "accounts",
+          element: <AccountList />,
+        },
+        {
+          path: "accounts/new",
+          element: <AccountForm />,
+        },
+        {
+          path: "accounts/:id/edit",
+          element: <AccountForm />,
+        },
+        {
+          path: "categories",
+          element: <CategoryList />,
+        },
+        {
+          path: "categories/new",
+          element: <CategoryForm />,
+        },
+        {
+          path: "categories/:id/edit",
+          element: <CategoryForm />,
+        },
+        {
+          path: "products",
+          element: <ProductList />,
+        },
+        {
+          path: "products/new",
+          element: <ProductForm />,
+        },
+        {
+          path: "products/:id/edit",
+          element: <ProductForm />,
+        },
+        {
+          path: PATH.PAYMENTS,
+          element: <PaymentList />,
+        },
+        {
+          path: `${PATH.PAYMENTS}/new`,
+          element: <PaymentForm />,
+        },
+        {
+          path: `${PATH.PAYMENTS}/:id/edit`,
+          element: <PaymentForm />,
+        },
+        {
+          path: PATH.ORDERS_ADMIN,
+          element: <OrderListAdmin />,
         },
       ],
     },
