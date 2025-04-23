@@ -6,7 +6,7 @@ const fetcher = axios.create({
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-  timeout: 10000,
+  timeout: 10000000,
 });
 
 fetcher.interceptors.request.use(
