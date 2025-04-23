@@ -16,4 +16,5 @@ export const PATH = {
     CATEGORIES: "categories",
     PRODUCTS: "products",
     PAYMENTS: "payments",
+    ORDERS_ADMIN: "orders",
   };

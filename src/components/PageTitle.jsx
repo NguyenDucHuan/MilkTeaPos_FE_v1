@@ -20,6 +20,8 @@ const pathToTitle = {
   //Payment Methods
   "/admin/payments": "Payment Method Management",
   "/admin/payments/new": "Add Payment Method",
+
+  "/admin/orders": "Order Management",
 };
 
 const getPageTitle = (pathname) => {

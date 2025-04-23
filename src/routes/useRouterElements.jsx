@@ -19,6 +19,7 @@ import ProductList from "../pages/Admin/Products/List";
 import ProductForm from "../pages/Admin/Products/Form";
 import PaymentList from "../pages/Admin/PaymentMethods/List";
 import PaymentForm from "../pages/Admin/PaymentMethods/Form";
+import OrderListAdmin from "../pages/Admin/Orders/List";
 
 
 export default function useRouterElements() {
@@ -133,6 +134,10 @@ export default function useRouterElements() {
         {
           path: `${PATH.PAYMENTS}/:id/edit`,
           element: <PaymentForm />,
+        },
+        {
+          path: PATH.ORDERS_ADMIN,
+          element: <OrderListAdmin />,
         },
       ],
     },
