@@ -36,8 +36,8 @@ fetcher.interceptors.response.use(
       message: error.message,
     });
     const errorMessage =
-    error.response?.data?.message || "Có lỗi xảy ra. Vui lòng thử lại.";
-  return Promise.reject({ message: errorMessage });
+      error.response?.data?.message || "Có lỗi xảy ra. Vui lòng thử lại.";
+    return Promise.reject({ message: errorMessage });
   }
 );
 

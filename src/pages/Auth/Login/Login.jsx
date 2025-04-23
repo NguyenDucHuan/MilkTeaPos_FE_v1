@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { Box, TextField, Button, Typography, Link, InputAdornment, Alert } from "@mui/material";
 import { Email, Lock } from "@mui/icons-material";
-import { loginApi } from "../../../store/slices/authSlice";  // Đảm bảo bạn đang sử dụng đúng action
+import { loginApi } from "../../../store/slices/authSlice";
 import { PATH } from "../../../routes/path";
 import "./Login.css";
 import toast from "react-hot-toast";
@@ -36,12 +36,17 @@ const Login = () => {
     e.preventDefault();
     try {
       const result = await dispatch(loginApi(formData)).unwrap(); // Sử dụng unwrap để xử lý lỗi dễ dàng hơn
-  
+
       // Đăng nhập thành công
-      if (result?.accessToken) {
-        // Lưu accessToken vào localStorage
-        localStorage.setItem("accessToken", result.accessToken);
-  
+      if (result?.accessToken?.token) {
+        // Đảm bảo token là chuỗi trước khi lưu
+        const token = result.accessToken.token;
+        if (typeof token !== "string") {
+          throw new Error("Token không hợp lệ, không phải là chuỗi.");
+        }
+        // Lưu token vào localStorage
+        localStorage.setItem("accessToken", token);
+
         // Hiển thị toast thành công
         toast.success("Đăng nhập thành công!", {
           position: "top-right",
@@ -51,15 +56,16 @@ const Login = () => {
           pauseOnHover: true,
           draggable: true,
         });
-  
+
         // Điều hướng về trang HOME
         navigate(PATH.HOME, { replace: true });
+      } else {
+        throw new Error("Không tìm thấy token hợp lệ trong phản hồi.");
       }
     } catch (error) {
       // Đăng nhập thất bại
-      // Lấy thông điệp lỗi từ error (được trả về từ rejectWithValue trong loginApi)
       const errorMessage = error?.message || "Đăng nhập thất bại. Vui lòng thử lại.";
-  
+
       // Hiển thị toast lỗi
       toast.error(errorMessage, {
         position: "top-right",
@@ -69,13 +75,13 @@ const Login = () => {
         pauseOnHover: true,
         draggable: true,
       });
-  
+
       console.error("Login error:", error);
     }
   };
 
   return (
-    <Box className="login" >
+    <Box className="login">
       <Box className="login__container">
         <Box className="login__header">
           <Typography variant="h4" className="login__title">
@@ -149,4 +155,3 @@ const Login = () => {
 };
 
 export default Login;
-// import React, { useState, useEffect } from "react";

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
@@ -6,6 +6,7 @@ import {
   IconButton,
   InputAdornment,
   TextField,
+  CircularProgress,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -15,57 +16,26 @@ import {
   Cancel as CancelIcon,
   AccessTime as PendingIcon,
 } from '@mui/icons-material';
-
-// Mock data - replace with actual API call later
-const mockOrders = [
-  {
-    id: '#ORD001',
-    customerName: 'Nguyễn Văn A',
-    items: [
-      { name: 'Trà sữa truyền thống', quantity: 2, price: 25000 },
-      { name: 'Trà sữa matcha', quantity: 1, price: 30000 },
-    ],
-    total: 80000,
-    status: 'pending',
-    orderDate: '2024-01-15T09:30:00',
-    paymentMethod: 'Tiền mặt',
-    address: '123 Đường ABC, Quận 1, TP.HCM',
-    phone: '0123456789',
-  },
-  {
-    id: '#ORD002',
-    customerName: 'Trần Thị B',
-    items: [
-      { name: 'Trà đào', quantity: 3, price: 20000 },
-      { name: 'Trà sữa chocolate', quantity: 2, price: 28000 },
-    ],
-    total: 116000,
-    status: 'delivered',
-    orderDate: '2024-01-15T10:15:00',
-    paymentMethod: 'Momo',
-    address: '456 Đường XYZ, Quận 2, TP.HCM',
-    phone: '0987654321',
-  },
-  // Add more mock orders as needed
-];
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchOrders } from '../../store/slices/orderSlice';
 
 const statusColors = {
-  pending: {
+  Pending: {
     color: 'bg-yellow-100 text-yellow-800',
     icon: PendingIcon,
     label: 'Đang xử lý',
   },
-  processing: {
+  Processing: {
     color: 'bg-blue-100 text-blue-800',
     icon: ShippingIcon,
     label: 'Đang giao',
   },
-  delivered: {
+  Completed: {
     color: 'bg-green-100 text-green-800',
     icon: CheckCircleIcon,
-    label: 'Đã giao',
+    label: 'Hoàn thành',
   },
-  cancelled: {
+  Cancelled: {
     color: 'bg-red-100 text-red-800',
     icon: CancelIcon,
     label: 'Đã hủy',
@@ -73,10 +43,16 @@ const statusColors = {
 };
 
 const OrderList = () => {
+  const dispatch = useDispatch();
+  const { orders, isLoading, error } = useSelector((state) => state.order);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
+
+  useEffect(() => {
+    dispatch(fetchOrders());
+  }, [dispatch]);
 
   const handleChangePage = (newPage) => {
     setPage(newPage);
@@ -91,12 +67,15 @@ const OrderList = () => {
     setSelectedOrder(order === selectedOrder ? null : order);
   };
 
-  const filteredOrders = mockOrders.filter((order) =>
-    order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    order.customerName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredOrders = orders?.items
+    ? orders.items.filter((order) =>
+        order.orderId.toString().includes(searchTerm.toLowerCase()) ||
+        order.note?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : [];
 
   const formatDate = (dateString) => {
+    if (!dateString) return '';
     const options = {
       year: 'numeric',
       month: '2-digit',
@@ -111,18 +90,35 @@ const OrderList = () => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
       currency: 'VND',
-    }).format(amount);
+    }).format(amount || 0);
   };
 
   const OrderStatus = ({ status }) => {
-    const StatusIcon = statusColors[status].icon;
+    const statusInfo = statusColors[status] || statusColors.Pending;
+    const StatusIcon = statusInfo.icon;
     return (
-      <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${statusColors[status].color}`}>
+      <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${statusInfo.color}`}>
         <StatusIcon className="w-4 h-4" />
-        <span className="text-sm font-medium">{statusColors[status].label}</span>
+        <span className="text-sm font-medium">{statusInfo.label}</span>
       </div>
     );
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <CircularProgress />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Typography color="error">Error: {error}</Typography>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -158,9 +154,6 @@ const OrderList = () => {
                     Mã đơn hàng
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Khách hàng
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Ngày đặt
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -175,35 +168,40 @@ const OrderList = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredOrders
-                  .slice(page * rowsPerPage, (page + 1) * rowsPerPage)
-                  .map((order) => (
-                    <tr key={order.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {order.id}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {order.customerName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(order.orderDate)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                        {formatCurrency(order.total)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <OrderStatus status={order.status} />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <IconButton
-                          onClick={() => handleViewDetails(order)}
-                          className="text-primary hover:text-primary-dark"
-                        >
-                          <VisibilityIcon />
-                        </IconButton>
-                      </td>
-                    </tr>
-                  ))}
+                {filteredOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+                      Không có đơn hàng nào
+                    </td>
+                  </tr>
+                ) : (
+                  filteredOrders
+                    .slice(page * rowsPerPage, (page + 1) * rowsPerPage)
+                    .map((order) => (
+                      <tr key={order.orderId} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          #{order.orderId}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(order.createAt)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                          {formatCurrency(order.totalAmount)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <OrderStatus status={order.orderstatusupdates?.[0]?.orderStatus} />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <IconButton
+                            onClick={() => handleViewDetails(order)}
+                            className="text-primary hover:text-primary-dark"
+                          >
+                            <VisibilityIcon />
+                          </IconButton>
+                        </td>
+                      </tr>
+                    ))
+                )}
               </tbody>
             </table>
           </div>
@@ -212,7 +210,7 @@ const OrderList = () => {
           <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
             <div className="flex items-center">
               <span className="text-sm text-gray-700">
-                Hiển thị {page * rowsPerPage + 1} đến{' '}
+                Hiển thị {filteredOrders.length > 0 ? page * rowsPerPage + 1 : 0} đến{' '}
                 {Math.min((page + 1) * rowsPerPage, filteredOrders.length)} trong{' '}
                 {filteredOrders.length} kết quả
               </span>
@@ -240,82 +238,69 @@ const OrderList = () => {
             <div className="mt-6 bg-white rounded-lg shadow p-6 border border-gray-200">
               <div className="flex justify-between items-start mb-4">
                 <Typography variant="h6" className="text-gray-900 font-bold">
-                  Chi tiết đơn hàng {selectedOrder.id}
+                  Chi tiết đơn hàng #{selectedOrder.orderId}
                 </Typography>
-                <OrderStatus status={selectedOrder.status} />
+                <OrderStatus status={selectedOrder.orderstatusupdates?.[0]?.orderStatus} />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Customer Info */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-gray-900">Thông tin khách hàng</h3>
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                    <p className="text-sm text-gray-600">
-                      Tên: <span className="text-gray-900">{selectedOrder.customerName}</span>
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      SĐT: <span className="text-gray-900">{selectedOrder.phone}</span>
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Địa chỉ: <span className="text-gray-900">{selectedOrder.address}</span>
-                    </p>
-                  </div>
-                </div>
-
                 {/* Order Info */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-gray-900">Thông tin đơn hàng</h3>
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                    <p className="text-sm text-gray-600">
-                      Ngày đặt: <span className="text-gray-900">{formatDate(selectedOrder.orderDate)}</span>
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Phương thức thanh toán: <span className="text-gray-900">{selectedOrder.paymentMethod}</span>
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Tổng tiền: <span className="text-gray-900 font-medium">{formatCurrency(selectedOrder.total)}</span>
-                    </p>
+                  <div>
+                    <Typography variant="subtitle2" className="text-gray-600">
+                      Ngày đặt hàng
+                    </Typography>
+                    <Typography variant="body1" className="text-gray-900">
+                      {formatDate(selectedOrder.createAt)}
+                    </Typography>
+                  </div>
+                  <div>
+                    <Typography variant="subtitle2" className="text-gray-600">
+                      Ghi chú
+                    </Typography>
+                    <Typography variant="body1" className="text-gray-900">
+                      {selectedOrder.note || "Không có ghi chú"}
+                    </Typography>
+                  </div>
+                  <div>
+                    <Typography variant="subtitle2" className="text-gray-600">
+                      Phương thức thanh toán
+                    </Typography>
+                    <Typography variant="body1" className="text-gray-900">
+                      {selectedOrder.paymentMethodId === 1 ? "Tiền mặt" : "Chuyển khoản"}
+                    </Typography>
                   </div>
                 </div>
 
                 {/* Order Items */}
-                <div className="md:col-span-2 space-y-4">
-                  <h3 className="text-lg font-medium text-gray-900">Chi tiết sản phẩm</h3>
-                  <div className="bg-gray-50 rounded-lg overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sản phẩm</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Số lượng</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Đơn giá</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Thành tiền</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {selectedOrder.items.map((item, index) => (
-                          <tr key={index}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{item.quantity}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                              {formatCurrency(item.price)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
-                              {formatCurrency(item.price * item.quantity)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot className="bg-gray-50">
-                        <tr>
-                          <td colSpan="3" className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
-                            Tổng cộng:
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-primary font-bold text-right">
-                            {formatCurrency(selectedOrder.total)}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
+                <div className="space-y-4">
+                  <Typography variant="subtitle2" className="text-gray-600">
+                    Chi tiết sản phẩm
+                  </Typography>
+                  {selectedOrder.orderitems?.map((item, index) => (
+                    <div key={index} className="flex justify-between items-center py-2 border-b">
+                      <div>
+                        <Typography variant="body1" className="text-gray-900">
+                          {item.product?.productName}
+                        </Typography>
+                        <Typography variant="body2" className="text-gray-600">
+                          Số lượng: {item.quantity}
+                        </Typography>
+                      </div>
+                      <Typography variant="body1" className="text-gray-900 font-medium">
+                        {formatCurrency(item.price * item.quantity)}
+                      </Typography>
+                    </div>
+                  ))}
+                  <div className="pt-4 border-t">
+                    <div className="flex justify-between items-center">
+                      <Typography variant="subtitle1" className="text-gray-900 font-bold">
+                        Tổng cộng
+                      </Typography>
+                      <Typography variant="h6" className="text-gray-900 font-bold">
+                        {formatCurrency(selectedOrder.totalAmount)}
+                      </Typography>
+                    </div>
                   </div>
                 </div>
               </div>
