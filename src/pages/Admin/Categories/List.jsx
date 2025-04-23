@@ -15,8 +15,9 @@ import {
 import { Edit as EditIcon, Add as AddIcon } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import mockCategories from "./mockCategories";
-
 export default function CategoryList() {
+
+
   const navigate = useNavigate();
 
   const handleToggleStatus = (id) => {
