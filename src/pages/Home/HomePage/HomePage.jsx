@@ -8,6 +8,7 @@ import {
   Grid,
   Typography,
   IconButton,
+  Pagination,
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -27,18 +28,20 @@ import {
   getCartApi,
   updateCartItemQuantity,
   removeFromCartApi,
-  updateCartQuantityApi,
   addToCart,
 } from "../../../store/slices/orderSlice";
 import fetcher from "../../../apis/fetcher";
 
 export default function HomePage() {
   const dispatch = useDispatch();
-  const { item, isLoading, error } = useSelector((state) => state.item);
+  const { items, isLoading, error } = useSelector((state) => state.item);
   const {
     category: categories,
     isLoading: categoryLoading,
     error: categoryError,
+    currentPage: categoryPage,
+    totalPages: categoryTotalPages,
+    pageSize: categoryPageSize,
   } = useSelector((state) => state.category);
   const orderState = useSelector((state) => state.order);
   const {
@@ -59,21 +62,12 @@ export default function HomePage() {
     toppings: [],
     quantity: 1,
   });
+  const [page, setPage] = useState(categoryPage);
 
   useEffect(() => {
-    dispatch(listCategory()).then((result) => {
-      if (
-        result.meta.requestStatus === "fulfilled" &&
-        result.payload.length > 0
-      ) {
-        if (!selectedCategory && result.payload[0]) {
-          setSelectedCategory(result.payload[0].categoryName);
-          dispatch(listItemApi({ CategoryId: result.payload[0].categoryId }));
-        }
-      }
-    });
+    dispatch(listCategory({ page, pageSize: categoryPageSize }));
     dispatch(getCartApi());
-  }, [dispatch]);
+  }, [dispatch, page, categoryPageSize]);
 
   useEffect(() => {
     if (selectedCategory && categories.length > 0) {
@@ -81,16 +75,26 @@ export default function HomePage() {
         (cat) => cat.categoryName === selectedCategory
       );
       if (selectedCategoryObj) {
+        console.log("Fetching products for CategoryId:", selectedCategoryObj.categoryId);
         dispatch(
           listItemApi({ CategoryId: selectedCategoryObj.categoryId })
         ).then((result) => {
-          if (result.meta.requestStatus === "rejected") {
+          if (result.meta.requestStatus === "fulfilled") {
+            console.log("Products fetched successfully:", result.payload);
+          } else {
             console.error("Error fetching items:", result.error);
           }
         });
+      } else {
+        console.warn("Selected category not found:", selectedCategory);
       }
     }
   }, [dispatch, selectedCategory, categories]);
+
+  // Log cart updates for debugging
+  useEffect(() => {
+    console.log("Cart updated:", cart);
+  }, [cart]);
 
   const handleOpenCheckoutModal = () => {
     setOpenCheckout(true);
@@ -101,10 +105,28 @@ export default function HomePage() {
   };
 
   const handleOpenModal = (item) => {
-    setSelectedItem(item);
+    if (!item || !item.variants || !Array.isArray(item.variants)) {
+      console.error("Invalid item or variants:", item);
+      return;
+    }
+
+    const sizes = item.variants.map((variant) => ({
+      label: variant.sizeId || "Default",
+      priceModifier: variant.price !== null && variant.price !== undefined ? variant.price : 0,
+    }));
+
+    const itemWithOptions = {
+      ...item,
+      basePrice: sizes[0]?.priceModifier || 0,
+      options: {
+        sizes,
+      },
+    };
+
+    setSelectedItem(itemWithOptions);
     setCustomization({
-      size: "Medium",
-      sizePrice: 0,
+      size: sizes.length > 0 ? sizes[0].label : "",
+      sizePrice: sizes.length > 0 ? sizes[0].priceModifier : 0,
       sugar: "100%",
       ice: "Regular",
       toppings: [],
@@ -120,29 +142,43 @@ export default function HomePage() {
 
   const handleAddToOrder = async (customizedItem) => {
     try {
-      // First update local state for immediate UI feedback
+      const selectedVariant = customizedItem.variants.find(
+        (variant) => variant.sizeId === customizedItem.size
+      );
+      const productId = selectedVariant
+        ? selectedVariant.productId
+        : customizedItem.productId;
+      const price = selectedVariant
+        ? Number(selectedVariant.price)
+        : Number(customizedItem.basePrice || 0);
+
+      console.log("Adding to cart:", customizedItem, "Price:", price);
+      if (isNaN(price)) {
+        console.error("Invalid price for item:", customizedItem);
+        return;
+      }
+
       dispatch(
         addToCart({
-          product: customizedItem,
+          product: { ...customizedItem, productId, price },
           quantity: customizedItem.quantity,
+          size: customizedItem.size,
         })
       );
 
-      // Then call API to update server
       await dispatch(
         addToCartApi({
           masterId: customizedItem.productId,
-          productId: customizedItem.productId,
+          productId,
           quantity: customizedItem.quantity,
+          price,
         })
       ).unwrap();
 
-      // Refresh cart after adding item
       await dispatch(getCartApi()).unwrap();
       handleCloseModal();
     } catch (error) {
       console.error("Error adding to cart:", error);
-      // If API call fails, remove the item from local state
       dispatch(
         updateCartItemQuantity({
           productId: customizedItem.productId,
@@ -154,9 +190,14 @@ export default function HomePage() {
 
   const calculateSubtotal = () => {
     if (!Array.isArray(cart) || cart.length === 0) return 0;
+    console.log("Calculating subtotal for cart:", cart);
     return cart.reduce((total, item) => {
-      const itemPrice = item.price || item.product?.prize || 0;
-      const itemQuantity = item.quantity || 0;
+      const itemPrice = Number(item.price || item.product?.price || 0);
+      const itemQuantity = Number(item.quantity || 0);
+      if (isNaN(itemPrice) || isNaN(itemQuantity)) {
+        console.warn(`Invalid price or quantity for item:`, item);
+        return total;
+      }
       return total + itemPrice * itemQuantity;
     }, 0);
   };
@@ -168,50 +209,60 @@ export default function HomePage() {
   const handleUpdateQuantity = async (item, newQuantity, e) => {
     e?.preventDefault();
     e?.stopPropagation();
+
+    console.log("Updating quantity for item:", item, "New quantity:", newQuantity);
     try {
-      if (newQuantity < item.quantity) {
-        // Khi giảm số lượng (luôn giảm 1)
+      const productId = item.product?.productId;
+      if (!productId) {
+        console.error("Invalid productId for item:", item);
+        return;
+      }
+
+      if (newQuantity === 0) {
         await dispatch(
           removeFromCartApi({
-            productId: item.product.productId,
-            quantity: 1,
+            productId,
+            quantity: item.quantity,
           })
         ).unwrap();
-
-        // Cập nhật state local
         dispatch(
           updateCartItemQuantity({
-            productId: item.product.productId,
-            quantity: newQuantity,
+            productId,
+            quantity: 0,
           })
         );
-      } else if (newQuantity > item.quantity) {
-        // Khi tăng số lượng (luôn tăng 1)
-        await dispatch(
-          addToCartApi({
-            masterId: item.product.productId,
-            productId: item.product.productId,
-            quantity: 1,
-          })
-        ).unwrap();
-
-        // Cập nhật state local
+      } else if (newQuantity !== item.quantity) {
+        const quantityChange = newQuantity - item.quantity;
+        if (quantityChange > 0) {
+          await dispatch(
+            addToCartApi({
+              masterId: productId,
+              productId,
+              quantity: quantityChange,
+            })
+          ).unwrap();
+        } else {
+          await dispatch(
+            removeFromCartApi({
+              productId,
+              quantity: Math.abs(quantityChange),
+            })
+          ).unwrap();
+        }
         dispatch(
           updateCartItemQuantity({
-            productId: item.product.productId,
+            productId,
             quantity: newQuantity,
           })
         );
       }
 
-      // Làm mới giỏ hàng để đảm bảo đồng bộ
       await dispatch(getCartApi()).unwrap();
     } catch (error) {
       console.error("Error updating quantity:", error);
-      // Nếu có lỗi, khôi phục lại state local
       dispatch(
         updateCartItemQuantity({
-          productId: item.product.productId,
+          productId: item.product?.productId,
           quantity: item.quantity,
         })
       );
@@ -219,12 +270,13 @@ export default function HomePage() {
   };
 
   const getFilteredItems = () => {
-    if (!Array.isArray(item)) {
-      console.log("item is not an array:", item);
+    console.log("Current items state:", items);
+    if (!Array.isArray(items)) {
+      console.warn("Items is not an array:", items);
       return [];
     }
-    console.log("Filtered items:", item);
-    return item;
+    console.log("Filtered items:", items);
+    return items;
   };
 
   const handleCategoryClick = (category) => {
@@ -233,6 +285,10 @@ export default function HomePage() {
 
   const handleBackToCategories = () => {
     setSelectedCategory(null);
+  };
+
+  const handlePageChange = (event, newPage) => {
+    setPage(newPage);
   };
 
   const subtotal = calculateSubtotal();
@@ -248,17 +304,13 @@ export default function HomePage() {
         orderitems: cart.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
-          price: item.price || item.product?.prize || 0,
+          price: item.price || item.product?.price || 0,
         })),
       };
 
       await fetcher.post("/order", orderData);
-
-      // Sau khi tạo đơn hàng thành công
-      // 1. Làm mới giỏ hàng
       await dispatch(getCartApi());
 
-      // 2. Làm mới danh sách sản phẩm
       if (selectedCategory && categories.length > 0) {
         const selectedCategoryObj = categories.find(
           (cat) => cat.categoryName === selectedCategory
@@ -270,14 +322,9 @@ export default function HomePage() {
         }
       }
 
-      // 3. Đóng modal checkout
       setOpenCheckout(false);
-
-      // 4. Hiển thị thông báo thành công
-      // (Bạn có thể thêm toast hoặc alert ở đây)
     } catch (error) {
       console.error("Error creating order:", error);
-      // Xử lý lỗi ở đây
     }
   };
 
@@ -296,61 +343,78 @@ export default function HomePage() {
           ) : error ? (
             <Typography color="error">Lỗi: {error}</Typography>
           ) : selectedCategory === null ? (
-            <Grid container spacing={2} className="category-grid">
-              {Array.isArray(categories) && categories.length > 0 ? (
-                categories.map((category) => (
-                  <Grid item xs={4} key={category.categoryId}>
-                    <Card
-                      sx={{
-                        cursor: "pointer",
-                        backgroundColor: "#f9f5f1",
-                        borderRadius: "15px",
-                        boxShadow: "none",
-                        marginTop: "20px",
-                        marginLeft: "30px",
-                        width: "300px",
-                      }}
-                      onClick={() => handleCategoryClick(category.categoryName)}
-                    >
-                      <CardContent
+            <>
+              <Grid container spacing={2} className="category-grid">
+                {Array.isArray(categories) && categories.length > 0 ? (
+                  categories.map((category) => (
+                    <Grid item xs={4} key={category.categoryId}>
+                      <Card
                         sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          height: "150px",
+                          cursor: "pointer",
+                          backgroundColor: "#f9f5f1",
+                          borderRadius: "15px",
+                          boxShadow: "none",
+                          marginTop: "20px",
+                          marginLeft: "30px",
+                          width: "300px",
                         }}
+                        onClick={() => handleCategoryClick(category.categoryName)}
                       >
-                        <Box sx={{ mr: 2 }}>
-                          <img
-                            src={category.image}
-                            alt={category.categoryName}
-                            style={{
-                              width: "100px",
-                              height: "100px",
-                              objectFit: "cover",
-                              borderRadius: "8px",
-                              margin: "7px 9px",
-                            }}
-                          />
-                        </Box>
-                        <Box>
-                          <Typography
-                            variant="h6"
-                            sx={{ color: "#8a5a2a", fontWeight: "bold" }}
-                          >
-                            {category.categoryName}
-                          </Typography>
-                          <Typography variant="body2" sx={{ color: "#8a5a2a" }}>
-                            {category.description}
-                          </Typography>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))
-              ) : (
-                <Typography>Không có danh mục nào</Typography>
+                        <CardContent
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            height: "150px",
+                          }}
+                        >
+                          <Box sx={{ mr: 2 }}>
+                            <img
+                              src={category.imageUrl || "https://via.placeholder.com/100"}
+                              alt={category.categoryName}
+                              style={{
+                                width: "100px",
+                                height: "100px",
+                                objectFit: "cover",
+                                borderRadius: "8px",
+                                margin: "7px 9px",
+                              }}
+                            />
+                          </Box>
+                          <Box>
+                            <Typography
+                              variant="h6"
+                              sx={{ color: "#8a5a2a", fontWeight: "bold" }}
+                            >
+                              {category.categoryName}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: "#8a5a2a" }}>
+                              {category.description}
+                            </Typography>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))
+                ) : (
+                  <Typography>Không có danh mục nào</Typography>
+                )}
+              </Grid>
+              {categoryTotalPages > 1 && (
+                <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+                  <Pagination
+                    count={categoryTotalPages}
+                    page={page}
+                    onChange={handlePageChange}
+                    color="primary"
+                    sx={{
+                      "& .MuiPaginationItem-root": {
+                        color: "#8a5a2a",
+                      },
+                    }}
+                  />
+                </Box>
               )}
-            </Grid>
+            </>
           ) : getFilteredItems().length > 0 ? (
             <>
               <Button
@@ -361,79 +425,87 @@ export default function HomePage() {
                 Quay lại Danh mục
               </Button>
               <Grid container spacing={2} className="menu-items-grid">
-                {getFilteredItems().map((item) => (
-                  <Grid key={item.productId}>
-                    <Card
-                      sx={{
-                        maxWidth: 345,
-                        borderRadius: "15px",
-                        border: "1px solid #f0e6d9",
-                        width: "280px",
-                        height: "350px",
-                      }}
-                      className="menu-item"
-                    >
-                      <CardMedia
-                        className="menu-item-image-placeholder"
-                        component="img"
-                        src={item.imageUrl || "https://via.placeholder.com/150"}
-                        alt={item.productName}
+                {getFilteredItems().map((item) => {
+                  const firstVariant = item.variants?.[0] || {};
+                  const price =
+                    firstVariant.price !== null && firstVariant.price !== undefined
+                      ? firstVariant.price
+                      : item.price || 0;
+
+                  return (
+                    <Grid item key={item.productId}>
+                      <Card
                         sx={{
-                          height: "150px",
-                          maxWidth: "250px",
-                          objectFit: "cover",
-                          margin: "12px 12px",
+                          maxWidth: 345,
+                          borderRadius: "15px",
+                          border: "1px solid #f0e6d9",
+                          width: "280px",
+                          height: "350px",
                         }}
-                      />
-                      <CardContent className="menu-item-content">
-                        <Typography
-                          variant="h6"
-                          className="menu-item-name"
-                          sx={{ marginTop: "5px", color: "#8a5a2a" }}
-                        >
-                          {item.productName}
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          className="menu-item-description"
+                        className="menu-item"
+                      >
+                        <CardMedia
+                          className="menu-item-image-placeholder"
+                          component="img"
+                          src={item.imageUrl || "https://via.placeholder.com/150"}
+                          alt={item.productName}
                           sx={{
-                            marginTop: "5px",
-                            padding: "10px 10px 10px 0px",
+                            height: "150px",
+                            maxWidth: "250px",
+                            objectFit: "cover",
+                            margin: "12px 12px",
                           }}
-                        >
-                          {item.description}
-                        </Typography>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexDirection: "row",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            marginTop: "5px",
-                          }}
-                        >
+                        />
+                        <CardContent className="menu-item-content">
                           <Typography
                             variant="h6"
-                            color="text.primary"
-                            className="menu-item-price"
+                            className="menu-item-name"
                             sx={{ marginTop: "5px", color: "#8a5a2a" }}
                           >
-                            ${item.price.toFixed(2)}
+                            {item.productName}
                           </Typography>
-                          <Box className="menu-item-actions">
-                            <button
-                              onClick={() => handleOpenModal(item)}
-                              className="menu-item-add-button"
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            className="menu-item-description"
+                            sx={{
+                              marginTop: "5px",
+                              padding: "10px 10px 10px 0px",
+                            }}
+                          >
+                            {item.description}
+                          </Typography>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              marginTop: "5px",
+                            }}
+                          >
+                            <Typography
+                              variant="h6"
+                              color="text.primary"
+                              className="menu-item-price"
+                              sx={{ marginTop: "5px", color: "#8a5a2a" }}
                             >
-                              Thêm
-                            </button>
+                              ${price.toFixed(2)}
+                            </Typography>
+                            <Box className="menu-item-actions">
+                              <button
+                                onClick={() => handleOpenModal(item)}
+                                className="menu-item-add-button"
+                              >
+                                Thêm
+                              </button>
+                            </Box>
                           </Box>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  );
+                })}
               </Grid>
             </>
           ) : (
@@ -506,7 +578,6 @@ export default function HomePage() {
                   <Typography variant="body1" className="order-summary-title">
                     TÓM TẮT ĐƠN HÀNG
                   </Typography>
-
                   <Box className="order-summary-item">
                     <Typography variant="body2">SỐ MÓN:</Typography>
                     <Typography variant="body2">
@@ -562,7 +633,8 @@ export default function HomePage() {
                               fontWeight: "bold",
                             }}
                           >
-                            {item.product?.productName || "Unknown Product"}
+                            {item.product?.productName || "Unknown Product"} (
+                            {item.size || "Default"})
                           </span>
                         </Box>
                       </Box>
@@ -596,7 +668,7 @@ export default function HomePage() {
                         <Typography className="order-detail-price">
                           $
                           {(
-                            (item.price || item.product?.prize || 0) *
+                            (item.price || item.product?.price || 0) *
                             item.quantity
                           ).toFixed(2)}
                         </Typography>

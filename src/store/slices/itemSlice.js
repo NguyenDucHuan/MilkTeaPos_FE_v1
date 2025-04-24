@@ -3,29 +3,60 @@ import fetcher from "../../apis/fetcher";
 
 export const listItemApi = createAsyncThunk(
   "item/listItemApi",
-  async ({ CategoryId }, { rejectWithValue }) => {
+  async ({ CategoryId, Page = 1, PageSize = 12 }, { rejectWithValue }) => {
     try {
-      console.log("Calling API with CategoryId:", CategoryId);
-      const response = await fetcher.get(`/products?CategoryId=${CategoryId}`);
-      console.log("Full API Response:", response);
-      console.log("Response data:", response.data);
-      
-      if (response.data?.data?.items) {
-        const items = response.data.data.items;
-        console.log("Items with prices:", items.map(item => ({
-          id: item.productId,
-          name: item.productName,
-          price: item.price,
-          prize: item.prize
-        })));
-        return items;
+      console.log("Calling API with CategoryId:", CategoryId, "Page:", Page, "PageSize:", PageSize);
+      const response = await fetcher.get(
+        `/products?CategoryId=${CategoryId}&Page=${Page}&PageSize=${PageSize}`
+      );
+      console.log("Full API Response:", response.data);
+      console.log("Response data:", response.data.data);
+
+      if (response.data?.data) {
+        const { items, totalCount } = response.data.data;
+        console.log(
+          "Items with prices:",
+          items.map((item) => ({
+            id: item.productId,
+            name: item.productName,
+            price: item.price,
+            variants: item.variants,
+          }))
+        );
+        return { items, totalItems: totalCount };
       } else {
         console.error("Invalid response format:", response.data);
         throw new Error("Invalid response format");
       }
     } catch (error) {
       console.error("API Error:", error);
-      return rejectWithValue(error.response?.data?.message || "Có lỗi xảy ra. Vui lòng thử lại.");
+      return rejectWithValue(
+        error.response?.data?.message || "Có lỗi xảy ra. Vui lòng thử lại."
+      );
+    }
+  }
+);
+
+export const createProduct = createAsyncThunk(
+  "item/createProduct",
+  async (formData, { rejectWithValue }) => {
+    try {
+      const response = await fetcher.post(
+        "/products/create-product",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+      console.log("Create product response:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Create product error:", error);
+      return rejectWithValue({
+        message: error.message || "Không thể tạo sản phẩm",
+        status: error.response?.status,
+        data: error.response?.data,
+      });
     }
   }
 );
@@ -33,27 +64,54 @@ export const listItemApi = createAsyncThunk(
 const itemSlice = createSlice({
   name: "item",
   initialState: {
-    item: [],
+    items: [],
+    totalItems: 0,
+    currentPage: 1,
+    pageSize: 12,
     isLoading: false,
     error: null,
   },
-  reducers: {},
+  reducers: {
+    setPage: (state, action) => {
+      state.currentPage = action.payload;
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(listItemApi.pending, (state) => {
         state.isLoading = true;
         state.error = null;
+        console.log("listItemApi pending");
       })
       .addCase(listItemApi.fulfilled, (state, action) => {
         state.isLoading = false;
         state.error = null;
-        state.item = action.payload;
+        state.items = action.payload.items;
+        state.totalItems = action.payload.totalItems;
+        console.log("listItemApi fulfilled, updated items state:", action.payload.items);
       })
       .addCase(listItemApi.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+        state.items = [];
+        console.log("listItemApi rejected, error:", action.payload);
+      })
+      .addCase(createProduct.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(createProduct.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.error = null;
+        state.items.push(action.payload);
+        state.totalItems += 1;
+      })
+      .addCase(createProduct.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       });
   },
 });
 
+export const { setPage } = itemSlice.actions;
 export default itemSlice.reducer;

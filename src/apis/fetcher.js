@@ -6,7 +6,7 @@ const fetcher = axios.create({
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-  timeout: 10000,
+  timeout: 10000000,
 });
 
 fetcher.interceptors.request.use(
@@ -29,15 +29,17 @@ fetcher.interceptors.request.use(
 fetcher.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error("Response error details:", {
-      url: error.config.url,
+    const errorDetails = {
+      url: error.config?.url,
       status: error.response?.status,
       data: error.response?.data,
       message: error.message,
-    });
+      stack: error.stack,
+    };
+    console.error("Response error details:", errorDetails);
     const errorMessage =
-      error.response?.data?.message || "Có lỗi xảy ra. Vui lòng thử lại.";
-    return Promise.reject({ message: errorMessage });
+      error.response?.data?.message || error.message || "Có lỗi xảy ra. Vui lòng thử lại.";
+    return Promise.reject(new Error(errorMessage));
   }
 );
 
