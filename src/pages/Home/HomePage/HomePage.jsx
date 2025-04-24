@@ -102,31 +102,24 @@ export default function HomePage() {
   const handleOpenModal = (item) => {
     const sizes = item.variants.map((variant) => ({
       label: variant.sizeId,
-      priceModifier: variant.price - item.price,
+      priceModifier: variant.price, // Use variant price directly
     }));
-  
+
     const itemWithOptions = {
       ...item,
-      basePrice: item.price,
+      basePrice: item.variants[0]?.price || 0, // Use first variant price as base
       options: {
-        sizes, // Chỉ sử dụng sizes từ variants, không thêm Default
-        // Comment các tùy chọn không có trong API
-        // sugarLevels: ["100%", "75%", "50%", "25%", "0%"],
-        // iceLevels: ["Regular", "Less", "None"],
-        // toppings: [
-        //   { name: "Tapioca Pearls", price: 0.5 },
-        //   { name: "Pudding", price: 0.75 },
-        // ],
+        sizes, // Only use sizes from variants
       },
     };
-  
+
     setSelectedItem(itemWithOptions);
     setCustomization({
-      size: sizes.length > 0 ? sizes[0].label : "", 
+      size: sizes.length > 0 ? sizes[0].label : "",
       sizePrice: sizes.length > 0 ? sizes[0].priceModifier : 0,
-      sugar: "100%", 
-      ice: "Regular", 
-      toppings: [], 
+      sugar: "100%",
+      ice: "Regular",
+      toppings: [],
       quantity: 1,
     });
     setOpenModal(true);
@@ -178,7 +171,7 @@ export default function HomePage() {
   const calculateSubtotal = () => {
     if (!Array.isArray(cart) || cart.length === 0) return 0;
     return cart.reduce((total, item) => {
-      const itemPrice = item.price || item.product?.prize || 0;
+      const itemPrice = item.price || item.product?.price || 0; // Use item.price or fallback
       const itemQuantity = item.quantity || 0;
       return total + itemPrice * itemQuantity;
     }, 0);
@@ -261,7 +254,7 @@ export default function HomePage() {
         orderitems: cart.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
-          price: item.price || item.product?.prize || 0,
+          price: item.price || item.product?.price || 0,
         })),
       };
 
@@ -365,79 +358,88 @@ export default function HomePage() {
                 Quay lại Danh mục
               </Button>
               <Grid container spacing={2} className="menu-items-grid">
-                {getFilteredItems().map((item) => (
-                  <Grid key={item.productId}>
-                    <Card
-                      sx={{
-                        maxWidth: 345,
-                        borderRadius: "15px",
-                        border: "1px solid #f0e6d9",
-                        width: "280px",
-                        height: "350px",
-                      }}
-                      className="menu-item"
-                    >
-                      <CardMedia
-                        className="menu-item-image-placeholder"
-                        component="img"
-                        src={item.imageUrl || "https://via.placeholder.com/150"}
-                        alt={item.productName}
+                {getFilteredItems().map((item) => {
+                  // Get price from first variant or fallback to 0
+                  const firstVariant = item.variants?.[0] || {};
+                  const price =
+                    firstVariant.price !== null && firstVariant.price !== undefined
+                      ? firstVariant.price
+                      : 0;
+
+                  return (
+                    <Grid key={item.productId}>
+                      <Card
                         sx={{
-                          height: "150px",
-                          maxWidth: "250px",
-                          objectFit: "cover",
-                          margin: "12px 12px",
+                          maxWidth: 345,
+                          borderRadius: "15px",
+                          border: "1px solid #f0e6d9",
+                          width: "280px",
+                          height: "350px",
                         }}
-                      />
-                      <CardContent className="menu-item-content">
-                        <Typography
-                          variant="h6"
-                          className="menu-item-name"
-                          sx={{ marginTop: "5px", color: "#8a5a2a" }}
-                        >
-                          {item.productName}
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          className="menu-item-description"
+                        className="menu-item"
+                      >
+                        <CardMedia
+                          className="menu-item-image-placeholder"
+                          component="img"
+                          src={item.imageUrl || "https://via.placeholder.com/150"}
+                          alt={item.productName}
                           sx={{
-                            marginTop: "5px",
-                            padding: "10px 10px 10px 0px",
+                            height: "150px",
+                            maxWidth: "250px",
+                            objectFit: "cover",
+                            margin: "12px 12px",
                           }}
-                        >
-                          {item.description}
-                        </Typography>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexDirection: "row",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            marginTop: "5px",
-                          }}
-                        >
+                        />
+                        <CardContent className="menu-item-content">
                           <Typography
                             variant="h6"
-                            color="text.primary"
-                            className="menu-item-price"
+                            className="menu-item-name"
                             sx={{ marginTop: "5px", color: "#8a5a2a" }}
                           >
-                            ${item.price.toFixed(2)}
+                            {item.productName}
                           </Typography>
-                          <Box className="menu-item-actions">
-                            <button
-                              onClick={() => handleOpenModal(item)}
-                              className="menu-item-add-button"
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            className="menu-item-description"
+                            sx={{
+                              marginTop: "5px",
+                              padding: "10px 10px 10px 0px",
+                            }}
+                          >
+                            {item.description}
+                          </Typography>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              marginTop: "5px",
+                            }}
+                          >
+                            <Typography
+                              variant="h6"
+                              color="text.primary"
+                              className="menu-item-price"
+                              sx={{ marginTop: "5px", color: "#8a5a2a" }}
                             >
-                              Thêm
-                            </button>
+                              ${price.toFixed(2)}
+                            </Typography>
+                            <Box className="menu-item-actions">
+                              <button
+                                onClick={() => handleOpenModal(item)}
+                                className="menu-item-add-button"
+                              >
+                                Thêm
+                              </button>
+                            </Box>
                           </Box>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  );
+                })}
               </Grid>
             </>
           ) : (
@@ -600,7 +602,7 @@ export default function HomePage() {
                         <Typography className="order-detail-price">
                           $
                           {(
-                            (item.price || item.product?.prize || 0) *
+                            (item.price || item.product?.price || 0) *
                             item.quantity
                           ).toFixed(2)}
                         </Typography>
