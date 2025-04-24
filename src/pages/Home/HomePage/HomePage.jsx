@@ -34,14 +34,14 @@ import fetcher from "../../../apis/fetcher";
 
 export default function HomePage() {
   const dispatch = useDispatch();
-  const { item, isLoading, error } = useSelector((state) => state.item);
+  const { items, isLoading, error } = useSelector((state) => state.item);
   const {
     category: categories,
     isLoading: categoryLoading,
     error: categoryError,
-    currentPage,
-    totalPages,
-    pageSize,
+    currentPage: categoryPage,
+    totalPages: categoryTotalPages,
+    pageSize: categoryPageSize,
   } = useSelector((state) => state.category);
   const orderState = useSelector((state) => state.order);
   const {
@@ -62,12 +62,12 @@ export default function HomePage() {
     toppings: [],
     quantity: 1,
   });
-  const [page, setPage] = useState(currentPage);
+  const [page, setPage] = useState(categoryPage);
 
   useEffect(() => {
-    dispatch(listCategory({ page, pageSize }));
+    dispatch(listCategory({ page, pageSize: categoryPageSize }));
     dispatch(getCartApi());
-  }, [dispatch, page, pageSize]);
+  }, [dispatch, page, categoryPageSize]);
 
   useEffect(() => {
     if (selectedCategory && categories.length > 0) {
@@ -75,16 +75,26 @@ export default function HomePage() {
         (cat) => cat.categoryName === selectedCategory
       );
       if (selectedCategoryObj) {
+        console.log("Fetching products for CategoryId:", selectedCategoryObj.categoryId);
         dispatch(
           listItemApi({ CategoryId: selectedCategoryObj.categoryId })
         ).then((result) => {
-          if (result.meta.requestStatus === "rejected") {
+          if (result.meta.requestStatus === "fulfilled") {
+            console.log("Products fetched successfully:", result.payload);
+          } else {
             console.error("Error fetching items:", result.error);
           }
         });
+      } else {
+        console.warn("Selected category not found:", selectedCategory);
       }
     }
   }, [dispatch, selectedCategory, categories]);
+
+  // Log cart updates for debugging
+  useEffect(() => {
+    console.log("Cart updated:", cart);
+  }, [cart]);
 
   const handleOpenCheckoutModal = () => {
     setOpenCheckout(true);
@@ -95,14 +105,19 @@ export default function HomePage() {
   };
 
   const handleOpenModal = (item) => {
+    if (!item || !item.variants || !Array.isArray(item.variants)) {
+      console.error("Invalid item or variants:", item);
+      return;
+    }
+
     const sizes = item.variants.map((variant) => ({
-      label: variant.sizeId,
-      priceModifier: variant.price,
+      label: variant.sizeId || "Default",
+      priceModifier: variant.price !== null && variant.price !== undefined ? variant.price : 0,
     }));
 
     const itemWithOptions = {
       ...item,
-      basePrice: item.variants[0]?.price || 0,
+      basePrice: sizes[0]?.priceModifier || 0,
       options: {
         sizes,
       },
@@ -133,10 +148,19 @@ export default function HomePage() {
       const productId = selectedVariant
         ? selectedVariant.productId
         : customizedItem.productId;
+      const price = selectedVariant
+        ? Number(selectedVariant.price)
+        : Number(customizedItem.basePrice || 0);
+
+      console.log("Adding to cart:", customizedItem, "Price:", price);
+      if (isNaN(price)) {
+        console.error("Invalid price for item:", customizedItem);
+        return;
+      }
 
       dispatch(
         addToCart({
-          product: { ...customizedItem, productId },
+          product: { ...customizedItem, productId, price },
           quantity: customizedItem.quantity,
           size: customizedItem.size,
         })
@@ -147,6 +171,7 @@ export default function HomePage() {
           masterId: customizedItem.productId,
           productId,
           quantity: customizedItem.quantity,
+          price,
         })
       ).unwrap();
 
@@ -165,9 +190,14 @@ export default function HomePage() {
 
   const calculateSubtotal = () => {
     if (!Array.isArray(cart) || cart.length === 0) return 0;
+    console.log("Calculating subtotal for cart:", cart);
     return cart.reduce((total, item) => {
-      const itemPrice = item.price || item.product?.price || 0;
-      const itemQuantity = item.quantity || 0;
+      const itemPrice = Number(item.price || item.product?.price || 0);
+      const itemQuantity = Number(item.quantity || 0);
+      if (isNaN(itemPrice) || isNaN(itemQuantity)) {
+        console.warn(`Invalid price or quantity for item:`, item);
+        return total;
+      }
       return total + itemPrice * itemQuantity;
     }, 0);
   };
@@ -179,41 +209,60 @@ export default function HomePage() {
   const handleUpdateQuantity = async (item, newQuantity, e) => {
     e?.preventDefault();
     e?.stopPropagation();
+
+    console.log("Updating quantity for item:", item, "New quantity:", newQuantity);
     try {
-      if (newQuantity < item.quantity) {
+      const productId = item.product?.productId;
+      if (!productId) {
+        console.error("Invalid productId for item:", item);
+        return;
+      }
+
+      if (newQuantity === 0) {
         await dispatch(
           removeFromCartApi({
-            productId: item.product.productId,
-            quantity: 1,
+            productId,
+            quantity: item.quantity,
           })
         ).unwrap();
         dispatch(
           updateCartItemQuantity({
-            productId: item.product.productId,
-            quantity: newQuantity,
+            productId,
+            quantity: 0,
           })
         );
-      } else if (newQuantity > item.quantity) {
-        await dispatch(
-          addToCartApi({
-            masterId: item.product.productId,
-            productId: item.product.productId,
-            quantity: 1,
-          })
-        ).unwrap();
+      } else if (newQuantity !== item.quantity) {
+        const quantityChange = newQuantity - item.quantity;
+        if (quantityChange > 0) {
+          await dispatch(
+            addToCartApi({
+              masterId: productId,
+              productId,
+              quantity: quantityChange,
+            })
+          ).unwrap();
+        } else {
+          await dispatch(
+            removeFromCartApi({
+              productId,
+              quantity: Math.abs(quantityChange),
+            })
+          ).unwrap();
+        }
         dispatch(
           updateCartItemQuantity({
-            productId: item.product.productId,
+            productId,
             quantity: newQuantity,
           })
         );
       }
+
       await dispatch(getCartApi()).unwrap();
     } catch (error) {
       console.error("Error updating quantity:", error);
       dispatch(
         updateCartItemQuantity({
-          productId: item.product.productId,
+          productId: item.product?.productId,
           quantity: item.quantity,
         })
       );
@@ -221,11 +270,13 @@ export default function HomePage() {
   };
 
   const getFilteredItems = () => {
-    if (!Array.isArray(item)) {
-      console.log("item is not an array:", item);
+    console.log("Current items state:", items);
+    if (!Array.isArray(items)) {
+      console.warn("Items is not an array:", items);
       return [];
     }
-    return item;
+    console.log("Filtered items:", items);
+    return items;
   };
 
   const handleCategoryClick = (category) => {
@@ -238,7 +289,6 @@ export default function HomePage() {
 
   const handlePageChange = (event, newPage) => {
     setPage(newPage);
-    dispatch(listCategory({ page: newPage, pageSize }));
   };
 
   const subtotal = calculateSubtotal();
@@ -349,15 +399,15 @@ export default function HomePage() {
                   <Typography>Không có danh mục nào</Typography>
                 )}
               </Grid>
-              {totalPages > 1 && (
+              {categoryTotalPages > 1 && (
                 <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
                   <Pagination
-                    count={totalPages}
+                    count={categoryTotalPages}
                     page={page}
                     onChange={handlePageChange}
                     color="primary"
                     sx={{
-                      '& .MuiPaginationItem-root': {
+                      "& .MuiPaginationItem-root": {
                         color: "#8a5a2a",
                       },
                     }}
@@ -380,7 +430,7 @@ export default function HomePage() {
                   const price =
                     firstVariant.price !== null && firstVariant.price !== undefined
                       ? firstVariant.price
-                      : 0;
+                      : item.price || 0;
 
                   return (
                     <Grid item key={item.productId}>
@@ -615,9 +665,7 @@ export default function HomePage() {
                         >
                           <AddIcon />
                         </IconButton>
-                        <Typography classあなた
-                          className="order-detail-price"
-                        >
+                        <Typography className="order-detail-price">
                           $
                           {(
                             (item.price || item.product?.price || 0) *

@@ -5,25 +5,25 @@ export const listItemApi = createAsyncThunk(
   "item/listItemApi",
   async ({ CategoryId, Page = 1, PageSize = 12 }, { rejectWithValue }) => {
     try {
-      console.log("Calling API with CategoryId:", CategoryId);
+      console.log("Calling API with CategoryId:", CategoryId, "Page:", Page, "PageSize:", PageSize);
       const response = await fetcher.get(
         `/products?CategoryId=${CategoryId}&Page=${Page}&PageSize=${PageSize}`
       );
-      console.log("Full API Response:", response);
-      console.log("Response data:", response.data);
+      console.log("Full API Response:", response.data);
+      console.log("Response data:", response.data.data);
 
       if (response.data?.data) {
-        const { items, totalItems } = response.data.data;
+        const { items, totalCount } = response.data.data;
         console.log(
           "Items with prices:",
           items.map((item) => ({
             id: item.productId,
             name: item.productName,
             price: item.price,
-            prize: item.prize,
+            variants: item.variants,
           }))
         );
-        return { items, totalItems };
+        return { items, totalItems: totalCount };
       } else {
         console.error("Invalid response format:", response.data);
         throw new Error("Invalid response format");
@@ -81,16 +81,20 @@ const itemSlice = createSlice({
       .addCase(listItemApi.pending, (state) => {
         state.isLoading = true;
         state.error = null;
+        console.log("listItemApi pending");
       })
       .addCase(listItemApi.fulfilled, (state, action) => {
         state.isLoading = false;
         state.error = null;
         state.items = action.payload.items;
         state.totalItems = action.payload.totalItems;
+        console.log("listItemApi fulfilled, updated items state:", action.payload.items);
       })
       .addCase(listItemApi.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
+        state.items = [];
+        console.log("listItemApi rejected, error:", action.payload);
       })
       .addCase(createProduct.pending, (state) => {
         state.isLoading = true;

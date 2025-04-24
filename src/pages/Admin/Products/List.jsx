@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -46,26 +46,52 @@ export default function ProductList() {
   const [editProductId, setEditProductId] = useState(null);
   const [formData, setFormData] = useState({
     productName: "",
-    categoryId: "",
+    categoryId: "", // Khởi tạo rỗng ban đầu
     description: "",
     sizes: [{ size: "Small", price: "0" }],
     status: true,
   });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [hasLoadedCategories, setHasLoadedCategories] = useState(false); // Trạng thái để kiểm soát việc gọi listCategory
 
-  // Tính tổng số trang
+  // Sử dụng useMemo để giữ danh sách category ổn định
+  const stableCategory = useMemo(() => category, [category]);
+
   const totalPages = Math.ceil(totalItems / pageSize);
 
+  // Tải danh mục chỉ một lần khi component mount
   useEffect(() => {
-    // Gọi API lấy danh sách sản phẩm với categoryId mặc định (nếu có)
+    if (!hasLoadedCategories) {
+      console.log("Gọi listCategory khi component mount");
+      dispatch(listCategory());
+      setHasLoadedCategories(true);
+    }
+  }, [dispatch, hasLoadedCategories]);
+
+  // Log để kiểm tra danh mục
+  useEffect(() => {
+    console.log("Danh sách category đã thay đổi:", stableCategory);
+  }, [stableCategory]);
+
+  // Tải danh sách sản phẩm khi currentPage hoặc pageSize thay đổi
+  useEffect(() => {
+    console.log("Gọi listItemApi với currentPage:", currentPage, "pageSize:", pageSize);
     dispatch(
       listItemApi({ CategoryId: null, Page: currentPage, PageSize: pageSize })
     );
-    dispatch(listCategory());
   }, [dispatch, currentPage, pageSize]);
 
   const handleOpenModal = (product = null) => {
+    if (categoryLoading) {
+      alert("Vui lòng đợi danh mục được tải!");
+      return;
+    }
+    if (!stableCategory.length) {
+      alert("Không có danh mục nào để chọn!");
+      return;
+    }
+
     if (product) {
       setIsEditMode(true);
       setEditProductId(product.id);
@@ -79,25 +105,29 @@ export default function ProductList() {
                   : "0",
             }))
           : [{ size: "Small", price: "0" }];
-      setFormData({
+      const newFormData = {
         productName: product.productName,
-        categoryId: product.categoryId || "",
+        categoryId: Number(product.categoryId),
         description: product.description || "",
         sizes,
         status: product.status,
-      });
+      };
+      setFormData(newFormData);
+      console.log("FormData khi mở modal (chỉnh sửa):", newFormData);
       setImagePreview(product.imageUrl || null);
       setImageFile(null);
     } else {
       setIsEditMode(false);
       setEditProductId(null);
-      setFormData({
+      const newFormData = {
         productName: "",
-        categoryId: category.length > 0 ? category[0].categoryId : "",
+        categoryId: stableCategory.length > 0 ? Number(stableCategory[0].categoryId) : "",
         description: "",
         sizes: [{ size: "Small", price: "0" }],
         status: true,
-      });
+      };
+      setFormData(newFormData);
+      console.log("FormData khi mở modal (thêm mới):", newFormData);
       setImageFile(null);
       setImagePreview(null);
     }
@@ -119,10 +149,14 @@ export default function ProductList() {
         return { ...prev, sizes: newSizes };
       });
     } else {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: name === "categoryId" ? parseInt(value) : value,
-      }));
+      setFormData((prev) => {
+        const newFormData = {
+          ...prev,
+          [name]: name === "categoryId" ? Number(value) : value,
+        };
+        console.log(`FormData sau khi thay đổi (${name}):`, newFormData);
+        return newFormData;
+      });
     }
   };
 
@@ -168,8 +202,8 @@ export default function ProductList() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const selectedCategory = category.find(
-      (cat) => cat.categoryId === parseInt(formData.categoryId)
+    const selectedCategory = stableCategory.find(
+      (cat) => cat.categoryId === formData.categoryId
     );
     if (!selectedCategory) {
       alert("Vui lòng chọn danh mục hợp lệ!");
@@ -191,14 +225,11 @@ export default function ProductList() {
 
     const formDataToSend = new FormData();
     formDataToSend.append("productName", formData.productName);
-    formDataToSend.append("categoryId", parseInt(formData.categoryId));
+    formDataToSend.append("categoryId", formData.categoryId);
     formDataToSend.append("description", formData.description || "");
     formData.sizes.forEach((sizeObj, index) => {
       formDataToSend.append(`sizes[${index}][size]`, sizeObj.size);
-      formDataToSend.append(
-        `sizes[${index}][price]`,
-        parseFloat(sizeObj.price)
-      );
+      formDataToSend.append(`sizes[${index}][price]`, parseFloat(sizeObj.price));
     });
     formDataToSend.append("status", formData.status);
     if (imageFile) {
@@ -209,9 +240,10 @@ export default function ProductList() {
       if (isEditMode) {
         alert("Chức năng cập nhật chưa được triển khai!");
       } else {
+        console.log("Gửi formDataToSend:", formDataToSend);
         const resultAction = await dispatch(createProduct(formDataToSend));
         if (createProduct.fulfilled.match(resultAction)) {
-          // Tải lại danh sách sản phẩm sau khi thêm mới
+          console.log("Tạo sản phẩm thành công, gọi lại listItemApi");
           await dispatch(
             listItemApi({
               CategoryId: null,
@@ -238,15 +270,15 @@ export default function ProductList() {
 
   if (isLoading) return <Typography>Loading...</Typography>;
   if (error)
-    return (
-      <Typography color="error">Error: {error.message || error}</Typography>
-    );
+    return <Typography color="error">Error: {error.message || error}</Typography>;
   if (categoryError)
     return (
       <Typography color="error">
         Error loading categories: {categoryError}
       </Typography>
     );
+
+  console.log("FormData trước khi render:", formData);
 
   return (
     <Box sx={{ padding: 3 }}>
@@ -276,7 +308,6 @@ export default function ProductList() {
               <TableCell>Hình ảnh</TableCell>
               <TableCell>Tên sản phẩm</TableCell>
               <TableCell>Danh mục</TableCell>
-              {/* <TableCell>Kích thước</TableCell> */}
               <TableCell>Giá (VND)</TableCell>
               <TableCell>Hành động</TableCell>
             </TableRow>
@@ -323,7 +354,6 @@ export default function ProductList() {
                     </TableCell>
                     <TableCell>{product.productName}</TableCell>
                     <TableCell>{product.categoryName || "N/A"}</TableCell>
-                    {/* <TableCell>{sizes}</TableCell> */}
                     <TableCell>{prices}</TableCell>
                     <TableCell>
                       <IconButton onClick={() => handleOpenModal(product)}>
@@ -336,7 +366,6 @@ export default function ProductList() {
             )}
           </TableBody>
         </Table>
-        {/* Phân trang */}
         <Box display="flex" justifyContent="center" mt={3}>
           <Pagination
             count={totalPages}
@@ -378,8 +407,11 @@ export default function ProductList() {
               fullWidth
               label="Danh mục"
               name="categoryId"
-              value={formData.categoryId || ""}
-              onChange={handleChange}
+              value={formData.categoryId !== "" ? formData.categoryId : stableCategory.length > 0 ? stableCategory[0].categoryId : ""}
+              onChange={(e) => {
+                console.log("TextField onChange triggered, selected value:", e.target.value);
+                handleChange(e);
+              }}
               margin="normal"
               required
               disabled={categoryLoading}
@@ -392,13 +424,13 @@ export default function ProductList() {
                 <MenuItem value="" disabled>
                   Lỗi: {categoryError}
                 </MenuItem>
-              ) : category.length === 0 ? (
+              ) : stableCategory.length === 0 ? (
                 <MenuItem value="" disabled>
                   Không có danh mục
                 </MenuItem>
               ) : (
-                category.map((cat) => (
-                  <MenuItem key={cat.categoryId} value={cat.categoryId}>
+                stableCategory.map((cat) => (
+                  <MenuItem key={cat.categoryId} value={Number(cat.categoryId)}>
                     {cat.categoryName}
                   </MenuItem>
                 ))

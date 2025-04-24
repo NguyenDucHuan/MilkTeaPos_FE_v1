@@ -5,11 +5,14 @@ export const listCategory = createAsyncThunk(
   "category/listCategory",
   async ({ page = 1, pageSize = 12 } = {}, { rejectWithValue }) => {
     try {
+      console.log("Fetching categories with Page:", page, "PageSize:", pageSize);
       const response = await fetcher.get(
         `/categories?Page=${page}&PageSize=${pageSize}`
       );
+      console.log("Categories API response:", response.data);
       return response.data;
     } catch (error) {
+      console.error("Error fetching categories:", error);
       return rejectWithValue(error.response ? error.response.data.message : error.message);
     }
   }
@@ -20,8 +23,10 @@ export const getallCategory = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await fetcher.get("/categories");
+      console.log("Get all categories response:", response.data);
       return response.data;
     } catch (error) {
+      console.error("Error fetching all categories:", error);
       return rejectWithValue(error.response ? error.response.data.message : error.message);
     }
   }
@@ -34,7 +39,7 @@ export const createCategory = createAsyncThunk(
       const response = await fetcher.post("/categories/create-category", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      console.log("API response:", response); 
+      console.log("Create category response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Create category error:", error);
@@ -76,6 +81,7 @@ const categorySlice = createSlice({
         state.totalItems = payload.total;
         state.totalPages = payload.totalPages;
         state.pageSize = payload.size;
+        console.log("Categories updated:", payload.items);
       })
       .addCase(listCategory.rejected, (state, { error }) => {
         state.isLoading = false;
@@ -88,8 +94,8 @@ const categorySlice = createSlice({
       .addCase(createCategory.fulfilled, (state, { payload }) => {
         state.isLoading = false;
         state.error = null;
-        state.category.push(payload); // Thêm danh mục mới vào danh sách
-        state.totalItems += 1; // Tăng số lượng danh mục
+        state.category.push(payload);
+        state.totalItems += 1;
       })
       .addCase(createCategory.rejected, (state, { error }) => {
         state.isLoading = false;
@@ -102,7 +108,7 @@ const categorySlice = createSlice({
       .addCase(getallCategory.fulfilled, (state, { payload }) => {
         state.isLoading = false;
         state.error = null;
-        state.category = payload; 
+        state.category = payload;
       })
       .addCase(getallCategory.rejected, (state, { error }) => {
         state.isLoading = false;
