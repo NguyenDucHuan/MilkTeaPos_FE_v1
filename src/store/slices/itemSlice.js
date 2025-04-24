@@ -3,15 +3,17 @@ import fetcher from "../../apis/fetcher";
 
 export const listItemApi = createAsyncThunk(
   "item/listItemApi",
-  async ({ CategoryId }, { rejectWithValue }) => {
+  async ({ CategoryId, Page = 1, PageSize = 12 }, { rejectWithValue }) => {
     try {
       console.log("Calling API with CategoryId:", CategoryId);
-      const response = await fetcher.get(`/products?CategoryId=${CategoryId}`);
+      const response = await fetcher.get(
+        `/products?CategoryId=${CategoryId}&Page=${Page}&PageSize=${PageSize}`
+      );
       console.log("Full API Response:", response);
       console.log("Response data:", response.data);
 
-      if (response.data?.data?.items) {
-        const items = response.data.data.items;
+      if (response.data?.data) {
+        const { items, totalItems } = response.data.data;
         console.log(
           "Items with prices:",
           items.map((item) => ({
@@ -21,7 +23,7 @@ export const listItemApi = createAsyncThunk(
             prize: item.prize,
           }))
         );
-        return items;
+        return { items, totalItems };
       } else {
         console.error("Invalid response format:", response.data);
         throw new Error("Invalid response format");
@@ -30,22 +32,6 @@ export const listItemApi = createAsyncThunk(
       console.error("API Error:", error);
       return rejectWithValue(
         error.response?.data?.message || "Có lỗi xảy ra. Vui lòng thử lại."
-      );
-    }
-  }
-);
-
-export const getAllProducts = createAsyncThunk(
-  "item/getAllProducts",
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await fetcher.get("/products");
-      console.log("Get all products response:", response.data);
-      return response.data.data.items || []; 
-    } catch (error) {
-      console.error("getAllProducts error:", error);
-      return rejectWithValue(
-        error.response ? error.response.data.message : error.message
       );
     }
   }
@@ -78,11 +64,18 @@ export const createProduct = createAsyncThunk(
 const itemSlice = createSlice({
   name: "item",
   initialState: {
-    item: [],
+    items: [],
+    totalItems: 0,
+    currentPage: 1,
+    pageSize: 12,
     isLoading: false,
     error: null,
   },
-  reducers: {},
+  reducers: {
+    setPage: (state, action) => {
+      state.currentPage = action.payload;
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(listItemApi.pending, (state) => {
@@ -92,22 +85,10 @@ const itemSlice = createSlice({
       .addCase(listItemApi.fulfilled, (state, action) => {
         state.isLoading = false;
         state.error = null;
-        state.item = action.payload;
+        state.items = action.payload.items;
+        state.totalItems = action.payload.totalItems;
       })
       .addCase(listItemApi.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
-      })
-      .addCase(getAllProducts.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(getAllProducts.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.error = null;
-        state.item = Array.isArray(action.payload) ? action.payload : [];
-      })
-      .addCase(getAllProducts.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       })
@@ -118,7 +99,8 @@ const itemSlice = createSlice({
       .addCase(createProduct.fulfilled, (state, action) => {
         state.isLoading = false;
         state.error = null;
-        state.item.push(action.payload); 
+        state.items.push(action.payload);
+        state.totalItems += 1;
       })
       .addCase(createProduct.rejected, (state, action) => {
         state.isLoading = false;
@@ -127,4 +109,5 @@ const itemSlice = createSlice({
   },
 });
 
+export const { setPage } = itemSlice.actions;
 export default itemSlice.reducer;

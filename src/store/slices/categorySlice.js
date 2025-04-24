@@ -15,6 +15,18 @@ export const listCategory = createAsyncThunk(
   }
 );
 
+export const getallCategory = createAsyncThunk(
+  "category/getallCategory",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetcher.get("/categories");
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response ? error.response.data.message : error.message);
+    }
+  }
+);
+
 export const createCategory = createAsyncThunk(
   "category/createCategory",
   async (formData, { rejectWithValue }) => {
@@ -80,6 +92,19 @@ const categorySlice = createSlice({
         state.totalItems += 1; // Tăng số lượng danh mục
       })
       .addCase(createCategory.rejected, (state, { error }) => {
+        state.isLoading = false;
+        state.error = error.message;
+      })
+      .addCase(getallCategory.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(getallCategory.fulfilled, (state, { payload }) => {
+        state.isLoading = false;
+        state.error = null;
+        state.category = payload; 
+      })
+      .addCase(getallCategory.rejected, (state, { error }) => {
         state.isLoading = false;
         state.error = error.message;
       });
