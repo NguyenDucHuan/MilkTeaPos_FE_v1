@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -17,17 +17,28 @@ import {
   IconButton,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
-import mockAccounts from "./mockAccounts";
+import fetcher from "../../../apis/fetcher";
 
 export default function AccountList() {
   const navigate = useNavigate();
-  const [accounts, setAccounts] = useState(mockAccounts);
+  const [accounts, setAccounts] = useState([]);
+
+  useEffect(() => {
+    fetcher.get("/api/user/all-users")
+      .then(res => setAccounts(res.data.items))
+      .catch(err => console.error("Failed to fetch users:", err.message));
+  }, []);
 
   const handleToggleStatus = (id) => {
-    const updated = accounts.map((acc) =>
-      acc.id === id ? { ...acc, status: !acc.status } : acc
-    );
-    setAccounts(updated);
+    fetcher.put(`/api/user/update-user-status/${id}`)
+      .then(() => {
+        setAccounts(prev =>
+          prev.map(acc =>
+            acc.id === id ? { ...acc, status: !acc.status } : acc
+          )
+        );
+      })
+      .catch(err => console.error("Failed to update status:", err.message));
   };
 
   const formatDateTime = (isoString) => {
@@ -43,10 +54,8 @@ export default function AccountList() {
   return (
     <Box p={3}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h5" fontWeight="bold"> </Typography>
-        <Button variant="contained" onClick={() => navigate("/admin/accounts/new")}>
-          ADD ACCOUNT
-        </Button>
+        <Typography variant="h5" fontWeight="bold">Account Management</Typography>
+        <Button variant="contained" onClick={() => navigate("/admin/accounts/new")}>ADD ACCOUNT</Button>
       </Box>
 
       <TableContainer component={Paper}>
@@ -69,30 +78,28 @@ export default function AccountList() {
           </TableHead>
           <TableBody>
             {accounts.map((account, index) => (
-              <TableRow key={account.id}>
+              <TableRow key={account.accountId}>
                 <TableCell>{index + 1}</TableCell>
-                <TableCell>{account.id}</TableCell>
-                <TableCell>
-                  <Avatar src={account.imageUrl} alt={account.fullName} />
-                </TableCell>
+                <TableCell>{account.accountId}</TableCell>
+                <TableCell><Avatar src={account.imageUrl} alt={account.fullName} /></TableCell>
                 <TableCell>{account.fullName}</TableCell>
                 <TableCell>{account.username}</TableCell>
                 <TableCell>{account.email}</TableCell>
                 <TableCell>{account.phone}</TableCell>
                 <TableCell>{account.role}</TableCell>
-                <TableCell>{formatDateTime(account.created_at)}</TableCell>
-                <TableCell>{formatDateTime(account.updated_at)}</TableCell>
+                <TableCell>{formatDateTime(account.createdAt)}</TableCell>
+                <TableCell>{formatDateTime(account.updatedAt)}</TableCell>
                 <TableCell>
                   <Switch
                     checked={account.status}
-                    onChange={() => handleToggleStatus(account.id)}
+                    onChange={() => handleToggleStatus(account.accountId)}
                   />
                 </TableCell>
                 <TableCell>
                   <Tooltip title="Edit">
                     <IconButton
                       size="small"
-                      onClick={() => navigate(`/admin/accounts/${account.id}/edit`)}
+                      onClick={() => navigate(`/admin/accounts/${account.accountId}/edit`)}
                     >
                       <EditIcon />
                     </IconButton>
@@ -105,4 +112,4 @@ export default function AccountList() {
       </TableContainer>
     </Box>
   );
-}
+} 

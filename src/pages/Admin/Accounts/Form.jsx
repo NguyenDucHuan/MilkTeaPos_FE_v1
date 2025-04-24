@@ -10,7 +10,7 @@ import {
   Avatar,
 } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
-import mockAccounts from "./mockAccounts";
+import fetcher from "../../../apis/fetcher";
 
 export default function AccountForm() {
   const navigate = useNavigate();
@@ -25,8 +25,6 @@ export default function AccountForm() {
     imageUrl: "",
     role: "Staff",
     status: true,
-    created_at: "",
-    updated_at: "",
   });
 
   const [emailError, setEmailError] = useState(false);
@@ -34,17 +32,9 @@ export default function AccountForm() {
 
   useEffect(() => {
     if (isEditMode) {
-      const accountToEdit = mockAccounts.find((acc) => acc.id === Number(id));
-      if (accountToEdit) {
-        setFormData({ ...accountToEdit });
-      }
-    } else {
-      const now = new Date().toISOString();
-      setFormData((prev) => ({
-        ...prev,
-        created_at: now,
-        updated_at: now,
-      }));
+      fetcher.get(`/api/user/${id}`)
+        .then(res => setFormData(res.data))
+        .catch(err => console.error("Failed to load account:", err.message));
     }
   }, [id, isEditMode]);
 
@@ -61,11 +51,10 @@ export default function AccountForm() {
       setPhoneError(!phoneRegex.test(value));
     }
 
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [name]: type === "checkbox" ? checked : value,
-      ...(name !== "updated_at" && { updated_at: new Date().toISOString() }),
-    });
+    }));
   };
 
   const handleSubmit = (e) => {
@@ -75,12 +64,13 @@ export default function AccountForm() {
       return;
     }
 
-    if (isEditMode) {
-      console.log("✅ Updated account:", formData);
-    } else {
-      console.log("✅ Created new account:", formData);
-    }
-    navigate("/admin/accounts");
+    const apiCall = isEditMode
+      ? fetcher.put(`/api/user/update-user/${id}`, formData)
+      : fetcher.post("/api/user/create-user", formData);
+
+    apiCall
+      .then(() => navigate("/admin/accounts"))
+      .catch(err => alert(err.message));
   };
 
   return (
@@ -89,7 +79,6 @@ export default function AccountForm() {
         {isEditMode ? "Edit Account" : "Add New Account"}
       </Typography>
 
-      {/* Avatar preview */}
       {formData.imageUrl && (
         <Box display="flex" justifyContent="center" mb={2}>
           <Avatar
@@ -174,12 +163,8 @@ export default function AccountForm() {
         />
 
         <Box mt={3} display="flex" justifyContent="space-between">
-          <Button variant="outlined" onClick={() => navigate("/admin/accounts")}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="contained">
-            {isEditMode ? "Save Changes" : "Create"}
-          </Button>
+          <Button variant="outlined" onClick={() => navigate("/admin/accounts")}>Cancel</Button>
+          <Button type="submit" variant="contained">{isEditMode ? "Save Changes" : "Create"}</Button>
         </Box>
       </form>
     </Box>
