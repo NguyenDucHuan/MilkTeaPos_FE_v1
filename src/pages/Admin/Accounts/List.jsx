@@ -30,7 +30,7 @@ export default function AccountList() {
   }, []);
 
   const handleToggleStatus = (id) => {
-    fetcher.put(`/user/update-user-status/${id}`)
+    fetcher.put(`/api/user/update-user-status/${id}`)
       .then(() => {
         setAccounts(prev =>
           prev.map(acc =>
@@ -54,7 +54,7 @@ export default function AccountList() {
   return (
     <Box p={3}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h5" fontWeight="bold"></Typography>
+        <Typography variant="h5" fontWeight="bold">Account Management</Typography>
         <Button variant="contained" onClick={() => navigate("/admin/accounts/new")}>ADD ACCOUNT</Button>
       </Box>
 
