@@ -17,15 +17,25 @@ import {
   FormControlLabel,
   Avatar,
   Grid,
+  Pagination,
 } from "@mui/material";
-import { Edit as EditIcon, Add as AddIcon, Delete as DeleteIcon } from "@mui/icons-material";
+import {
+  Edit as EditIcon,
+  Add as AddIcon,
+  Delete as DeleteIcon,
+} from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
-import { getAllProducts, createProduct } from "../../../store/slices/itemSlice";
+import {
+  listItemApi,
+  createProduct,
+  setPage,
+} from "../../../store/slices/itemSlice";
 import { listCategory } from "../../../store/slices/categorySlice";
 
 export default function ProductList() {
   const dispatch = useDispatch();
-  const { item, isLoading, error } = useSelector((state) => state.item);
+  const { items, totalItems, currentPage, pageSize, isLoading, error } =
+    useSelector((state) => state.item);
   const categoryState = useSelector((state) => state.category);
   const category = categoryState?.category || [];
   const categoryLoading = categoryState?.isLoading || false;
@@ -38,33 +48,37 @@ export default function ProductList() {
     productName: "",
     categoryId: "",
     description: "",
-    sizes: [{ size: "Small", price: "0" }], // Mảng chứa nhiều kích thước và giá
+    sizes: [{ size: "Small", price: "0" }],
     status: true,
   });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-  const [localProducts, setLocalProducts] = useState(item);
+
+  // Tính tổng số trang
+  const totalPages = Math.ceil(totalItems / pageSize);
 
   useEffect(() => {
-    dispatch(getAllProducts());
+    // Gọi API lấy danh sách sản phẩm với categoryId mặc định (nếu có)
+    dispatch(
+      listItemApi({ CategoryId: null, Page: currentPage, PageSize: pageSize })
+    );
     dispatch(listCategory());
-  }, [dispatch]);
-
-  useEffect(() => {
-    setLocalProducts(item);
-    console.log("Local products:", item); // Debug danh sách sản phẩm
-  }, [item]);
+  }, [dispatch, currentPage, pageSize]);
 
   const handleOpenModal = (product = null) => {
     if (product) {
       setIsEditMode(true);
       setEditProductId(product.id);
-      const sizes = product.variants?.length > 0
-        ? product.variants.map((variant) => ({
-            size: variant.sizeId || "Small",
-            price: variant.price !== null && variant.price !== undefined ? variant.price.toString() : "0",
-          }))
-        : [{ size: "Small", price: "0" }];
+      const sizes =
+        product.variants?.length > 0
+          ? product.variants.map((variant) => ({
+              size: variant.sizeId || "Small",
+              price:
+                variant.price !== null && variant.price !== undefined
+                  ? variant.price.toString()
+                  : "0",
+            }))
+          : [{ size: "Small", price: "0" }];
       setFormData({
         productName: product.productName,
         categoryId: product.categoryId || "",
@@ -99,20 +113,17 @@ export default function ProductList() {
   const handleChange = (e, index = null) => {
     const { name, value } = e.target;
     if (index !== null) {
-      // Cập nhật size hoặc price trong mảng sizes
       setFormData((prev) => {
         const newSizes = [...prev.sizes];
         newSizes[index] = { ...newSizes[index], [name]: value };
         return { ...prev, sizes: newSizes };
       });
     } else {
-      // Cập nhật các trường khác
       setFormData((prev) => ({
         ...prev,
         [name]: name === "categoryId" ? parseInt(value) : value,
       }));
     }
-    console.log("Input change:", { name, value, index }); // Debug giá nhập vào
   };
 
   const handleAddSize = () => {
@@ -125,7 +136,10 @@ export default function ProductList() {
   const handleRemoveSize = (index) => {
     setFormData((prev) => {
       const newSizes = prev.sizes.filter((_, i) => i !== index);
-      return { ...prev, sizes: newSizes.length > 0 ? newSizes : [{ size: "Small", price: "0" }] };
+      return {
+        ...prev,
+        sizes: newSizes.length > 0 ? newSizes : [{ size: "Small", price: "0" }],
+      };
     });
   };
 
@@ -167,11 +181,10 @@ export default function ProductList() {
       return;
     }
 
-    // Kiểm tra giá hợp lệ
     for (let i = 0; i < formData.sizes.length; i++) {
       const price = parseFloat(formData.sizes[i].price);
       if (isNaN(price) || price < 0) {
-        alert(`Giá cho kích thước ${formData.sizes[i].size} không hợp lệ (phải là số không âm)!`);
+        alert(`Giá cho kích thước ${formData.sizes[i].size} không hợp lệ!`);
         return;
       }
     }
@@ -182,15 +195,15 @@ export default function ProductList() {
     formDataToSend.append("description", formData.description || "");
     formData.sizes.forEach((sizeObj, index) => {
       formDataToSend.append(`sizes[${index}][size]`, sizeObj.size);
-      formDataToSend.append(`sizes[${index}][price]`, parseFloat(sizeObj.price));
+      formDataToSend.append(
+        `sizes[${index}][price]`,
+        parseFloat(sizeObj.price)
+      );
     });
     formDataToSend.append("status", formData.status);
     if (imageFile) {
       formDataToSend.append("parentImage", imageFile);
     }
-
-    // Log FormData để debug
-    console.log("FormData to send:", [...formDataToSend.entries()]);
 
     try {
       if (isEditMode) {
@@ -198,9 +211,18 @@ export default function ProductList() {
       } else {
         const resultAction = await dispatch(createProduct(formDataToSend));
         if (createProduct.fulfilled.match(resultAction)) {
-          await dispatch(getAllProducts());
+          // Tải lại danh sách sản phẩm sau khi thêm mới
+          await dispatch(
+            listItemApi({
+              CategoryId: null,
+              Page: currentPage,
+              PageSize: pageSize,
+            })
+          );
         } else {
-          throw new Error(resultAction.payload?.message || "Không thể tạo sản phẩm");
+          throw new Error(
+            resultAction.payload?.message || "Không thể tạo sản phẩm"
+          );
         }
       }
       handleCloseModal();
@@ -210,8 +232,15 @@ export default function ProductList() {
     }
   };
 
+  const handlePageChange = (event, newPage) => {
+    dispatch(setPage(newPage));
+  };
+
   if (isLoading) return <Typography>Loading...</Typography>;
-  if (error) return <Typography color="error">Error: {error.message || error}</Typography>;
+  if (error)
+    return (
+      <Typography color="error">Error: {error.message || error}</Typography>
+    );
   if (categoryError)
     return (
       <Typography color="error">
@@ -244,44 +273,43 @@ export default function ProductList() {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>ID</TableCell>
               <TableCell>Hình ảnh</TableCell>
               <TableCell>Tên sản phẩm</TableCell>
               <TableCell>Danh mục</TableCell>
-              <TableCell>Kích thước</TableCell>
+              {/* <TableCell>Kích thước</TableCell> */}
               <TableCell>Giá (VND)</TableCell>
               <TableCell>Hành động</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {localProducts.length === 0 ? (
+            {items.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} align="center">
                   No products found
                 </TableCell>
               </TableRow>
             ) : (
-              localProducts.map((product) => {
-                // Hiển thị tất cả kích thước và giá
-                const sizes = product.variants?.length > 0
-                  ? product.variants.map((v) => v.sizeId).join(", ")
-                  : "N/A";
-                const prices = product.variants?.length > 0
-                  ? product.variants
-                      .map((v) =>
-                        v.price !== null && v.price !== undefined
-                          ? `${v.sizeId}: ${v.price.toLocaleString("vi-VN", {
-                              style: "currency",
-                              currency: "VND",
-                            })}`
-                          : `${v.sizeId}: N/A`
-                      )
-                      .join(", ")
-                  : "N/A";
+              items.map((product) => {
+                const sizes =
+                  product.variants?.length > 0
+                    ? product.variants.map((v) => v.sizeId).join(", ")
+                    : "N/A";
+                const prices =
+                  product.variants?.length > 0
+                    ? product.variants
+                        .map((v) =>
+                          v.price !== null && v.price !== undefined
+                            ? `${v.sizeId}: ${v.price.toLocaleString("vi-VN", {
+                                style: "currency",
+                                currency: "VND",
+                              })}`
+                            : `${v.sizeId}: N/A`
+                        )
+                        .join(", ")
+                    : "N/A";
 
                 return (
                   <TableRow key={product.productId}>
-                    <TableCell>{product.productId}</TableCell>
                     <TableCell>
                       {product.imageUrl ? (
                         <Avatar
@@ -295,7 +323,7 @@ export default function ProductList() {
                     </TableCell>
                     <TableCell>{product.productName}</TableCell>
                     <TableCell>{product.categoryName || "N/A"}</TableCell>
-                    <TableCell>{sizes}</TableCell>
+                    {/* <TableCell>{sizes}</TableCell> */}
                     <TableCell>{prices}</TableCell>
                     <TableCell>
                       <IconButton onClick={() => handleOpenModal(product)}>
@@ -308,6 +336,15 @@ export default function ProductList() {
             )}
           </TableBody>
         </Table>
+        {/* Phân trang */}
+        <Box display="flex" justifyContent="center" mt={3}>
+          <Pagination
+            count={totalPages}
+            page={currentPage}
+            onChange={handlePageChange}
+            color="primary"
+          />
+        </Box>
       </Paper>
       <Modal open={openModal} onClose={handleCloseModal}>
         <Box

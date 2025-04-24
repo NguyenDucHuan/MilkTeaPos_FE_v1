@@ -8,6 +8,7 @@ import {
   Grid,
   Typography,
   IconButton,
+  Pagination,
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -38,6 +39,9 @@ export default function HomePage() {
     category: categories,
     isLoading: categoryLoading,
     error: categoryError,
+    currentPage,
+    totalPages,
+    pageSize,
   } = useSelector((state) => state.category);
   const orderState = useSelector((state) => state.order);
   const {
@@ -58,21 +62,12 @@ export default function HomePage() {
     toppings: [],
     quantity: 1,
   });
+  const [page, setPage] = useState(currentPage);
 
   useEffect(() => {
-    dispatch(listCategory()).then((result) => {
-      if (
-        result.meta.requestStatus === "fulfilled" &&
-        result.payload.length > 0
-      ) {
-        if (!selectedCategory && result.payload[0]) {
-          setSelectedCategory(result.payload[0].categoryName);
-          dispatch(listItemApi({ CategoryId: result.payload[0].categoryId }));
-        }
-      }
-    });
+    dispatch(listCategory({ page, pageSize }));
     dispatch(getCartApi());
-  }, [dispatch]);
+  }, [dispatch, page, pageSize]);
 
   useEffect(() => {
     if (selectedCategory && categories.length > 0) {
@@ -102,14 +97,14 @@ export default function HomePage() {
   const handleOpenModal = (item) => {
     const sizes = item.variants.map((variant) => ({
       label: variant.sizeId,
-      priceModifier: variant.price, // Use variant price directly
+      priceModifier: variant.price,
     }));
 
     const itemWithOptions = {
       ...item,
-      basePrice: item.variants[0]?.price || 0, // Use first variant price as base
+      basePrice: item.variants[0]?.price || 0,
       options: {
-        sizes, // Only use sizes from variants
+        sizes,
       },
     };
 
@@ -171,7 +166,7 @@ export default function HomePage() {
   const calculateSubtotal = () => {
     if (!Array.isArray(cart) || cart.length === 0) return 0;
     return cart.reduce((total, item) => {
-      const itemPrice = item.price || item.product?.price || 0; // Use item.price or fallback
+      const itemPrice = item.price || item.product?.price || 0;
       const itemQuantity = item.quantity || 0;
       return total + itemPrice * itemQuantity;
     }, 0);
@@ -241,6 +236,11 @@ export default function HomePage() {
     setSelectedCategory(null);
   };
 
+  const handlePageChange = (event, newPage) => {
+    setPage(newPage);
+    dispatch(listCategory({ page: newPage, pageSize }));
+  };
+
   const subtotal = calculateSubtotal();
   const total = calculateTotal();
 
@@ -293,61 +293,78 @@ export default function HomePage() {
           ) : error ? (
             <Typography color="error">Lỗi: {error}</Typography>
           ) : selectedCategory === null ? (
-            <Grid container spacing={2} className="category-grid">
-              {Array.isArray(categories) && categories.length > 0 ? (
-                categories.map((category) => (
-                  <Grid item xs={4} key={category.categoryId}>
-                    <Card
-                      sx={{
-                        cursor: "pointer",
-                        backgroundColor: "#f9f5f1",
-                        borderRadius: "15px",
-                        boxShadow: "none",
-                        marginTop: "20px",
-                        marginLeft: "30px",
-                        width: "300px",
-                      }}
-                      onClick={() => handleCategoryClick(category.categoryName)}
-                    >
-                      <CardContent
+            <>
+              <Grid container spacing={2} className="category-grid">
+                {Array.isArray(categories) && categories.length > 0 ? (
+                  categories.map((category) => (
+                    <Grid item xs={4} key={category.categoryId}>
+                      <Card
                         sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          height: "150px",
+                          cursor: "pointer",
+                          backgroundColor: "#f9f5f1",
+                          borderRadius: "15px",
+                          boxShadow: "none",
+                          marginTop: "20px",
+                          marginLeft: "30px",
+                          width: "300px",
                         }}
+                        onClick={() => handleCategoryClick(category.categoryName)}
                       >
-                        <Box sx={{ mr: 2 }}>
-                          <img
-                            src={category.imageUrl}
-                            alt={category.categoryName}
-                            style={{
-                              width: "100px",
-                              height: "100px",
-                              objectFit: "cover",
-                              borderRadius: "8px",
-                              margin: "7px 9px",
-                            }}
-                          />
-                        </Box>
-                        <Box>
-                          <Typography
-                            variant="h6"
-                            sx={{ color: "#8a5a2a", fontWeight: "bold" }}
-                          >
-                            {category.categoryName}
-                          </Typography>
-                          <Typography variant="body2" sx={{ color: "#8a5a2a" }}>
-                            {category.description}
-                          </Typography>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))
-              ) : (
-                <Typography>Không có danh mục nào</Typography>
+                        <CardContent
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            height: "150px",
+                          }}
+                        >
+                          <Box sx={{ mr: 2 }}>
+                            <img
+                              src={category.imageUrl || "https://via.placeholder.com/100"}
+                              alt={category.categoryName}
+                              style={{
+                                width: "100px",
+                                height: "100px",
+                                objectFit: "cover",
+                                borderRadius: "8px",
+                                margin: "7px 9px",
+                              }}
+                            />
+                          </Box>
+                          <Box>
+                            <Typography
+                              variant="h6"
+                              sx={{ color: "#8a5a2a", fontWeight: "bold" }}
+                            >
+                              {category.categoryName}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: "#8a5a2a" }}>
+                              {category.description}
+                            </Typography>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))
+                ) : (
+                  <Typography>Không có danh mục nào</Typography>
+                )}
+              </Grid>
+              {totalPages > 1 && (
+                <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+                  <Pagination
+                    count={totalPages}
+                    page={page}
+                    onChange={handlePageChange}
+                    color="primary"
+                    sx={{
+                      '& .MuiPaginationItem-root': {
+                        color: "#8a5a2a",
+                      },
+                    }}
+                  />
+                </Box>
               )}
-            </Grid>
+            </>
           ) : getFilteredItems().length > 0 ? (
             <>
               <Button
@@ -359,7 +376,6 @@ export default function HomePage() {
               </Button>
               <Grid container spacing={2} className="menu-items-grid">
                 {getFilteredItems().map((item) => {
-                  // Get price from first variant or fallback to 0
                   const firstVariant = item.variants?.[0] || {};
                   const price =
                     firstVariant.price !== null && firstVariant.price !== undefined
@@ -367,7 +383,7 @@ export default function HomePage() {
                       : 0;
 
                   return (
-                    <Grid key={item.productId}>
+                    <Grid item key={item.productId}>
                       <Card
                         sx={{
                           maxWidth: 345,
@@ -599,7 +615,9 @@ export default function HomePage() {
                         >
                           <AddIcon />
                         </IconButton>
-                        <Typography className="order-detail-price">
+                        <Typography classあなた
+                          className="order-detail-price"
+                        >
                           $
                           {(
                             (item.price || item.product?.price || 0) *

@@ -48,6 +48,7 @@ const Header = ({ setSelectedCategory, isLoading, error }) => {
   const [categoryAnchorEl, setCategoryAnchorEl] = useState(null);
   const [mobileCategoryOpen, setMobileCategoryOpen] = useState(false);
 
+
   useEffect(() => {
     const handleScroll = () => {
       if (window.scrollY > 10) {
@@ -197,9 +198,11 @@ const Header = ({ setSelectedCategory, isLoading, error }) => {
                       onMouseEnter={handleCategoryMenuOpen}
                       onClick={() => handleNavigation(item.path)}
                       sx={{
+                      
                         color: "#895a2a",
                         "&:hover": {
                           backgroundColor: "rgba(137, 90, 42, 0.08)",
+                          
                         },
                       }}
                     >
@@ -215,6 +218,7 @@ const Header = ({ setSelectedCategory, isLoading, error }) => {
                       PaperProps={{
                         elevation: 3,
                         sx: {
+                     
                           mt: 1.5,
                           minWidth: 200,
                           borderRadius: 2,
@@ -240,6 +244,7 @@ const Header = ({ setSelectedCategory, isLoading, error }) => {
                             key={subItem.text}
                             onClick={() => handleCategorySelect(subItem.text)}
                             sx={{
+                              overflow: "hidden",
                               py: 1.5,
                               color: "#6b4423",
                               fontWeight: 500,
