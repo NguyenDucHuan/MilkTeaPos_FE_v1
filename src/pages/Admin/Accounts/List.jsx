@@ -24,7 +24,7 @@ export default function AccountList() {
   const [accounts, setAccounts] = useState([]);
 
   useEffect(() => {
-    fetcher.get("/api/user/all-users")
+    fetcher.get("/user/all-users")
       .then(res => setAccounts(res.data.items))
       .catch(err => console.error("Failed to fetch users:", err.message));
   }, []);

@@ -32,7 +32,7 @@ export default function AccountForm() {
 
   useEffect(() => {
     if (isEditMode) {
-      fetcher.get(`/api/user/${id}`)
+      fetcher.get(`/user/${id}`)
         .then(res => setFormData(res.data))
         .catch(err => console.error("Failed to load account:", err.message));
     }
