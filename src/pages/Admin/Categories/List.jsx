@@ -55,9 +55,7 @@ export default function CategoryList() {
 
   return (
     <Box sx={{ padding: 3 }}>
-      <Typography variant="h5" fontWeight="bold" gutterBottom>
-        Danh mục sản phẩm
-      </Typography>
+      <Typography variant="h5" fontWeight="bold" gutterBottom></Typography>
 
       <Paper sx={{ padding: 2 }}>
         <Box
@@ -66,13 +64,14 @@ export default function CategoryList() {
           alignItems="center"
           mb={2}
         >
+          <Typography variant="h6"></Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={handleOpenAddModal}
             sx={{ backgroundColor: '#8B5E3C' }}
           >
-            THÊM DANH MỤC
+            ADD CATEGORY
           </Button>
         </Box>
 

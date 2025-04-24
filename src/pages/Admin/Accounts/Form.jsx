@@ -30,10 +30,32 @@ export default function AccountForm() {
   const [emailError, setEmailError] = useState(false);
   const [phoneError, setPhoneError] = useState(false);
 
+  // --- Sửa lại state loading và thêm initialDataLoaded ---
+  const [loading, setLoading] = useState(isEditMode); // Bắt đầu loading nếu là edit mode
+  const [initialDataLoaded, setInitialDataLoaded] = useState(!isEditMode);
+
   useEffect(() => {
     if (isEditMode) {
-      fetcher.get(`/user/${id}`)
-        .then(res => setFormData(res.data))
+      setLoading(true);
+      setInitialDataLoaded(false);
+    }
+
+    if (isEditMode) {
+      fetcher.get('/user/id', { params: { id: id } }) // Đường dẫn cố định, ID trong params
+        .then(res => {
+          console.log("Fetched account data:", res.data);
+          const fetchedData = res.data;
+          setFormData({
+            fullName: fetchedData.fullName || "",
+            username: fetchedData.username || "",
+            email: fetchedData.email || "",
+            phone: fetchedData.phone || "",
+            imageUrl: fetchedData.imageUrl || "",
+            role: fetchedData.role || "Staff",
+            status: fetchedData.status !== undefined ? fetchedData.status : true,
+          });
+          setInitialDataLoaded(true); // Đánh dấu đã load xong
+        })
         .catch(err => console.error("Failed to load account:", err.message));
     }
   }, [id, isEditMode]);
@@ -64,13 +86,29 @@ export default function AccountForm() {
       return;
     }
 
+    const dataToSend = { ...formData }; // <-- Phải có dòng này!
+    // ---------------------------------------------------------
+    console.log(`Submitting data (${isEditMode ? 'Edit' : 'Create'}):`, dataToSend);
+    console.log(`Target User ID for PUT: ${id}`);
+
+    // ----- SỬA LẠI ĐƯỜNG DẪN PUT Ở ĐÂY -----
     const apiCall = isEditMode
-      ? fetcher.put(`/api/user/update-user/${id}`, formData)
-      : fetcher.post("/api/user/create-user", formData);
+      ? fetcher.put(`/user/update-user/${id}`, dataToSend) // Bỏ /api ở đầu
+      : fetcher.post("/user/create-user", dataToSend);   
 
     apiCall
-      .then(() => navigate("/admin/accounts"))
-      .catch(err => alert(err.message));
+      .then(() => {
+        console.log(isEditMode ? "Account updated successfully!" : "Account created successfully!");
+        alert(isEditMode ? "Account updated successfully!" : "Account created successfully!");
+        navigate("/admin/accounts");
+      })
+      .catch(err => {
+        console.error("Failed to save account:", err?.message || err);
+        // Hiển thị lỗi chi tiết hơn nếu có từ err.response.data
+        const serverErrorMessage = err.response?.data?.message || err.message || 'Unknown error';
+        alert(`Failed to save account: ${serverErrorMessage}`);
+      })
+      .finally(() => setLoading(false));
   };
 
   return (

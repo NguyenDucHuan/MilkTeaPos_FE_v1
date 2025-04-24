@@ -16,7 +16,7 @@ import {
   Tooltip,
   IconButton,
 } from "@mui/material";
-import EditIcon from "@mui/icons-material/Edit";
+import { Edit as EditIcon, Add as AddIcon } from '@mui/icons-material';
 import fetcher from "../../../apis/fetcher";
 
 export default function AccountList() {
@@ -29,16 +29,30 @@ export default function AccountList() {
       .catch(err => console.error("Failed to fetch users:", err.message));
   }, []);
 
-  const handleToggleStatus = (id) => {
-    fetcher.put(`/api/user/update-user-status/${id}`)
+  // ----- SỬA LẠI HÀM NÀY CHO ĐÚNG VỚI SWAGGER -----
+  const handleToggleStatus = (accountId) => { // Đổi tên tham số cho rõ ràng
+    console.log("Attempting to toggle status for accountId:", accountId);
+
+    // Gọi API với đường dẫn cố định và ID trong query params
+    fetcher.put(`/user/update-user-status/id`, null, { params: { id: accountId } })
       .then(() => {
-        setAccounts(prev =>
-          prev.map(acc =>
-            acc.id === id ? { ...acc, status: !acc.status } : acc
-          )
+        console.log("Status updated successfully on server for:", accountId);
+        // Cập nhật state cục bộ - Dùng đúng 'accountId' để so sánh
+        setAccounts(prevAccounts =>
+          prevAccounts.map(acc => {
+            if (acc.accountId === accountId) { // So sánh acc.accountId
+              console.log("Updating local state for:", acc.accountId, "New status:", !acc.status);
+              return { ...acc, status: !acc.status };
+            }
+            return acc;
+          })
         );
       })
-      .catch(err => console.error("Failed to update status:", err.message));
+      .catch(err => {
+        const errorMessage = err?.message || "Failed to update status.";
+        console.error(`Failed to update status for ${accountId}:`, errorMessage, err);
+        alert(`Failed to update status: ${errorMessage}`);
+      });
   };
 
   const formatDateTime = (isoString) => {
@@ -54,8 +68,8 @@ export default function AccountList() {
   return (
     <Box p={3}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h5" fontWeight="bold">Account Management</Typography>
-        <Button variant="contained" onClick={() => navigate("/admin/accounts/new")}>ADD ACCOUNT</Button>
+        <Typography variant="h5" fontWeight="bold"></Typography>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate("/admin/accounts/new")}>ADD ACCOUNT</Button>
       </Box>
 
       <TableContainer component={Paper}>
