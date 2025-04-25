@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -9,11 +9,18 @@ import {
   FormControlLabel,
   Checkbox,
   IconButton,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Chip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import CloseIcon from "@mui/icons-material/Close";
 import "./CustomizationModal.css";
+import fetcher from "../../apis/fetcher";
 
 const CustomizationModal = ({
   open,
@@ -23,6 +30,46 @@ const CustomizationModal = ({
   customization,
   setCustomization,
 }) => {
+  const [toppings, setToppings] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchToppings = async () => {
+      try {
+        setLoading(true);
+        // Fetch page 1
+        const response1 = await fetcher.get("/products", {
+          params: {
+            Page: 1
+          }
+        });
+        
+        // Fetch page 2
+        const response2 = await fetcher.get("/products", {
+          params: {
+            Page: 2
+          }
+        });
+
+        // Combine items from both pages
+        const items1 = response1.data?.data?.items || [];
+        const items2 = response2.data?.data?.items || [];
+        const allItems = [...items1, ...items2];
+
+        // Filter for Extra type products
+        setToppings(allItems.filter(item => item.productType === "Extra"));
+      } catch (error) {
+        console.error("Error fetching toppings:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (open) {
+      fetchToppings();
+    }
+  }, [open]);
+
   const handleCustomizationChange = (key, value) => {
     if (key === "size") {
       const selectedSize = item?.options?.sizes?.find((s) => s.label === value);
@@ -171,29 +218,35 @@ const CustomizationModal = ({
             <Typography className="customization-modal__section-title">
               Toppings
             </Typography>
-            <Box
-              className="customization-modal__toppings"
-              sx={{ marginTop: "10px" }}
-            >
-              {item?.options?.toppings?.length > 0 ? (
-                item.options.toppings.map((topping) => (
-                  <FormControlLabel
-                    key={topping.name}
-                    control={
-                      <Checkbox
-                        className="customization-modal__checkbox"
-                        checked={customization.toppings.includes(topping.name)}
-                        onChange={() =>
-                          handleCustomizationChange("toppings", topping.name)
-                        }
-                      />
-                    }
-                    label={`${topping.name} + $${topping.price.toFixed(2)}`}
-                    className="customization-modal__label"
-                  />
-                ))
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="h6" sx={{ mb: 1 }}>Toppings</Typography>
+              {loading ? (
+                <Typography>Loading toppings...</Typography>
               ) : (
-                <Typography>Không có toppings</Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {toppings.map((topping) => (
+                    <Chip
+                      key={topping.productId}
+                      label={`${topping.productName} ($${topping.price})`}
+                      onClick={() => {
+                        const isSelected = customization.toppings.some(t => t.productId === topping.productId);
+                        if (isSelected) {
+                          setCustomization(prev => ({
+                            ...prev,
+                            toppings: prev.toppings.filter(t => t.productId !== topping.productId)
+                          }));
+                        } else {
+                          setCustomization(prev => ({
+                            ...prev,
+                            toppings: [...prev.toppings, topping]
+                          }));
+                        }
+                      }}
+                      color={customization.toppings.some(t => t.productId === topping.productId) ? "primary" : "default"}
+                      variant={customization.toppings.some(t => t.productId === topping.productId) ? "filled" : "outlined"}
+                    />
+                  ))}
+                </Box>
               )}
             </Box>
           </Box>
