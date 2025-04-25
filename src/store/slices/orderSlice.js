@@ -115,6 +115,18 @@ export const fetchOrders = createAsyncThunk(
   }
 );
 
+export const getCart = createAsyncThunk(
+  "order/getCart",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetcher.get("/order-item/get-cart");
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
 const orderSlice = createSlice({
   name: "order",
   initialState: {
@@ -134,7 +146,7 @@ const orderSlice = createSlice({
     updateCartItemQuantity: (state, action) => {
       const { productId, quantity } = action.payload;
       const itemIndex = state.cart.findIndex(
-        (item) => item.product.productId === productId
+        (item) => item.productId === productId
       );
       if (itemIndex !== -1) {
         if (quantity === 0) {
@@ -145,17 +157,25 @@ const orderSlice = createSlice({
       }
     },
     addToCart: (state, action) => {
-      const { product, quantity } = action.payload;
-      const existingItem = state.cart.find(
-        (item) => item.product.productId === product.productId
+      const { orderItemId, productId, quantity, price, product, toppings } = action.payload;
+      
+      // Kiểm tra xem sản phẩm đã tồn tại trong giỏ hàng chưa
+      const existingItemIndex = state.cart.findIndex(
+        (item) => item.productId === productId
       );
-      if (existingItem) {
-        existingItem.quantity += quantity;
+
+      if (existingItemIndex !== -1) {
+        // Nếu sản phẩm đã tồn tại, cập nhật số lượng
+        state.cart[existingItemIndex].quantity += quantity;
       } else {
+        // Nếu sản phẩm chưa tồn tại, thêm mới
         state.cart.push({
-          orderItemId: Date.now(), // Temporary ID
+          orderItemId,
+          productId,
+          quantity,
+          price,
           product,
-          quantity
+          toppings
         });
       }
     }
@@ -243,6 +263,18 @@ const orderSlice = createSlice({
           total: 0,
           totalPages: 0
         };
+      })
+      .addCase(getCart.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(getCart.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.cart = action.payload;
+      })
+      .addCase(getCart.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
       });
   },
 });

@@ -73,9 +73,7 @@ export default function HomePage() {
   const [itemCurrentPage, setItemCurrentPage] = useState(1);
 
   useEffect(() => {
-    dispatch(
-      listCategory({ page: categoryCurrentPage, pageSize: categoryPageSize })
-    );
+    dispatch(listCategory({ page: categoryCurrentPage, pageSize: categoryPageSize }));
     dispatch(getCartApi());
   }, [dispatch, categoryCurrentPage, categoryPageSize]);
 
@@ -115,6 +113,18 @@ export default function HomePage() {
   useEffect(() => {
     console.log("Cart updated:", cart);
   }, [cart]);
+
+  useEffect(() => {
+    const refreshCart = async () => {
+      try {
+        await dispatch(getCartApi()).unwrap();
+      } catch (error) {
+        console.error("Error refreshing cart:", error);
+      }
+    };
+
+    refreshCart();
+  }, [dispatch, cart.length]);
 
   const handleOpenCheckoutModal = () => {
     setOpenCheckout(true);
@@ -772,8 +782,18 @@ export default function HomePage() {
                               fontWeight: "bold",
                             }}
                           >
-                            {item.product?.productName || "Unknown Product"} (
-                            {item.size || "Default"})
+                            {item.productName}
+                            {item.sizeId && item.sizeId !== "Parent" && ` (${item.sizeId})`}
+                            {item.toppings && item.toppings.length > 0 && (
+                              <Box sx={{ fontSize: "14px", color: "#666" }}>
+                                {item.toppings.map((topping, index) => (
+                                  <span key={topping.toppingId}>
+                                    {index > 0 ? ", " : ""}
+                                    {topping.toppingName}
+                                  </span>
+                                ))}
+                              </Box>
+                            )}
                           </span>
                         </Box>
                       </Box>
@@ -805,9 +825,7 @@ export default function HomePage() {
                           <AddIcon />
                         </IconButton>
                         <Typography className="order-detail-price">
-
-                          ${(item.price || 0).toFixed(2)}
-
+                          ${(item.subPrice || 0).toFixed(2)}
                         </Typography>
                         <IconButton
                           size="small"
