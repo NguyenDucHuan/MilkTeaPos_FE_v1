@@ -31,6 +31,7 @@ export const listItemApi = createAsyncThunk(
           prize: item.prize
         })));
         return { items, totalPages, currentPage: page };
+
       } else {
         console.error("Invalid response format:", response.data);
         throw new Error("Invalid response format");
@@ -72,6 +73,7 @@ const itemSlice = createSlice({
         state.items = action.payload.items;
         state.totalPages = action.payload.totalPages;
         state.currentPage = action.payload.currentPage;
+
       })
       .addCase(listItemApi.rejected, (state, action) => {
         state.isLoading = false;

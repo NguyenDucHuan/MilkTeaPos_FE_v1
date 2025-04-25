@@ -20,6 +20,7 @@
     "axios": "^1.8.4",
     "chart.js": "^4.4.9",
     "date-fns": "^4.1.0",
+    "jwt-decode": "^4.0.0",
     "milkteapos_fe_v1": "file:",
     "react": "^19.0.0",
     "react-chartjs-2": "^5.3.0",
