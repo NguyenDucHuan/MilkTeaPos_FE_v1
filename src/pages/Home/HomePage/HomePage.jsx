@@ -34,7 +34,14 @@ import fetcher from "../../../apis/fetcher";
 
 export default function HomePage() {
   const dispatch = useDispatch();
-  const { items, isLoading, error } = useSelector((state) => state.item);
+  const {
+    items,
+    isLoading,
+    error,
+    currentPage: itemPage,
+    totalPages: itemTotalPages,
+    pageSize: itemPageSize,
+  } = useSelector((state) => state.item);
   const {
     category: categories,
     isLoading: categoryLoading,
@@ -62,12 +69,15 @@ export default function HomePage() {
     toppings: [],
     quantity: 1,
   });
-  const [page, setPage] = useState(categoryPage);
+  const [categoryCurrentPage, setCategoryCurrentPage] = useState(categoryPage);
+  const [itemCurrentPage, setItemCurrentPage] = useState(1);
 
   useEffect(() => {
-    dispatch(listCategory({ page, pageSize: categoryPageSize }));
+    dispatch(
+      listCategory({ page: categoryCurrentPage, pageSize: categoryPageSize })
+    );
     dispatch(getCartApi());
-  }, [dispatch, page, categoryPageSize]);
+  }, [dispatch, categoryCurrentPage, categoryPageSize]);
 
   useEffect(() => {
     if (selectedCategory && categories.length > 0) {
@@ -75,9 +85,20 @@ export default function HomePage() {
         (cat) => cat.categoryName === selectedCategory
       );
       if (selectedCategoryObj) {
-        console.log("Fetching products for CategoryId:", selectedCategoryObj.categoryId);
+        console.log(
+          "Fetching products for CategoryId:",
+          selectedCategoryObj.categoryId,
+          "Page:",
+          itemCurrentPage,
+          "PageSize:",
+          itemPageSize
+        );
         dispatch(
-          listItemApi({ CategoryId: selectedCategoryObj.categoryId })
+          listItemApi({
+            CategoryId: selectedCategoryObj.categoryId,
+            Page: itemCurrentPage,
+            PageSize: itemPageSize,
+          })
         ).then((result) => {
           if (result.meta.requestStatus === "fulfilled") {
             console.log("Products fetched successfully:", result.payload);
@@ -89,7 +110,7 @@ export default function HomePage() {
         console.warn("Selected category not found:", selectedCategory);
       }
     }
-  }, [dispatch, selectedCategory, categories]);
+  }, [dispatch, selectedCategory, categories, itemCurrentPage, itemPageSize]);
 
   useEffect(() => {
     console.log("Cart updated:", cart);
@@ -104,10 +125,8 @@ export default function HomePage() {
   };
 
   const handleOpenModal = async (item) => {
-    // Check if the item is a combo
     if (item.productType === "Combo") {
       try {
-        // Directly add combo to cart without opening customization modal
         console.log("Adding combo to cart:", item);
         dispatch(
           addToCart({
@@ -116,7 +135,6 @@ export default function HomePage() {
             size: "Parent",
           })
         );
-        // Add combo to cart API
         await dispatch(
           addToCartApi({
             masterId: item.productId,
@@ -125,7 +143,6 @@ export default function HomePage() {
             price: item.price,
           })
         ).unwrap();
-
         await dispatch(getCartApi()).unwrap();
       } catch (error) {
         console.error("Error adding combo to cart:", error);
@@ -139,7 +156,6 @@ export default function HomePage() {
       return;
     }
 
-    // For non-combo items, proceed with customization modal
     if (!item || !item.variants || !Array.isArray(item.variants)) {
       console.error("Invalid item or variants:", item);
       return;
@@ -147,7 +163,10 @@ export default function HomePage() {
 
     const sizes = item.variants.map((variant) => ({
       label: variant.sizeId || "Default",
-      priceModifier: variant.price !== null && variant.price !== undefined ? variant.price : 0,
+      priceModifier:
+        variant.price !== null && variant.price !== undefined
+          ? variant.price
+          : 0,
     }));
 
     const itemWithOptions = {
@@ -226,24 +245,24 @@ export default function HomePage() {
   const calculateSubtotal = () => {
     if (!Array.isArray(cart) || cart.length === 0) return 0;
     console.log("Cart items for subtotal calculation:", cart);
-    
+
     return cart.reduce((total, item) => {
       console.log("Processing item:", {
         itemId: item.orderItemId,
         quantity: item.quantity,
         price: item.price,
-        product: item.product
+        product: item.product,
       });
 
       const itemPrice = Number(item.price || 0);
-      
+
       if (isNaN(itemPrice)) {
         console.warn(`Invalid price for item:`, item);
         return total;
       }
 
       console.log(`Item total: ${itemPrice}`);
-      
+
       return total + itemPrice;
     }, 0);
   };
@@ -261,7 +280,7 @@ export default function HomePage() {
       currentQuantity: item.quantity,
       newQuantity: newQuantity,
       price: item.price,
-      product: item.product
+      product: item.product,
     });
 
     try {
@@ -286,20 +305,20 @@ export default function HomePage() {
         );
       } else if (newQuantity !== item.quantity) {
         const quantityChange = newQuantity - item.quantity;
-        
+
         if (quantityChange > 0) {
           await dispatch(
             addToCartApi({
               masterId: productId,
               productId,
-              quantity: quantityChange
+              quantity: quantityChange,
             })
           ).unwrap();
         } else {
           await dispatch(
             removeFromCartApi({
               productId,
-              quantity: Math.abs(quantityChange)
+              quantity: Math.abs(quantityChange),
             })
           ).unwrap();
         }
@@ -336,14 +355,20 @@ export default function HomePage() {
 
   const handleCategoryClick = (category) => {
     setSelectedCategory(category);
+    setItemCurrentPage(1);
   };
 
   const handleBackToCategories = () => {
     setSelectedCategory(null);
+    setItemCurrentPage(1);
   };
 
-  const handlePageChange = (event, newPage) => {
-    setPage(newPage);
+  const handleCategoryPageChange = (event, newPage) => {
+    setCategoryCurrentPage(newPage);
+  };
+
+  const handleItemPageChange = (event, newPage) => {
+    setItemCurrentPage(newPage);
   };
 
   const subtotal = calculateSubtotal();
@@ -372,7 +397,11 @@ export default function HomePage() {
         );
         if (selectedCategoryObj) {
           await dispatch(
-            listItemApi({ CategoryId: selectedCategoryObj.categoryId })
+            listItemApi({
+              CategoryId: selectedCategoryObj.categoryId,
+              Page: itemCurrentPage,
+              PageSize: itemPageSize,
+            })
           );
         }
       }
@@ -413,7 +442,9 @@ export default function HomePage() {
                           marginLeft: "30px",
                           width: "300px",
                         }}
-                        onClick={() => handleCategoryClick(category.categoryName)}
+                        onClick={() =>
+                          handleCategoryClick(category.categoryName)
+                        }
                       >
                         <CardContent
                           sx={{
@@ -424,7 +455,10 @@ export default function HomePage() {
                         >
                           <Box sx={{ mr: 2 }}>
                             <img
-                              src={category.imageUrl || "https://via.placeholder.com/100"}
+                              src={
+                                category.imageUrl ||
+                                "https://via.placeholder.com/100"
+                              }
                               alt={category.categoryName}
                               style={{
                                 width: "100px",
@@ -442,7 +476,10 @@ export default function HomePage() {
                             >
                               {category.categoryName}
                             </Typography>
-                            <Typography variant="body2" sx={{ color: "#8a5a2a" }}>
+                            <Typography
+                              variant="body2"
+                              sx={{ color: "#8a5a2a" }}
+                            >
                               {category.description}
                             </Typography>
                           </Box>
@@ -458,8 +495,8 @@ export default function HomePage() {
                 <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
                   <Pagination
                     count={categoryTotalPages}
-                    page={page}
-                    onChange={handlePageChange}
+                    page={categoryCurrentPage}
+                    onChange={handleCategoryPageChange}
                     color="primary"
                     sx={{
                       "& .MuiPaginationItem-root": {
@@ -483,7 +520,8 @@ export default function HomePage() {
                 {getFilteredItems().map((item) => {
                   const firstVariant = item.variants?.[0] || {};
                   const price =
-                    firstVariant.price !== null && firstVariant.price !== undefined
+                    firstVariant.price !== null &&
+                    firstVariant.price !== undefined
                       ? firstVariant.price
                       : item.price || 0;
 
@@ -502,7 +540,9 @@ export default function HomePage() {
                         <CardMedia
                           className="menu-item-image-placeholder"
                           component="img"
-                          src={item.imageUrl || "https://via.placeholder.com/150"}
+                          src={
+                            item.imageUrl || "https://via.placeholder.com/150"
+                          }
                           alt={item.productName}
                           sx={{
                             height: "150px",
@@ -530,23 +570,34 @@ export default function HomePage() {
                           >
                             {item.description}
                           </Typography>
-                          {/* Display comboItems for Combo products */}
-                          {item.productType === "Combo" && item.comboItems && item.comboItems.length > 0 && (
-                            <Box sx={{ marginTop: "5px", display: "flex", flexDirection: "row" }}>
-                              <Typography variant="body2" sx={{ color: "#8a5a2a", fontWeight: "bold" }}>
-                                Bao gồm:
-                              </Typography>
-                              {item.comboItems.map((comboItem) => (
+                          {item.productType === "Combo" &&
+                            item.comboItems &&
+                            item.comboItems.length > 0 && (
+                              <Box
+                                sx={{
+                                  marginTop: "5px",
+                                  display: "flex",
+                                  flexDirection: "row",
+                                }}
+                              >
                                 <Typography
-                                  key={comboItem.comboItemId}
                                   variant="body2"
-                                  sx={{ color: "#8a5a2a" }}
+                                  sx={{ color: "#8a5a2a", fontWeight: "bold" }}
                                 >
-                                  - {comboItem.quantity} {comboItem.productName} 
+                                  Bao gồm:
                                 </Typography>
-                              ))}
-                            </Box>
-                          )}
+                                {item.comboItems.map((comboItem) => (
+                                  <Typography
+                                    key={comboItem.comboItemId}
+                                    variant="body2"
+                                    sx={{ color: "#8a5a2a" }}
+                                  >
+                                    - {comboItem.quantity}{" "}
+                                    {comboItem.productName}
+                                  </Typography>
+                                ))}
+                              </Box>
+                            )}
                           <Box
                             sx={{
                               display: "flex",
@@ -579,6 +630,22 @@ export default function HomePage() {
                   );
                 })}
               </Grid>
+              {itemTotalPages > 1 && (
+                <Box sx={{ display: "flex", justifyContent: "center", mt: 5 }}>
+                
+                  <Pagination
+                    count={itemTotalPages}
+                    page={itemCurrentPage}
+                    onChange={handleItemPageChange}
+                    color="primary"
+                    sx={{
+                      "& .MuiPaginationItem-root": {
+                        color: "#8a5a2a",
+                      },
+                    }}
+                  />
+                </Box>
+              )}
             </>
           ) : (
             <Box>
@@ -738,7 +805,9 @@ export default function HomePage() {
                           <AddIcon />
                         </IconButton>
                         <Typography className="order-detail-price">
+
                           ${(item.price || 0).toFixed(2)}
+
                         </Typography>
                         <IconButton
                           size="small"

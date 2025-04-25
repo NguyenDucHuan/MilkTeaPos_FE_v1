@@ -35,7 +35,7 @@ import FormTopping from "./FormTopping";
 
 export default function ProductList() {
   const dispatch = useDispatch();
-  const { items, totalItems, currentPage, pageSize, isLoading, error } =
+  const { items, totalItems, currentPage, pageSize, totalPages, isLoading, error } =
     useSelector((state) => state.item);
   const categoryState = useSelector((state) => state.category);
   const category = categoryState?.category || [];
@@ -47,7 +47,7 @@ export default function ProductList() {
   const [editProductId, setEditProductId] = useState(null);
   const [formData, setFormData] = useState({
     productName: "",
-    categoryId: "", // Khởi tạo rỗng ban đầu
+    categoryId: "",
     description: "",
     sizes: [{ size: "Small", price: "0" }],
     status: true,
@@ -57,10 +57,12 @@ export default function ProductList() {
   const [hasLoadedCategories, setHasLoadedCategories] = useState(false); // Trạng thái để kiểm soát việc gọi listCategory
   const [openToppingModal, setOpenToppingModal] = useState(false);
 
-  // Sử dụng useMemo để giữ danh sách category ổn định
   const stableCategory = useMemo(() => category, [category]);
 
-  const totalPages = Math.ceil(totalItems / pageSize);
+  // Reset currentPage to 1 when the component mounts
+  useEffect(() => {
+    dispatch(setPage(1));
+  }, [dispatch]);
 
   // Tải danh mục chỉ một lần khi component mount
   useEffect(() => {
@@ -71,16 +73,27 @@ export default function ProductList() {
     }
   }, [dispatch, hasLoadedCategories]);
 
-  // Log để kiểm tra danh mục
   useEffect(() => {
     console.log("Danh sách category đã thay đổi:", stableCategory);
   }, [stableCategory]);
 
   // Tải danh sách sản phẩm khi currentPage hoặc pageSize thay đổi
   useEffect(() => {
+    console.log(
+      "Fetching products for ProductList - Page:",
+      currentPage,
+      "PageSize:",
+      pageSize
+    );
     dispatch(
       listItemApi({ CategoryId: null, Page: currentPage, PageSize: pageSize })
-    );
+    ).then((result) => {
+      if (result.meta.requestStatus === "fulfilled") {
+        console.log("Products fetched successfully for ProductList:", result.payload);
+      } else {
+        console.error("Error fetching items for ProductList:", result.error);
+      }
+    });
   }, [dispatch, currentPage, pageSize]);
 
   const handleOpenModal = (product = null) => {
@@ -270,6 +283,7 @@ export default function ProductList() {
   };
 
   const handlePageChange = (event, newPage) => {
+    console.log("Navigating to page:", newPage);
     dispatch(setPage(newPage));
   };
 
@@ -286,6 +300,7 @@ export default function ProductList() {
     );
 
   console.log("FormData trước khi render:", formData);
+  console.log("Pagination state - Total Pages:", totalPages, "Current Page:", currentPage);
 
   return (
     <Box sx={{ padding: 3 }}>
@@ -388,14 +403,19 @@ export default function ProductList() {
             )}
           </TableBody>
         </Table>
-        <Box display="flex" justifyContent="center" mt={3}>
-          <Pagination
-            count={totalPages}
-            page={currentPage}
-            onChange={handlePageChange}
-            color="primary"
-          />
-        </Box>
+        {totalPages > 1 && (
+          <Box display="flex" justifyContent="center" mt={3}>
+            <Typography variant="body2" sx={{ mr: 2 }}>
+              Total Pages: {totalPages}, Current Page: {currentPage}
+            </Typography>
+            <Pagination
+              count={totalPages}
+              page={currentPage}
+              onChange={handlePageChange}
+              color="primary"
+            />
+          </Box>
+        )}
       </Paper>
       <Modal open={openModal} onClose={handleCloseModal}>
         <Box
