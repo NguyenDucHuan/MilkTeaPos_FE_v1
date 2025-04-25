@@ -31,6 +31,7 @@ import {
   setPage,
 } from "../../../store/slices/itemSlice";
 import { listCategory } from "../../../store/slices/categorySlice";
+import FormTopping from "./FormTopping";
 
 export default function ProductList() {
   const dispatch = useDispatch();
@@ -53,7 +54,8 @@ export default function ProductList() {
   });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-  const [hasLoadedCategories, setHasLoadedCategories] = useState(false);
+  const [hasLoadedCategories, setHasLoadedCategories] = useState(false); // Trạng thái để kiểm soát việc gọi listCategory
+  const [openToppingModal, setOpenToppingModal] = useState(false);
 
   const stableCategory = useMemo(() => category, [category]);
 
@@ -313,14 +315,29 @@ export default function ProductList() {
           mb={2}
         >
           <Typography variant="h6">Danh sách sản phẩm</Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenModal()}
-            sx={{ backgroundColor: "#8B5E3C" }}
-          >
-            THÊM SẢN PHẨM
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => handleOpenModal()}
+              sx={{ 
+                backgroundColor: "#8B5E3C",
+                '&:hover': {
+                  backgroundColor: "#6B4E2C"
+                }
+              }}
+            >
+              THÊM SẢN PHẨM
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setOpenToppingModal(true)}
+              sx={{ backgroundColor: "#8B5E3C" }}
+            >
+              THÊM TOPPING
+            </Button>
+          </Box>
         </Box>
         <Table>
           <TableHead>
@@ -575,6 +592,10 @@ export default function ProductList() {
           </form>
         </Box>
       </Modal>
+      <FormTopping 
+        open={openToppingModal} 
+        handleClose={() => setOpenToppingModal(false)} 
+      />
     </Box>
   );
 }

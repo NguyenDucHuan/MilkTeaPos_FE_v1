@@ -92,6 +92,30 @@ export const updateProduct = createAsyncThunk(
   }
 );
 
+export const createExtraProduct = createAsyncThunk(
+  "item/createExtraProduct",
+  async (formData, { rejectWithValue }) => {
+    try {
+      const response = await fetcher.post(
+        "/products/create-extra-product",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+      console.log("Create extra product response:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Create extra product error:", error);
+      return rejectWithValue({
+        message: error.message || "Không thể tạo topping",
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+    }
+  }
+);
+
 const itemSlice = createSlice({
   name: "item",
   initialState: {
@@ -172,6 +196,20 @@ const itemSlice = createSlice({
         }
       })
       .addCase(updateProduct.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      .addCase(createExtraProduct.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(createExtraProduct.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.error = null;
+        state.items.push(action.payload.data);
+        state.totalItems += 1;
+      })
+      .addCase(createExtraProduct.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       });
