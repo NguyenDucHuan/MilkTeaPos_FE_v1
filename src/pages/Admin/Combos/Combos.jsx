@@ -26,7 +26,7 @@ import {
   ExpandMore as ExpandMoreIcon,
 } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
-import { listItemApi } from "../../../store/slices/itemSlice";
+import { listItemApi, setPage } from "../../../store/slices/itemSlice";
 import { createCombo } from "../../../store/slices/comboSlice";
 
 const hardcodedToppings = {
@@ -48,7 +48,7 @@ const hardcodedToppings = {
 
 export default function Combos() {
   const dispatch = useDispatch();
-  const { items: products, isLoading: productsLoading, error: productsError } =
+  const { items: combos, currentPage, pageSize, totalPages, totalItems, isLoading: productsLoading, error: productsError } =
     useSelector((state) => state.item);
   const [openModal, setOpenModal] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -63,20 +63,48 @@ export default function Combos() {
     categoryId: 5,
   });
   const [imagePreview, setImagePreview] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
   const [expandedProduct, setExpandedProduct] = useState(null);
-  const pageSize = 10;
-  const totalPages = Math.ceil(products.filter(item => item.categoryId === 5).length / pageSize);
+  const [allProducts, setAllProducts] = useState([]); // To store all products for the modal
 
+  // Reset currentPage to 1 when the component mounts
   useEffect(() => {
-    dispatch(listItemApi({ CategoryId: null, Page: 1, PageSize: 100 }));
+    dispatch(setPage(1));
   }, [dispatch]);
 
-  // Filter combos (items with categoryId: 5)
-  const combos = products.filter(item => item.categoryId === 5);
+  // Fetch combos (categoryId: 5) with pagination
+  useEffect(() => {
+    console.log(
+      "Fetching combos for Combos - CategoryId: 5, Page:",
+      currentPage,
+      "PageSize:",
+      pageSize
+    );
+    dispatch(
+      listItemApi({ CategoryId: 5, Page: currentPage, PageSize: pageSize })
+    ).then((result) => {
+      if (result.meta.requestStatus === "fulfilled") {
+        console.log("Combos fetched successfully:", result.payload);
+      } else {
+        console.error("Error fetching combos:", result.error);
+      }
+    });
+  }, [dispatch, currentPage, pageSize]);
+
+  // Fetch all products for the modal (without pagination)
+  useEffect(() => {
+    console.log("Fetching all products for modal...");
+    dispatch(listItemApi({ CategoryId: null, Page: 1, PageSize: 1000 })).then((result) => {
+      if (result.meta.requestStatus === "fulfilled") {
+        setAllProducts(result.payload.items || []);
+        console.log("All products fetched for modal:", result.payload.items);
+      } else {
+        console.error("Error fetching all products for modal:", result.error);
+      }
+    });
+  }, [dispatch]);
 
   const handleOpenModal = (combo = null) => {
-    if (products.length === 0) {
+    if (allProducts.length === 0) {
       alert("No products available to create a combo!");
       return;
     }
@@ -262,6 +290,10 @@ export default function Combos() {
         alert("Update functionality not implemented yet.");
       } else {
         await dispatch(createCombo(formDataToSend)).unwrap();
+        // Refresh the combos list after creating a new combo
+        await dispatch(
+          listItemApi({ CategoryId: 5, Page: currentPage, PageSize: pageSize })
+        );
       }
       handleCloseModal();
     } catch (error) {
@@ -271,7 +303,8 @@ export default function Combos() {
   };
 
   const handlePageChange = (event, newPage) => {
-    setCurrentPage(newPage);
+    console.log("Navigating to page:", newPage);
+    dispatch(setPage(newPage));
   };
 
   if (productsLoading) return <Typography>Loading...</Typography>;
@@ -294,7 +327,7 @@ export default function Combos() {
           justifyContent="space-between"
           alignItems="center"
           mb={3}
-          sx={{color:"#fffbf2"}}
+          sx={{ color: "#fffbf2" }}
         >
           <Typography variant="h6" color="#555">
             Danh sách Combo
@@ -338,96 +371,99 @@ export default function Combos() {
             </TableRow>
           </TableHead>
           <TableBody>
-  {combos.length === 0 ? (
-    <TableRow>
-      <TableCell colSpan={6} align="center" sx={{ color: "#888" }}>
-        Không có combo nào
-      </TableCell>
-    </TableRow>
-  ) : (
-    combos
-      .slice((currentPage - 1) * pageSize, currentPage * pageSize)
-      .map((combo) => (
-        <TableRow
-          key={combo.productId}
-          sx={{ "&:hover": { bgcolor: "#f9f9f9" } }}
-        >
-          <TableCell>{combo.productName}</TableCell>
-          <TableCell>{combo.description || "N/A"}</TableCell>
-          <TableCell>
-            {combo.comboItems.length > 0
-              ? combo.comboItems
-                  .map((item) => {
-                    const toppingsForProduct =
-                      hardcodedToppings[item.productId] || [];
-                    const toppingDetails = item.extraItems
-                      .map((t) => {
-                        const topping = toppingsForProduct.find(
-                          (top) => top.toppingId === t.toppingId
-                        );
-                        return topping
-                          ? `${topping.toppingName} (x${t.quantity})`
-                          : "";
-                      })
-                      .filter(Boolean)
-                      .join(", ");
-                    return `${item.productName} (Qty: ${
-                      item.quantity
-                    }, Toppings: ${
-                      toppingDetails || "None"
-                    }, Discount: ${item.discount}%)`;
-                  })
-                  .join("; ")
-              : "No items"}
-          </TableCell>
-          <TableCell>
-            {parseFloat(combo.price).toLocaleString("vi-VN", {
-              style: "currency",
-              currency: "VND",
-            })}
-          </TableCell>
-          <TableCell>
-            <Box
-              sx={{
-                bgcolor: combo.status ? "#e8f5e9" : "#ffebee",
-                color: combo.status ? "#2e7d32" : "#d32f2f",
-                borderRadius: 1,
-                textAlign: "center",
-                padding: "2px 8px",
-                fontSize: "0.8rem",
-              }}
-            >
-              {combo.status ? "Kích hoạt" : "Tắt"}
-            </Box>
-          </TableCell>
-          <TableCell>
-            <IconButton
-              onClick={() => handleOpenModal(combo)}
-              sx={{
-                color: "#8B5E3C",
-                "&:hover": { color: "#70482F" },
-              }}
-            >
-              <EditIcon />
-            </IconButton>
-          </TableCell>
-        </TableRow>
-      ))
-  )}
-</TableBody>
-
+            {combos.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} align="center" sx={{ color: "#888" }}>
+                  Không có combo nào
+                </TableCell>
+              </TableRow>
+            ) : (
+              combos.map((combo) => (
+                <TableRow
+                  key={combo.productId}
+                  sx={{ "&:hover": { bgcolor: "#f9f9f9" } }}
+                >
+                  <TableCell>{combo.productName}</TableCell>
+                  <TableCell>{combo.description || "N/A"}</TableCell>
+                  <TableCell>
+                    {combo.comboItems && combo.comboItems.length > 0
+                      ? combo.comboItems
+                          .map((item) => {
+                            const toppingsForProduct =
+                              hardcodedToppings[item.productId] || [];
+                            const toppingDetails = item.toppings
+                              ? item.toppings
+                                  .map((t) => {
+                                    const topping = toppingsForProduct.find(
+                                      (top) => top.toppingId === t.toppingId
+                                    );
+                                    return topping
+                                      ? `${topping.toppingName} (x${t.quantity})`
+                                      : "";
+                                  })
+                                  .filter(Boolean)
+                                  .join(", ")
+                              : "None";
+                            return `${item.productName} (Qty: ${
+                              item.quantity
+                            }, Toppings: ${
+                              toppingDetails || "None"
+                            }, Discount: ${item.discount}%)`;
+                          })
+                          .join("; ")
+                      : "No items"}
+                  </TableCell>
+                  <TableCell>
+                    {parseFloat(combo.price).toLocaleString("vi-VN", {
+                      style: "currency",
+                      currency: "VND",
+                    })}
+                  </TableCell>
+                  <TableCell>
+                    <Box
+                      sx={{
+                        bgcolor: combo.status ? "#e8f5e9" : "#ffebee",
+                        color: combo.status ? "#2e7d32" : "#d32f2f",
+                        borderRadius: 1,
+                        textAlign: "center",
+                        padding: "2px 8px",
+                        fontSize: "0.8rem",
+                      }}
+                    >
+                      {combo.status ? "Kích hoạt" : "Tắt"}
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <IconButton
+                      onClick={() => handleOpenModal(combo)}
+                      sx={{
+                        color: "#8B5E3C",
+                        "&:hover": { color: "#70482F" },
+                      }}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
         </Table>
-        <Box display="flex" justifyContent="center" mt={3}>
-          <Pagination
-            count={totalPages}
-            page={currentPage}
-            onChange={handlePageChange}
-            color="primary"
-            sx={{ "& .Mui-selected": { bgcolor: "#8B5E3C !important" } }}
-          />
-        </Box>
+        {totalPages > 1 && (
+          <Box display="flex" justifyContent="center" mt={3}>
+            <Typography variant="body2" sx={{ mr: 2 }}>
+              Total Pages: {totalPages}, Current Page: {currentPage}
+            </Typography>
+            <Pagination
+              count={totalPages}
+              page={currentPage}
+              onChange={handlePageChange}
+              color="primary"
+              sx={{ "& .Mui-selected": { bgcolor: "#8B5E3C !important" } }}
+            />
+          </Box>
+        )}
       </Paper>
-      {/* Modal and form code remains unchanged */}
       <Modal open={openModal} onClose={handleCloseModal}>
         <Box
           sx={{
@@ -583,7 +619,7 @@ export default function Combos() {
                   }}
                 >
                   <Grid container spacing={2}>
-                    {products.map((product) => {
+                    {allProducts.map((product) => {
                       const comboItem = formData.ComboItems.find(
                         (item) => item.productId === product.productId
                       );
@@ -670,6 +706,8 @@ export default function Combos() {
                               <IconButton
                                 onClick={() =>
                                   setExpandedProduct(
+
+
                                     isExpanded ? null : product.productId
                                   )
                                 }
