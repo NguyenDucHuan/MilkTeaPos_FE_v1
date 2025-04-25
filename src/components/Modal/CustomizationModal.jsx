@@ -75,9 +75,8 @@ const CustomizationModal = ({
 
   const handleCustomizationChange = (key, value) => {
     if (key === "size") {
-      const selectedSize = item?.options?.sizes?.find((s) => s.label === value);
-      const sizePrice = selectedSize?.priceModifier || 0;
-      setCustomization({ ...customization, size: value, sizePrice });
+      const selectedVariant = item?.variants?.find((v) => v.sizeId === value);
+      setCustomization({ ...customization, size: value });
     } else if (key === "toppings") {
       const updatedToppings = customization.toppings.includes(value)
         ? customization.toppings.filter((topping) => topping !== value)
@@ -91,20 +90,68 @@ const CustomizationModal = ({
     }
   };
 
+  const calculateTotalPrice = () => {
+    console.log("Calculating price for item:", item);
+    console.log("Current customization:", customization);
+    
+    // Nếu chọn size Parent, lấy giá của MasterProduct
+    if (customization.size === "Parent") {
+      const basePrice = Number(item?.price || 0);
+      const toppingsPrice = customization.toppings.reduce(
+        (total, topping) => total + (Number(topping.price) || 0),
+        0
+      );
+      return (basePrice + toppingsPrice) * customization.quantity;
+    }
+    
+    // Nếu chọn size khác, lấy giá của SingleProduct tương ứng
+    const selectedVariant = item?.variants?.find(
+      (variant) => variant.sizeId === customization.size
+    );
+    const variantPrice = Number(selectedVariant?.price || 0);
+    
+    // Tính giá toppings
+    const toppingsPrice = customization.toppings.reduce(
+      (total, topping) => total + (Number(topping.price) || 0),
+      0
+    );
+
+    // Tổng giá = giá variant + giá toppings
+    return (variantPrice + toppingsPrice) * customization.quantity;
+  };
+
   const handleAddToOrder = async (customizedItem) => {
     try {
+      // Tìm variant tương ứng với size đã chọn
       const selectedVariant = customizedItem.variants.find(
-        (variant) => variant.sizeId === customizedItem.size
+        (variant) => variant.sizeId === customization.size
       );
-      const productId = selectedVariant
-        ? selectedVariant.productId
-        : customizedItem.productId;
-      const price = selectedVariant
-        ? Number(selectedVariant.price)
-        : Number(customizedItem.basePrice || 0);
 
-      console.log("Adding to cart:", customizedItem, "Price:", price);
-      if (isNaN(price)) {
+      if (!selectedVariant) {
+        console.error("Selected size not found in variants");
+        return;
+      }
+
+      const productId = selectedVariant.productId;
+      const basePrice = Number(selectedVariant.price || 0);
+      
+      // Tính giá toppings
+      const toppingsPrice = customization.toppings.reduce(
+        (total, topping) => total + (Number(topping.price) || 0),
+        0
+      );
+      
+      // Tổng giá = giá sản phẩm + giá toppings
+      const totalPrice = (basePrice + toppingsPrice) * customization.quantity;
+
+      console.log("Adding to cart:", {
+        basePrice,
+        toppingsPrice,
+        quantity: customization.quantity,
+        totalPrice
+      });
+
+      if (isNaN(totalPrice)) {
         console.error("Invalid price for item:", customizedItem);
         return;
       }
@@ -116,7 +163,9 @@ const CustomizationModal = ({
       const response = await fetcher.post("/order-item/add-to-cart", {
         productId: productId,
         quantity: customization.quantity,
-        toppingIds: toppingIds
+        toppingIds: toppingIds,
+        sizeId: customization.size,
+        prize: totalPrice / customization.quantity
       });
 
       if (response.data) {
@@ -127,14 +176,16 @@ const CustomizationModal = ({
             orderItemId: response.data.orderItemId,
             productId: productId,
             quantity: customization.quantity,
-            price: response.data.price,
+            prize: totalPrice / customization.quantity,
             product: {
               productId: productId,
               productName: customizedItem.productName,
-              price: price,
+              prize: totalPrice / customization.quantity,
               imageUrl: customizedItem.imageUrl
             },
-            toppings: customization.toppings
+            toppings: customization.toppings,
+            sizeId: customization.size,
+            subPrice: totalPrice
           })
         );
 
@@ -169,9 +220,7 @@ const CustomizationModal = ({
               className="customization-modal__radio-group"
               row
               value={customization.size}
-              onChange={(e) =>
-                handleCustomizationChange("size", e.target.value)
-              }
+              onChange={(e) => handleCustomizationChange("size", e.target.value)}
             >
               {item?.options?.sizes?.length > 0 ? (
                 item.options.sizes.map((size) => (
@@ -179,13 +228,7 @@ const CustomizationModal = ({
                     key={size.label}
                     value={size.label}
                     control={<Radio className="customization-modal__radio" />}
-                    label={`${size.label} ${
-                      size.priceModifier > 0
-                        ? `+ $${size.priceModifier.toFixed(2)}`
-                        : size.priceModifier < 0
-                        ? `- $${Math.abs(size.priceModifier).toFixed(2)}`
-                        : ""
-                    }`}
+                    label={`${size.label} = $${size.priceModifier.toFixed(2)}`}
                     className="customization-modal__label"
                   />
                 ))
@@ -308,6 +351,9 @@ const CustomizationModal = ({
           </Box> */}
 
           <Box className="customization-modal__actions">
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Total: ${calculateTotalPrice().toFixed(2)}
+            </Typography>
             <Button
               onClick={onClose}
               className="customization-modal__button--cancel"

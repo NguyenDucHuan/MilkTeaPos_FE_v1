@@ -82,20 +82,14 @@ export const updateCartQuantityApi = createAsyncThunk(
 // Remove from cart
 export const removeFromCartApi = createAsyncThunk(
   "order/removeFromCartApi",
-  async ({ productId, quantity }, { rejectWithValue }) => {
+  async ({ orderItemId, quantity = 1 }, { rejectWithValue }) => {
     try {
-      console.log("Removing from cart:", { productId, quantity });
       const response = await fetcher.delete(
-        `/order-item/remove-from-cart?productId=${productId}&quantity=${quantity}`
+        `/order-item/remove-from-cart?orderItemId=${orderItemId}&quantity=${quantity}`
       );
-      console.log("Remove from cart response:", response.data);
       return response.data;
     } catch (error) {
-      console.error("Remove from cart error:", error.response?.data || error);
-      const errorMessage = error.response?.data?.detail || 
-                          error.response?.data?.message || 
-                          "Lỗi khi xóa sản phẩm khỏi giỏ hàng. Vui lòng thử lại.";
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(error.response.data);
     }
   }
 );
@@ -120,6 +114,18 @@ export const getCart = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await fetcher.get("/order-item/get-cart");
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
+export const clearCartApi = createAsyncThunk(
+  "order/clearCartApi",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetcher.delete("/order-item/clear-cart");
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response.data);
@@ -215,11 +221,11 @@ const orderSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(removeFromCartApi.fulfilled, (state, { payload }) => {
+      .addCase(removeFromCartApi.fulfilled, (state, action) => {
         state.isLoading = false;
         state.error = null;
-        state.cart = payload.cart || [];
-        state.offers = payload.offers || [];
+        state.cart = action.payload.cart || [];
+        state.offers = action.payload.offers || [];
       })
       .addCase(removeFromCartApi.rejected, (state, { payload }) => {
         state.isLoading = false;
@@ -275,6 +281,10 @@ const orderSlice = createSlice({
       .addCase(getCart.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
+      })
+      .addCase(clearCartApi.fulfilled, (state, action) => {
+        state.cart = [];
+        state.offers = [];
       });
   },
 });
