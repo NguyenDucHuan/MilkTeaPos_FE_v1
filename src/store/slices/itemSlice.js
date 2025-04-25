@@ -68,6 +68,30 @@ export const createProduct = createAsyncThunk(
   }
 );
 
+export const updateProduct = createAsyncThunk(
+  "item/updateProduct",
+  async ({ id, formData }, { rejectWithValue }) => {
+    try {
+      const response = await fetcher.put(
+        `/api/products/update-product/${id}`, // Đảm bảo có /api vì backend yêu cầu
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+      console.log("Update product response:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Update product error:", error);
+      return rejectWithValue({
+        message: error.message || "Không thể cập nhật sản phẩm",
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+    }
+  }
+);
+
 const itemSlice = createSlice({
   name: "item",
   initialState: {
@@ -114,6 +138,24 @@ const itemSlice = createSlice({
         state.totalItems += 1;
       })
       .addCase(createProduct.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      .addCase(updateProduct.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(updateProduct.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.error = null;
+        const index = state.items.findIndex(
+          (item) => item.productId === action.payload.data.productId
+        );
+        if (index !== -1) {
+          state.items[index] = action.payload.data;
+        }
+      })
+      .addCase(updateProduct.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       });

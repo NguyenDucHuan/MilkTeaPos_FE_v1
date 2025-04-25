@@ -12,13 +12,14 @@ import "./SidebarAdmin.css"; // import CSS riêng
 
 import { Inventory2 as ProductIcon } from "@mui/icons-material";
 import { Payment as PaymentIcon } from "@mui/icons-material";
-
+import WorkspacesIcon from '@mui/icons-material/Workspaces';
 
 const menuItems = [
   { text: "Dashboard", icon: <DashboardIcon />, path: "/admin" },
   { text: "Accounts", icon: <PeopleIcon />, path: "/admin/accounts" },
   { text: "Categories", icon: <CategoryIcon />, path: "/admin/categories" },
   { text: "Products", icon: <ProductIcon />, path: "/admin/products" },
+  { text: "Combos", icon: <WorkspacesIcon />, path: "/admin/combos" },
   
   { text: "Payments", icon: <PaymentIcon />, path: "/admin/payments" },
   { text: "Orders", icon: <OrderIcon />, path: "/admin/orders" },

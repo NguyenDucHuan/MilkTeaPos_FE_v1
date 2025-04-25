@@ -20,6 +20,7 @@ import ProductForm from "../pages/Admin/Products/Form";
 import PaymentList from "../pages/Admin/PaymentMethods/List";
 import PaymentForm from "../pages/Admin/PaymentMethods/Form";
 import OrderListAdmin from "../pages/Admin/Orders/List";
+import Combos from "../pages/Admin/Combos/Combos";
 
 
 export default function useRouterElements() {
@@ -81,12 +82,11 @@ export default function useRouterElements() {
     {
       path: PATH.ADMIN,
       element: (
-        // --- ÁP DỤNG ProtectedRoute CHO ADMIN LAYOUT ---
-        // Truyền vai trò yêu cầu vào ProtectedRoute
+  
         <ProtectedRoute requiredRole="Manager">
           <AdminLayout />
         </ProtectedRoute>
-        // -------------------------------------------
+  
       ),
       children: [
         {
@@ -129,6 +129,10 @@ export default function useRouterElements() {
         {
           path: "products/:id/edit",
           element: <ProductForm />,
+        },
+        {
+          path: "combos",
+          element: <Combos />,
         },
         {
           path: PATH.PAYMENTS,

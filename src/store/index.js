@@ -5,6 +5,7 @@ import authReducer from "./slices/authSlice"; // Import default export
 import paymentSlice from "./slices/paymentSlice"; 
 import orderSlice from "./slices/orderSlice"; 
 import statisticSlice from "./slices/statisticSlice";
+import comboSlice from "./slices/comboSlice"; 
 
 export const store = configureStore({
   reducer: {
@@ -13,7 +14,8 @@ export const store = configureStore({
     auth: authReducer, 
     payment: paymentSlice,
     order: orderSlice,
-    statistic: statisticSlice, 
+    statistic: statisticSlice,
+    combo: comboSlice,
   },
 });
 
