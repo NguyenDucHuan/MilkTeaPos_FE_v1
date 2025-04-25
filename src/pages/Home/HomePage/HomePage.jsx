@@ -91,7 +91,6 @@ export default function HomePage() {
     }
   }, [dispatch, selectedCategory, categories]);
 
-  // Log cart updates for debugging
   useEffect(() => {
     console.log("Cart updated:", cart);
   }, [cart]);
@@ -104,7 +103,43 @@ export default function HomePage() {
     setOpenCheckout(false);
   };
 
-  const handleOpenModal = (item) => {
+  const handleOpenModal = async (item) => {
+    // Check if the item is a combo
+    if (item.productType === "Combo") {
+      try {
+        // Directly add combo to cart without opening customization modal
+        console.log("Adding combo to cart:", item);
+        dispatch(
+          addToCart({
+            product: { ...item, productId: item.productId, price: item.price },
+            quantity: 1,
+            size: "Parent",
+          })
+        );
+
+        await dispatch(
+          addToCartApi({
+            masterId: item.productId,
+            productId: item.productId,
+            quantity: 1,
+            price: item.price,
+          })
+        ).unwrap();
+
+        await dispatch(getCartApi()).unwrap();
+      } catch (error) {
+        console.error("Error adding combo to cart:", error);
+        dispatch(
+          updateCartItemQuantity({
+            productId: item.productId,
+            quantity: 0,
+          })
+        );
+      }
+      return;
+    }
+
+    // For non-combo items, proceed with customization modal
     if (!item || !item.variants || !Array.isArray(item.variants)) {
       console.error("Invalid item or variants:", item);
       return;
@@ -193,7 +228,6 @@ export default function HomePage() {
     console.log("Cart items for subtotal calculation:", cart);
     
     return cart.reduce((total, item) => {
-      // Log each item's details for debugging
       console.log("Processing item:", {
         itemId: item.orderItemId,
         quantity: item.quantity,
@@ -201,7 +235,6 @@ export default function HomePage() {
         product: item.product
       });
 
-      // Use the price directly from the item as it's already calculated by the backend
       const itemPrice = Number(item.price || 0);
       
       if (isNaN(itemPrice)) {
@@ -252,11 +285,9 @@ export default function HomePage() {
           })
         );
       } else if (newQuantity !== item.quantity) {
-        // Calculate the difference in quantity
         const quantityChange = newQuantity - item.quantity;
         
         if (quantityChange > 0) {
-          // Add more items
           await dispatch(
             addToCartApi({
               masterId: productId,
@@ -265,7 +296,6 @@ export default function HomePage() {
             })
           ).unwrap();
         } else {
-          // Remove items
           await dispatch(
             removeFromCartApi({
               productId,
@@ -274,7 +304,6 @@ export default function HomePage() {
           ).unwrap();
         }
 
-        // Update local state
         dispatch(
           updateCartItemQuantity({
             productId,
@@ -283,7 +312,6 @@ export default function HomePage() {
         );
       }
 
-      // Refresh cart data from API
       await dispatch(getCartApi()).unwrap();
     } catch (error) {
       console.error("Error updating quantity:", error);
@@ -502,6 +530,23 @@ export default function HomePage() {
                           >
                             {item.description}
                           </Typography>
+                          {/* Display comboItems for Combo products */}
+                          {item.productType === "Combo" && item.comboItems && item.comboItems.length > 0 && (
+                            <Box sx={{ marginTop: "5px", display: "flex", flexDirection: "row" }}>
+                              <Typography variant="body2" sx={{ color: "#8a5a2a", fontWeight: "bold" }}>
+                                Bao gồm:
+                              </Typography>
+                              {item.comboItems.map((comboItem) => (
+                                <Typography
+                                  key={comboItem.comboItemId}
+                                  variant="body2"
+                                  sx={{ color: "#8a5a2a" }}
+                                >
+                                  - {comboItem.quantity} {comboItem.productName} 
+                                </Typography>
+                              ))}
+                            </Box>
+                          )}
                           <Box
                             sx={{
                               display: "flex",
