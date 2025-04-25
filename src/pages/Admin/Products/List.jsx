@@ -287,7 +287,9 @@ export default function ProductList() {
 
   return (
     <Box sx={{ padding: 3 }}>
-      <Typography variant="h5" fontWeight="bold" gutterBottom></Typography>
+      <Typography variant="h5" fontWeight="bold" gutterBottom>
+        Quản lý sản phẩm
+      </Typography>
       <Paper sx={{ padding: 2 }}>
         <Box
           display="flex"
@@ -295,14 +297,14 @@ export default function ProductList() {
           alignItems="center"
           mb={2}
         >
-          <Typography variant="h6"></Typography>
+          <Typography variant="h6">Danh sách sản phẩm</Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => handleOpenModal()}
             sx={{ backgroundColor: "#8B5E3C" }}
           >
-            ADD PRODUCT
+            THÊM SẢN PHẨM
           </Button>
         </Box>
         <Table>

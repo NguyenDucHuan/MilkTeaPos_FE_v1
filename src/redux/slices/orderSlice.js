@@ -8,7 +8,7 @@ export const fetchCartItems = createAsyncThunk(
       const response = await axios.get('https://localhost:7186/api/order-item/get-cart');
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(error.response.data); 
     }
   }
 );
