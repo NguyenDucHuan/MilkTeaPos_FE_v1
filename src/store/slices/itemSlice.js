@@ -3,9 +3,16 @@ import fetcher from "../../apis/fetcher";
 
 export const listItemApi = createAsyncThunk(
   "item/listItemApi",
-  async ({ CategoryId, Page = 1, PageSize = 12 }, { rejectWithValue }) => {
+  async ({ CategoryId, Page = 1, PageSize = 6 }, { rejectWithValue }) => {
     try {
-      console.log("Calling API with CategoryId:", CategoryId, "Page:", Page, "PageSize:", PageSize);
+      console.log(
+        "Calling API with CategoryId:",
+        CategoryId,
+        "Page:",
+        Page,
+        "PageSize:",
+        PageSize
+      );
       const response = await fetcher.get(
         `/products?CategoryId=${CategoryId}&Page=${Page}&PageSize=${PageSize}`
       );
@@ -65,9 +72,6 @@ const itemSlice = createSlice({
   name: "item",
   initialState: {
     items: [],
-    totalItems: 0,
-    currentPage: 1,
-    pageSize: 12,
     isLoading: false,
     error: null,
   },
@@ -88,7 +92,10 @@ const itemSlice = createSlice({
         state.error = null;
         state.items = action.payload.items;
         state.totalItems = action.payload.totalItems;
-        console.log("listItemApi fulfilled, updated items state:", action.payload.items);
+        console.log(
+          "listItemApi fulfilled, updated items state:",
+          action.payload.items
+        );
       })
       .addCase(listItemApi.rejected, (state, action) => {
         state.isLoading = false;

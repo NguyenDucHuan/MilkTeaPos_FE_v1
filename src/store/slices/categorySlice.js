@@ -3,9 +3,14 @@ import fetcher from "../../apis/fetcher";
 
 export const listCategory = createAsyncThunk(
   "category/listCategory",
-  async ({ page = 1, pageSize = 12 } = {}, { rejectWithValue }) => {
+  async ({ page = 1, pageSize = 6 } = {}, { rejectWithValue }) => {
     try {
-      console.log("Fetching categories with Page:", page, "PageSize:", pageSize);
+      console.log(
+        "Fetching categories with Page:",
+        page,
+        "PageSize:",
+        pageSize
+      );
       const response = await fetcher.get(
         `/categories?Page=${page}&PageSize=${pageSize}`
       );
@@ -13,7 +18,9 @@ export const listCategory = createAsyncThunk(
       return response.data;
     } catch (error) {
       console.error("Error fetching categories:", error);
-      return rejectWithValue(error.response ? error.response.data.message : error.message);
+      return rejectWithValue(
+        error.response ? error.response.data.message : error.message
+      );
     }
   }
 );
@@ -27,7 +34,9 @@ export const getallCategory = createAsyncThunk(
       return response.data;
     } catch (error) {
       console.error("Error fetching all categories:", error);
-      return rejectWithValue(error.response ? error.response.data.message : error.message);
+      return rejectWithValue(
+        error.response ? error.response.data.message : error.message
+      );
     }
   }
 );
@@ -36,9 +45,13 @@ export const createCategory = createAsyncThunk(
   "category/createCategory",
   async (formData, { rejectWithValue }) => {
     try {
-      const response = await fetcher.post("/categories/create-category", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const response = await fetcher.post(
+        "/categories/create-category",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
       console.log("Create category response:", response.data);
       return response.data;
     } catch (error) {
@@ -60,8 +73,8 @@ const categorySlice = createSlice({
     error: null,
     currentPage: 1,
     totalItems: 0,
-    totalPages: 1,
-    pageSize: 12,
+    totalPages: 0,
+    pageSize: 1,
   },
   reducers: {
     setCurrentPage: (state, action) => {
@@ -80,6 +93,7 @@ const categorySlice = createSlice({
         state.category = payload.items;
         state.totalItems = payload.total;
         state.totalPages = payload.totalPages;
+        state.currentPage = payload.currentPage;
         state.pageSize = payload.size;
         console.log("Categories updated:", payload.items);
       })

@@ -76,7 +76,6 @@ export default function ProductList() {
 
   // Tải danh sách sản phẩm khi currentPage hoặc pageSize thay đổi
   useEffect(() => {
-    console.log("Gọi listItemApi với currentPage:", currentPage, "pageSize:", pageSize);
     dispatch(
       listItemApi({ CategoryId: null, Page: currentPage, PageSize: pageSize })
     );
@@ -121,7 +120,8 @@ export default function ProductList() {
       setEditProductId(null);
       const newFormData = {
         productName: "",
-        categoryId: stableCategory.length > 0 ? Number(stableCategory[0].categoryId) : "",
+        categoryId:
+          stableCategory.length > 0 ? Number(stableCategory[0].categoryId) : "",
         description: "",
         sizes: [{ size: "Small", price: "0" }],
         status: true,
@@ -229,7 +229,10 @@ export default function ProductList() {
     formDataToSend.append("description", formData.description || "");
     formData.sizes.forEach((sizeObj, index) => {
       formDataToSend.append(`sizes[${index}][size]`, sizeObj.size);
-      formDataToSend.append(`sizes[${index}][price]`, parseFloat(sizeObj.price));
+      formDataToSend.append(
+        `sizes[${index}][price]`,
+        parseFloat(sizeObj.price)
+      );
     });
     formDataToSend.append("status", formData.status);
     if (imageFile) {
@@ -270,7 +273,9 @@ export default function ProductList() {
 
   if (isLoading) return <Typography>Loading...</Typography>;
   if (error)
-    return <Typography color="error">Error: {error.message || error}</Typography>;
+    return (
+      <Typography color="error">Error: {error.message || error}</Typography>
+    );
   if (categoryError)
     return (
       <Typography color="error">
@@ -315,8 +320,8 @@ export default function ProductList() {
           <TableBody>
             {items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">
-                  No products found
+                <TableCell colSpan={5} align="center">
+                  Không có sản phẩm nào
                 </TableCell>
               </TableRow>
             ) : (
@@ -407,9 +412,18 @@ export default function ProductList() {
               fullWidth
               label="Danh mục"
               name="categoryId"
-              value={formData.categoryId !== "" ? formData.categoryId : stableCategory.length > 0 ? stableCategory[0].categoryId : ""}
+              value={
+                formData.categoryId !== ""
+                  ? formData.categoryId
+                  : stableCategory.length > 0
+                  ? stableCategory[0].categoryId
+                  : ""
+              }
               onChange={(e) => {
-                console.log("TextField onChange triggered, selected value:", e.target.value);
+                console.log(
+                  "TextField onChange triggered, selected value:",
+                  e.target.value
+                );
                 handleChange(e);
               }}
               margin="normal"
