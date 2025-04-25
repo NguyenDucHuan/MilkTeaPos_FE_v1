@@ -21,6 +21,8 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import CloseIcon from "@mui/icons-material/Close";
 import "./CustomizationModal.css";
 import fetcher from "../../apis/fetcher";
+import { useDispatch } from "react-redux";
+import { addToCart, getCartApi } from "../../store/slices/orderSlice";
 
 const CustomizationModal = ({
   open,
@@ -32,6 +34,7 @@ const CustomizationModal = ({
 }) => {
   const [toppings, setToppings] = useState([]);
   const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const fetchToppings = async () => {
@@ -88,29 +91,61 @@ const CustomizationModal = ({
     }
   };
 
-  // calculate the total price
-  const handleAdd = () => {
-    const toppingCost = customization.toppings.reduce((total, toppingName) => {
-      const topping = item?.options?.toppings?.find(
-        (t) => t.name === toppingName
+  const handleAddToOrder = async (customizedItem) => {
+    try {
+      const selectedVariant = customizedItem.variants.find(
+        (variant) => variant.sizeId === customizedItem.size
       );
-      return total + (topping ? topping.price : 0);
-    }, 0);
+      const productId = selectedVariant
+        ? selectedVariant.productId
+        : customizedItem.productId;
+      const price = selectedVariant
+        ? Number(selectedVariant.price)
+        : Number(customizedItem.basePrice || 0);
 
-    const itemPrice =
-      (item?.basePrice || 0) + customization.sizePrice + toppingCost;
-    const totalItemPrice = itemPrice * customization.quantity;
+      console.log("Adding to cart:", customizedItem, "Price:", price);
+      if (isNaN(price)) {
+        console.error("Invalid price for item:", customizedItem);
+        return;
+      }
 
-    onAddToOrder({
-      ...item,
-      size: customization.size,
-      sugar: customization.sugar,
-      ice: customization.ice,
-      toppings: customization.toppings,
-      quantity: customization.quantity,
-      itemPrice: totalItemPrice,
-    });
-    onClose();
+      // Prepare toppingIds array
+      const toppingIds = customization.toppings.map(topping => topping.productId);
+
+      // Call the new API endpoint
+      const response = await fetcher.post("/order-item/add-to-cart", {
+        productId: productId,
+        quantity: customization.quantity,
+        toppingIds: toppingIds
+      });
+
+      if (response.data) {
+        console.log("Item added to cart successfully:", response.data);
+        // Update local cart state if needed
+        dispatch(
+          addToCart({
+            orderItemId: response.data.orderItemId,
+            productId: productId,
+            quantity: customization.quantity,
+            price: response.data.price,
+            product: {
+              productId: productId,
+              productName: customizedItem.productName,
+              price: price,
+              imageUrl: customizedItem.imageUrl
+            },
+            toppings: customization.toppings
+          })
+        );
+
+        // Refresh cart data
+        await dispatch(getCartApi());
+      }
+
+      onClose();
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+    }
   };
 
   return (
@@ -280,7 +315,7 @@ const CustomizationModal = ({
               Cancel
             </Button>
             <Button
-              onClick={handleAdd}
+              onClick={() => handleAddToOrder(item)}
               className="customization-modal__button--add"
             >
               Add to Order
