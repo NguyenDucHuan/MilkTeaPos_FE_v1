@@ -7,11 +7,13 @@ import { loginApi } from "../../../store/slices/authSlice";
 import { PATH } from "../../../routes/path";
 import "./Login.css";
 import toast from "react-hot-toast";
+import { jwtDecode } from "jwt-decode";
 
 const Login = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { isAuthenticated, error, loading } = useSelector((state) => state.auth);
+  // ----- SỬA 1: Lấy thêm 'user' từ Redux store -----
+  const { isAuthenticated, error, loading, user } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({
     phoneOrEmail: "",
@@ -19,11 +21,18 @@ const Login = () => {
   });
 
   useEffect(() => {
-    // Nếu người dùng đã đăng nhập, chuyển hướng ngay đến trang Home
-    if (isAuthenticated) {
-      navigate(PATH.HOME, { replace: true });
+    // Kiểm tra khi component mount hoặc state thay đổi
+    // ----- SỬA 2: Thêm kiểm tra 'user' tồn tại -----
+    if (isAuthenticated && user) { // Chỉ kiểm tra role khi user đã có trong state
+      console.log("useEffect - User Role:", user.role); // Debug xem role là gì
+      if (user.role === 'Manager') { // <-- Sử dụng tên role chính xác từ backend
+        navigate(PATH.ADMIN, { replace: true });
+      } else { // Giả sử các role khác (Staff, ...) đều về HOME
+        navigate(PATH.HOME, { replace: true });
+      }
     }
-  }, [isAuthenticated, navigate]);
+    // ----- SỬA 3: Thêm 'user' vào dependency array -----
+  }, [isAuthenticated, user, navigate]); // Thêm user để effect chạy lại khi user thay đổi
 
   const handleChange = (e) => {
     setFormData({
@@ -34,50 +43,70 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("[handleSubmit] Bắt đầu submit.");
+    let userRole = null; // Khai báo ở ngoài
+
     try {
-      const result = await dispatch(loginApi(formData)).unwrap(); // Sử dụng unwrap để xử lý lỗi dễ dàng hơn
+      console.log("[handleSubmit] Gọi dispatch(loginApi)...");
+      const result = await dispatch(loginApi(formData)).unwrap();
+      console.log("[handleSubmit] Kết quả loginApi:", result);
 
-      // Đăng nhập thành công
-      if (result?.accessToken?.token) {
-        // Đảm bảo token là chuỗi trước khi lưu
-        const token = result.accessToken.token;
-        if (typeof token !== "string") {
-          throw new Error("Token không hợp lệ, không phải là chuỗi.");
-        }
-        // Lưu token vào localStorage
-        localStorage.setItem("accessToken", token);
-
-        // Hiển thị toast thành công
-        toast.success("Đăng nhập thành công!", {
-          position: "top-right",
-          autoClose: 2000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-        });
-
-        // Điều hướng về trang HOME
-        navigate(PATH.HOME, { replace: true });
-      } else {
-        throw new Error("Không tìm thấy token hợp lệ trong phản hồi.");
+      // Lấy token string
+      const token = result?.accessToken?.token;
+      if (!token || typeof token !== "string") {
+        console.error("[handleSubmit] Token không hợp lệ hoặc thiếu:", token);
+        throw new Error("Token không hợp lệ hoặc không tìm thấy.");
       }
-    } catch (error) {
-      // Đăng nhập thất bại
-      const errorMessage = error?.message || "Đăng nhập thất bại. Vui lòng thử lại.";
+      console.log("[handleSubmit] Đã tìm thấy token hợp lệ.");
 
-      // Hiển thị toast lỗi
-      toast.error(errorMessage, {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
+      // Lưu token
+      localStorage.setItem("accessToken", token);
+      console.log("[handleSubmit] Đã lưu token vào localStorage.");
 
-      console.error("Login error:", error);
+      // ----- GIẢI MÃ JWT ĐỂ LẤY ROLE -----
+      try {
+        console.log("[handleSubmit] Đang giải mã JWT...");
+        const decodedToken = jwtDecode(token); // Giải mã token
+        console.log("[handleSubmit] Decoded JWT Payload:", decodedToken);
+
+        // Lấy role từ payload đã giải mã (DÙNG ĐÚNG KEY NÀY!)
+        userRole = decodedToken['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
+
+        console.log("[handleSubmit] Giá trị userRole được gán sau khi giải mã:", userRole);
+
+        if (!userRole) {
+          console.warn("[handleSubmit] Không tìm thấy claim role trong JWT payload.");
+          throw new Error("Không thể xác định vai trò người dùng từ token.");
+        }
+      } catch (decodeError) {
+        console.error("[handleSubmit] Lỗi giải mã JWT:", decodeError);
+        throw new Error("Lỗi xử lý thông tin đăng nhập."); // Throw lỗi chung hơn
+      }
+      // ------------------------------------
+
+      // Toast thành công
+      toast.success("Đăng nhập thành công!", { /* ... */ });
+      console.log("[handleSubmit] Đã hiển thị toast thành công.");
+
+      // ----- SỬ DỤNG userRole ĐỂ CHUYỂN HƯỚNG -----
+      console.log(`[handleSubmit] Chuẩn bị kiểm tra userRole (giá trị hiện tại: ${userRole}) trước khi chuyển hướng...`);
+
+      if (userRole === 'Manager') { // <-- So sánh với giá trị role lấy được
+        console.log("[handleSubmit] Role là Manager -> Chuyển hướng đến ADMIN.");
+        navigate(PATH.ADMIN, { replace: true });
+      } else {
+        console.log(`[handleSubmit] Role là ${userRole} -> Chuyển hướng đến HOME.`);
+        navigate(PATH.HOME, { replace: true });
+      }
+      console.log("[handleSubmit] Kết thúc khối try thành công.");
+
+    } catch (err) {
+      const errorMessage = err?.message || "Đăng nhập thất bại. Vui lòng thử lại.";
+      console.error("[handleSubmit] Lỗi trong khối catch:", err);
+      console.error("[handleSubmit] Giá trị userRole tại thời điểm lỗi catch:", userRole);
+      toast.error(errorMessage, { /* ... */ });
     }
+    console.log("[handleSubmit] Kết thúc hàm.");
   };
 
   return (

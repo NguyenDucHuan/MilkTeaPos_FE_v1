@@ -10,7 +10,7 @@ import {
   Avatar,
 } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
-import mockAccounts from "./mockAccounts";
+import fetcher from "../../../apis/fetcher";
 
 export default function AccountForm() {
   const navigate = useNavigate();
@@ -25,26 +25,38 @@ export default function AccountForm() {
     imageUrl: "",
     role: "Staff",
     status: true,
-    created_at: "",
-    updated_at: "",
   });
 
   const [emailError, setEmailError] = useState(false);
   const [phoneError, setPhoneError] = useState(false);
 
+  // --- Sửa lại state loading và thêm initialDataLoaded ---
+  const [loading, setLoading] = useState(isEditMode); // Bắt đầu loading nếu là edit mode
+  const [initialDataLoaded, setInitialDataLoaded] = useState(!isEditMode);
+
   useEffect(() => {
     if (isEditMode) {
-      const accountToEdit = mockAccounts.find((acc) => acc.id === Number(id));
-      if (accountToEdit) {
-        setFormData({ ...accountToEdit });
-      }
-    } else {
-      const now = new Date().toISOString();
-      setFormData((prev) => ({
-        ...prev,
-        created_at: now,
-        updated_at: now,
-      }));
+      setLoading(true);
+      setInitialDataLoaded(false);
+    }
+
+    if (isEditMode) {
+      fetcher.get('/user/id', { params: { id: id } }) // Đường dẫn cố định, ID trong params
+        .then(res => {
+          console.log("Fetched account data:", res.data);
+          const fetchedData = res.data;
+          setFormData({
+            fullName: fetchedData.fullName || "",
+            username: fetchedData.username || "",
+            email: fetchedData.email || "",
+            phone: fetchedData.phone || "",
+            imageUrl: fetchedData.imageUrl || "",
+            role: fetchedData.role || "Staff",
+            status: fetchedData.status !== undefined ? fetchedData.status : true,
+          });
+          setInitialDataLoaded(true); // Đánh dấu đã load xong
+        })
+        .catch(err => console.error("Failed to load account:", err.message));
     }
   }, [id, isEditMode]);
 
@@ -61,11 +73,10 @@ export default function AccountForm() {
       setPhoneError(!phoneRegex.test(value));
     }
 
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [name]: type === "checkbox" ? checked : value,
-      ...(name !== "updated_at" && { updated_at: new Date().toISOString() }),
-    });
+    }));
   };
 
   const handleSubmit = (e) => {
@@ -75,12 +86,29 @@ export default function AccountForm() {
       return;
     }
 
-    if (isEditMode) {
-      console.log("✅ Updated account:", formData);
-    } else {
-      console.log("✅ Created new account:", formData);
-    }
-    navigate("/admin/accounts");
+    const dataToSend = { ...formData }; // <-- Phải có dòng này!
+    // ---------------------------------------------------------
+    console.log(`Submitting data (${isEditMode ? 'Edit' : 'Create'}):`, dataToSend);
+    console.log(`Target User ID for PUT: ${id}`);
+
+    // ----- SỬA LẠI ĐƯỜNG DẪN PUT Ở ĐÂY -----
+    const apiCall = isEditMode
+      ? fetcher.put(`/user/update-user/${id}`, dataToSend) // Bỏ /api ở đầu
+      : fetcher.post("/user/create-user", dataToSend);   
+
+    apiCall
+      .then(() => {
+        console.log(isEditMode ? "Account updated successfully!" : "Account created successfully!");
+        alert(isEditMode ? "Account updated successfully!" : "Account created successfully!");
+        navigate("/admin/accounts");
+      })
+      .catch(err => {
+        console.error("Failed to save account:", err?.message || err);
+        // Hiển thị lỗi chi tiết hơn nếu có từ err.response.data
+        const serverErrorMessage = err.response?.data?.message || err.message || 'Unknown error';
+        alert(`Failed to save account: ${serverErrorMessage}`);
+      })
+      .finally(() => setLoading(false));
   };
 
   return (
@@ -89,7 +117,6 @@ export default function AccountForm() {
         {isEditMode ? "Edit Account" : "Add New Account"}
       </Typography>
 
-      {/* Avatar preview */}
       {formData.imageUrl && (
         <Box display="flex" justifyContent="center" mb={2}>
           <Avatar
@@ -174,12 +201,8 @@ export default function AccountForm() {
         />
 
         <Box mt={3} display="flex" justifyContent="space-between">
-          <Button variant="outlined" onClick={() => navigate("/admin/accounts")}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="contained">
-            {isEditMode ? "Save Changes" : "Create"}
-          </Button>
+          <Button variant="outlined" onClick={() => navigate("/admin/accounts")}>Cancel</Button>
+          <Button type="submit" variant="contained">{isEditMode ? "Save Changes" : "Create"}</Button>
         </Box>
       </form>
     </Box>

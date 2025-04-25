@@ -75,12 +75,19 @@ export default function useRouterElements() {
         },
       ],
     },
-    
+
 
     // Admin
     {
       path: PATH.ADMIN,
-      element: <AdminLayout />,
+      element: (
+        // --- ÁP DỤNG ProtectedRoute CHO ADMIN LAYOUT ---
+        // Truyền vai trò yêu cầu vào ProtectedRoute
+        <ProtectedRoute requiredRole="Manager">
+          <AdminLayout />
+        </ProtectedRoute>
+        // -------------------------------------------
+      ),
       children: [
         {
           index: true,

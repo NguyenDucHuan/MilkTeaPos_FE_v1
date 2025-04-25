@@ -29,9 +29,7 @@ export default function PaymentMethodList() {
 
   return (
     <Box sx={{ padding: 3 }}>
-      <Typography variant="h5" fontWeight="bold" gutterBottom>
-        Quản lý phương thức thanh toán
-      </Typography>
+      <Typography variant="h5" fontWeight="bold" gutterBottom></Typography>
 
       <Paper sx={{ padding: 2 }}>
         <Box
@@ -40,14 +38,14 @@ export default function PaymentMethodList() {
           alignItems="center"
           mb={2}
         >
-          <Typography variant="h6">Danh sách phương thức</Typography>
+          <Typography variant="h6"></Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => navigate("/admin/payments/new")}
             sx={{ backgroundColor: "#8B5E3C" }}
           >
-            THÊM PHƯƠNG THỨC
+            ADD METHOD
           </Button>
         </Box>
 
