@@ -29,6 +29,7 @@ import {
   updateCartItemQuantity,
   removeFromCartApi,
   addToCart,
+  clearCartApi,
 } from "../../../store/slices/orderSlice";
 import fetcher from "../../../apis/fetcher";
 
@@ -252,28 +253,31 @@ export default function HomePage() {
     }
   };
 
+  const calculateItemPrice = (item) => {
+    // Nếu là size Parent, lấy giá từ MasterProduct
+    if (item.sizeId === "Parent") {
+      const basePrice = Number(item.product?.price || 0);
+      const toppingsPrice = (item.toppings || []).reduce(
+        (total, topping) => total + (Number(topping.price) || 0),
+        0
+      );
+      return (basePrice + toppingsPrice) * item.quantity;
+    }
+
+    // Nếu là size khác, lấy giá từ SingleProduct
+    const variantPrice = Number(item.price || 0);
+    const toppingsPrice = (item.toppings || []).reduce(
+      (total, topping) => total + (Number(topping.price) || 0),
+      0
+    );
+    return (variantPrice + toppingsPrice) * item.quantity;
+  };
+
   const calculateSubtotal = () => {
-    if (!Array.isArray(cart) || cart.length === 0) return 0;
-    console.log("Cart items for subtotal calculation:", cart);
-
+    if (!cart || !Array.isArray(cart)) return 0;
+    
     return cart.reduce((total, item) => {
-      console.log("Processing item:", {
-        itemId: item.orderItemId,
-        quantity: item.quantity,
-        price: item.price,
-        product: item.product,
-      });
-
-      const itemPrice = Number(item.price || 0);
-
-      if (isNaN(itemPrice)) {
-        console.warn(`Invalid price for item:`, item);
-        return total;
-      }
-
-      console.log(`Item total: ${itemPrice}`);
-
-      return total + itemPrice;
+      return total + (Number(item.subPrice) || 0);
     }, 0);
   };
 
@@ -285,71 +289,53 @@ export default function HomePage() {
     e?.preventDefault();
     e?.stopPropagation();
 
-    console.log("Updating quantity for item:", {
-      itemId: item.orderItemId,
-      currentQuantity: item.quantity,
-      newQuantity: newQuantity,
-      price: item.price,
-      product: item.product,
-    });
-
     try {
-      const productId = item.product?.productId;
-      if (!productId) {
-        console.error("Invalid productId for item:", item);
-        return;
-      }
-
       if (newQuantity === 0) {
         await dispatch(
           removeFromCartApi({
-            productId,
-            quantity: item.quantity,
+            orderItemId: item.orderItemId,
+            quantity: item.quantity
           })
         ).unwrap();
-        dispatch(
-          updateCartItemQuantity({
-            productId,
-            quantity: 0,
+      } else if (newQuantity < item.quantity) {
+        await dispatch(
+          removeFromCartApi({
+            orderItemId: item.orderItemId,
+            quantity: 1
           })
-        );
-      } else if (newQuantity !== item.quantity) {
-        const quantityChange = newQuantity - item.quantity;
+        ).unwrap();
+      } else if (newQuantity > item.quantity) {
+        await dispatch(
+          addToCartApi({
+            productId: item.productId,
+            quantity: 1,
+            toppingIds: item.toppings?.map(t => t.toppingId) || []
+          })
+        ).unwrap();
+      }
 
-        if (quantityChange > 0) {
-          await dispatch(
-            addToCartApi({
-              masterId: productId,
-              productId,
-              quantity: quantityChange,
-            })
-          ).unwrap();
-        } else {
-          await dispatch(
-            removeFromCartApi({
-              productId,
-              quantity: Math.abs(quantityChange),
-            })
-          ).unwrap();
-        }
+      await dispatch(getCartApi());
+    } catch (error) {
+      console.error("Error updating quantity:", error);
+    }
+  };
 
-        dispatch(
-          updateCartItemQuantity({
-            productId,
-            quantity: newQuantity,
+  const handleClearCart = async () => {
+    try {
+      // Xóa từng sản phẩm trong giỏ hàng
+      for (const item of cart) {
+        await dispatch(
+          removeFromCartApi({
+            orderItemId: item.orderItemId,
+            quantity: item.quantity // Xóa toàn bộ số lượng
           })
         );
       }
-
-      await dispatch(getCartApi()).unwrap();
+      
+      // Refresh cart data sau khi xóa
+      await dispatch(getCartApi());
     } catch (error) {
-      console.error("Error updating quantity:", error);
-      dispatch(
-        updateCartItemQuantity({
-          productId: item.product?.productId,
-          quantity: item.quantity,
-        })
-      );
+      console.error("Error clearing cart:", error);
     }
   };
 
@@ -730,10 +716,7 @@ export default function HomePage() {
                   <Box className="order-summary-item">
                     <Typography variant="body2">SỐ MÓN:</Typography>
                     <Typography variant="body2">
-                      {cart.reduce(
-                        (sum, item) => sum + (item.quantity || 0),
-                        0
-                      )}
+                      {cart.reduce((sum, item) => sum + (item.quantity || 0), 0)}
                     </Typography>
                   </Box>
                   <Box className="order-summary-item">
@@ -745,7 +728,7 @@ export default function HomePage() {
                   <Box className="order-summary-item">
                     <Typography variant="body2">THÀNH TIỀN:</Typography>
                     <Typography variant="body2" fontWeight="bold">
-                      ${calculateTotal().toFixed(2)}
+                      ${calculateSubtotal().toFixed(2)}
                     </Typography>
                   </Box>
                 </Box>
@@ -841,27 +824,15 @@ export default function HomePage() {
                 </Box>
                 <Box className="order-actions">
                   <Button
-                    variant="outlined"
-                    className="order-clear-button"
-                    onClick={() => {
-                      cart.forEach((item) => {
-                        if (item.product?.productId) {
-                          dispatch(
-                            updateCartItemQuantity({
-                              productId: item.product.productId,
-                              quantity: 0,
-                            })
-                          );
-                          dispatch(
-                            removeFromCartApi({
-                              productId: item.product.productId,
-                              quantity: item.quantity,
-                            })
-                          );
-                        }
-                      });
+                    className="order-detail-button"
+                    onClick={handleClearCart}
+                    sx={{
+                      backgroundColor: "#b0855b",
+                      color: "white",
+                      "&:hover": {
+                        backgroundColor: "#8d6b48",
+                      },
                     }}
-                    fullWidth
                   >
                     Xóa đơn
                   </Button>

@@ -32,6 +32,34 @@ export default function ModalCheckout({ open, onClose, order, total }) {
     setPaymentMethod(event.target.value);
   };
 
+  const calculateItemPrice = (item) => {
+    // Nếu là size Parent, lấy giá từ MasterProduct
+    if (item.sizeId === "Parent") {
+      const basePrice = Number(item.product?.price || 0);
+      const toppingsPrice = (item.toppings || []).reduce(
+        (total, topping) => total + (Number(topping.price) || 0),
+        0
+      );
+      return (basePrice + toppingsPrice) * item.quantity;
+    }
+
+    // Nếu là size khác, lấy giá từ SingleProduct
+    const variantPrice = Number(item.price || 0);
+    const toppingsPrice = (item.toppings || []).reduce(
+      (total, topping) => total + (Number(topping.price) || 0),
+      0
+    );
+    return (variantPrice + toppingsPrice) * item.quantity;
+  };
+
+  const calculateSubtotal = (order) => {
+    if (!order || !Array.isArray(order)) return 0;
+    
+    return order.reduce((total, item) => {
+      return total + (Number(item.subPrice) || 0);
+    }, 0);
+  };
+
   const handleCreateOrder = async () => {
     try {
       setIsProcessing(true);
@@ -132,33 +160,56 @@ export default function ModalCheckout({ open, onClose, order, total }) {
             <Box className="modal-checkout__details-content">
               {order && order.length > 0 ? (
                 order.map((item) => (
-                  <Typography
-                    key={item.orderItemId}
-                    variant="body2"
-                    component="p"
-                    className="modal-checkout__details-item"
-                  >
-                    {item.quantity} x {item.product?.productName || 'Unknown Product'}{" "}
-                    <span>${(item.price || 0).toFixed(2)}</span>
-                  </Typography>
+                  <Box key={item.orderItemId} className="modal-checkout__details-item">
+                    <Typography variant="body2">
+                      {item.quantity}x {item.productName}
+                      {item.sizeId && item.sizeId !== "Parent" && (
+                        <span style={{ color: "#666" }}> (Size: {item.sizeId})</span>
+                      )}
+                      {item.toppings && item.toppings.length > 0 && (
+                        <Box sx={{ fontSize: "12px", color: "#666" }}>
+                          Toppings:{" "}
+                          {item.toppings.map((topping, index) => (
+                            <span key={topping.toppingId}>
+                              {index > 0 ? ", " : ""}
+                              {topping.toppingName}
+                            </span>
+                          ))}
+                        </Box>
+                      )}
+                    </Typography>
+                    <Typography variant="body2">
+                      ${(Number(item.subPrice) || 0).toFixed(2)}
+                    </Typography>
+                  </Box>
                 ))
               ) : (
-                <Typography
-                  variant="body2"
-                  component="p"
-                  className="modal-checkout__details-item"
-                >
-                  No items in the order.
-                </Typography>
+                <Typography variant="body2">No items in the order.</Typography>
               )}
             </Box>
-            <Typography
-              variant="h6"
-              component="p"
-              className="modal-checkout__total-price"
-            >
-              Total: <span>${total.toFixed(2)}</span>
-            </Typography>
+            <Box className="order-summary">
+              <Typography variant="body1" className="order-summary-title">
+                TÓM TẮT ĐƠN HÀNG
+              </Typography>
+              <Box className="order-summary-item">
+                <Typography variant="body2">SỐ MÓN:</Typography>
+                <Typography variant="body2">
+                  {order.reduce((sum, item) => sum + (item.quantity || 0), 0)}
+                </Typography>
+              </Box>
+              <Box className="order-summary-item">
+                <Typography variant="body2">TỔNG CỘNG:</Typography>
+                <Typography variant="body2">
+                  ${calculateSubtotal(order).toFixed(2)}
+                </Typography>
+              </Box>
+              <Box className="order-summary-item">
+                <Typography variant="body2">THÀNH TIỀN:</Typography>
+                <Typography variant="body2" fontWeight="bold">
+                  ${calculateSubtotal(order).toFixed(2)}
+                </Typography>
+              </Box>
+            </Box>
           </Box>
         </Box>
 
