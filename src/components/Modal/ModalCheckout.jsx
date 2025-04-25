@@ -138,8 +138,8 @@ export default function ModalCheckout({ open, onClose, order, total }) {
                     component="p"
                     className="modal-checkout__details-item"
                   >
-                    {item.quantity} x {item.product.productName}{" "}
-                    <span>${(item.price).toFixed(2)}</span>
+                    {item.quantity} x {item.product?.productName || 'Unknown Product'}{" "}
+                    <span>${(item.price || 0).toFixed(2)}</span>
                   </Typography>
                 ))
               ) : (
