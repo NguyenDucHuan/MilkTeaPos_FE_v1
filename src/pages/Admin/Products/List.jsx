@@ -298,14 +298,37 @@ export default function ProductList() {
           mb={2}
         >
           <Typography variant="h6">Danh sách sản phẩm</Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenModal()}
-            sx={{ backgroundColor: "#8B5E3C" }}
-          >
-            THÊM SẢN PHẨM
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => handleOpenModal()}
+              sx={{ 
+                backgroundColor: "#8B5E3C",
+                '&:hover': {
+                  backgroundColor: "#6B4E2C"
+                }
+              }}
+            >
+              THÊM SẢN PHẨM
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => {
+                // TODO: Xử lý chuyển hướng đến trang thêm topping
+                window.location.href = "/admin/toppings/add";
+              }}
+              sx={{ 
+                backgroundColor: "#8B5E3C",
+                '&:hover': {
+                  backgroundColor: "#6B4E2C"
+                }
+              }}
+            >
+              THÊM TOPPING
+            </Button>
+          </Box>
         </Box>
         <Table>
           <TableHead>
