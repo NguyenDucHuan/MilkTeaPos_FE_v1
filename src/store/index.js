@@ -6,6 +6,7 @@ import paymentSlice from "./slices/paymentSlice";
 import orderSlice from "./slices/orderSlice"; 
 import statisticSlice from "./slices/statisticSlice";
 import comboSlice from "./slices/comboSlice"; 
+import profileReducer from "./slices/profileSlice";
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     order: orderSlice,
     statistic: statisticSlice,
     combo: comboSlice,
+    profile: profileReducer,
   },
 });
 
