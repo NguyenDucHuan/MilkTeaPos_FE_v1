@@ -31,6 +31,7 @@ import {
   setPage,
 } from "../../../store/slices/itemSlice";
 import { listCategory } from "../../../store/slices/categorySlice";
+import FormTopping from "./FormTopping";
 
 export default function ProductList() {
   const dispatch = useDispatch();
@@ -54,6 +55,7 @@ export default function ProductList() {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [hasLoadedCategories, setHasLoadedCategories] = useState(false); // Trạng thái để kiểm soát việc gọi listCategory
+  const [openToppingModal, setOpenToppingModal] = useState(false);
 
   // Sử dụng useMemo để giữ danh sách category ổn định
   const stableCategory = useMemo(() => category, [category]);
@@ -315,16 +317,8 @@ export default function ProductList() {
             <Button
               variant="contained"
               startIcon={<AddIcon />}
-              onClick={() => {
-                // TODO: Xử lý chuyển hướng đến trang thêm topping
-                window.location.href = "/admin/toppings/add";
-              }}
-              sx={{ 
-                backgroundColor: "#8B5E3C",
-                '&:hover': {
-                  backgroundColor: "#6B4E2C"
-                }
-              }}
+              onClick={() => setOpenToppingModal(true)}
+              sx={{ backgroundColor: "#8B5E3C" }}
             >
               THÊM TOPPING
             </Button>
@@ -578,6 +572,10 @@ export default function ProductList() {
           </form>
         </Box>
       </Modal>
+      <FormTopping 
+        open={openToppingModal} 
+        handleClose={() => setOpenToppingModal(false)} 
+      />
     </Box>
   );
 }
