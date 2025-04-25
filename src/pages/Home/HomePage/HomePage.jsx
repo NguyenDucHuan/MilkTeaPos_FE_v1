@@ -738,10 +738,7 @@ export default function HomePage() {
                           <AddIcon />
                         </IconButton>
                         <Typography className="order-detail-price">
-                          $
-                          {(
-                            item.price
-                          ).toFixed(2)}
+                          ${(item.price || 0).toFixed(2)}
                         </Typography>
                         <IconButton
                           size="small"
