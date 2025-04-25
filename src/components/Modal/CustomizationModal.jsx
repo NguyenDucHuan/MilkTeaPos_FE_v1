@@ -7,6 +7,7 @@ import {
   Radio,
   RadioGroup,
   FormControlLabel,
+  Checkbox,
   IconButton,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
@@ -40,6 +41,7 @@ const CustomizationModal = ({
     }
   };
 
+  // calculate the total price
   const handleAdd = () => {
     const toppingCost = customization.toppings.reduce((total, toppingName) => {
       const topping = item?.options?.toppings?.find(
@@ -52,35 +54,24 @@ const CustomizationModal = ({
       (item?.basePrice || 0) + customization.sizePrice + toppingCost;
     const totalItemPrice = itemPrice * customization.quantity;
 
-    // Nếu không có size, sử dụng productId của sản phẩm chính
-    const productId = customization.size
-      ? item.variants.find((v) => v.sizeId === customization.size)?.productId ||
-        item.productId
-      : item.productId;
-
     onAddToOrder({
       ...item,
-      productId,
-      size: customization.size || null, // Gửi null nếu không có size
+      size: customization.size,
       sugar: customization.sugar,
       ice: customization.ice,
       toppings: customization.toppings,
       quantity: customization.quantity,
-      price: itemPrice,
       itemPrice: totalItemPrice,
     });
     onClose();
   };
-
-  // Kiểm tra xem có tùy chọn kích thước hay không
-  const hasSizes = item?.options?.sizes?.length > 0;
 
   return (
     <Modal open={open} onClose={onClose}>
       <Box className="customization-modal">
         <Box className="customization-modal__header">
           <Typography className="customization-modal__title">
-            {item?.productName || "Item"}
+            {item?.name || "Item"}
           </Typography>
           <IconButton onClick={onClose}>
             <CloseIcon />
@@ -88,43 +79,40 @@ const CustomizationModal = ({
         </Box>
 
         <Box className="customization-modal__content">
-          {/* Phần Size */}
           <Box className="customization-modal__section">
             <Typography className="customization-modal__section-title">
               Size
             </Typography>
-            {hasSizes ? (
-              <RadioGroup
-                className="customization-modal__radio-group"
-                row
-                value={customization.size}
-                onChange={(e) =>
-                  handleCustomizationChange("size", e.target.value)
-                }
-              >
-                {item.options.sizes.map((size) => (
+            <RadioGroup
+              className="customization-modal__radio-group"
+              row
+              value={customization.size}
+              onChange={(e) =>
+                handleCustomizationChange("size", e.target.value)
+              }
+            >
+              {item?.options?.sizes?.length > 0 ? (
+                item.options.sizes.map((size) => (
                   <FormControlLabel
                     key={size.label}
                     value={size.label}
                     control={<Radio className="customization-modal__radio" />}
                     label={`${size.label} ${
                       size.priceModifier > 0
-                        ? `+$${size.priceModifier.toFixed(2)}`
+                        ? `+ $${size.priceModifier.toFixed(2)}`
                         : size.priceModifier < 0
-                        ? `-$${Math.abs(size.priceModifier).toFixed(2)}`
+                        ? `- $${Math.abs(size.priceModifier).toFixed(2)}`
                         : ""
                     }`}
                     className="customization-modal__label"
                   />
-                ))}
-              </RadioGroup>
-            ) : (
-              <Typography>No size options available</Typography>
-            )}
+                ))
+              ) : (
+                <Typography>Không có kích cỡ</Typography>
+              )}
+            </RadioGroup>
           </Box>
 
-          {/* Comment các phần không có trong API */}
-          {/* 
           <Box className="customization-modal__section">
             <Typography className="customization-modal__section-title">
               Sugar Level
@@ -148,7 +136,7 @@ const CustomizationModal = ({
                   />
                 ))
               ) : (
-                <Typography>No sugar levels available</Typography>
+                <Typography>Không có mức đường</Typography>
               )}
             </RadioGroup>
           </Box>
@@ -161,9 +149,7 @@ const CustomizationModal = ({
               className="customization-modal__radio-group"
               row
               value={customization.ice}
-              onChange={(e) =>
-                handleCustomizationChange("ice", e.target.value)
-              }
+              onChange={(e) => handleCustomizationChange("ice", e.target.value)}
             >
               {item?.options?.iceLevels?.length > 0 ? (
                 item.options.iceLevels.map((level) => (
@@ -176,7 +162,7 @@ const CustomizationModal = ({
                   />
                 ))
               ) : (
-                <Typography>No ice levels available</Typography>
+                <Typography>Không có mức đá</Typography>
               )}
             </RadioGroup>
           </Box>
@@ -202,21 +188,19 @@ const CustomizationModal = ({
                         }
                       />
                     }
-                    label={`${topping.name} +$${topping.price.toFixed(2)}`}
+                    label={`${topping.name} + $${topping.price.toFixed(2)}`}
                     className="customization-modal__label"
                   />
                 ))
               ) : (
-                <Typography>No toppings available</Typography>
+                <Typography>Không có toppings</Typography>
               )}
             </Box>
           </Box>
-          */}
 
-          {/* Phần Quantity */}
-          <Box className="customization-modal__section">
-            <Typography className="customization-modal__section-title">
-              Quantity
+          {/* <Box className="customization-modal__section">
+            <Typography className="customization-modal__section-title"> */}
+              {/* Quantity
             </Typography>
             <Box className="customization-modal__quantity">
               <IconButton
@@ -233,9 +217,8 @@ const CustomizationModal = ({
                 <AddIcon />
               </IconButton>
             </Box>
-          </Box>
+          </Box> */}
 
-          {/* Nút hành động */}
           <Box className="customization-modal__actions">
             <Button
               onClick={onClose}

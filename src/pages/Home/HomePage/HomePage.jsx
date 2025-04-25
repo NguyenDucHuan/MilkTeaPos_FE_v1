@@ -190,15 +190,28 @@ export default function HomePage() {
 
   const calculateSubtotal = () => {
     if (!Array.isArray(cart) || cart.length === 0) return 0;
-    console.log("Calculating subtotal for cart:", cart);
+    console.log("Cart items for subtotal calculation:", cart);
+    
     return cart.reduce((total, item) => {
-      const itemPrice = Number(item.price || item.product?.price || 0);
-      const itemQuantity = Number(item.quantity || 0);
-      if (isNaN(itemPrice) || isNaN(itemQuantity)) {
-        console.warn(`Invalid price or quantity for item:`, item);
+      // Log each item's details for debugging
+      console.log("Processing item:", {
+        itemId: item.orderItemId,
+        quantity: item.quantity,
+        price: item.price,
+        product: item.product
+      });
+
+      // Use the price directly from the item as it's already calculated by the backend
+      const itemPrice = Number(item.price || 0);
+      
+      if (isNaN(itemPrice)) {
+        console.warn(`Invalid price for item:`, item);
         return total;
       }
-      return total + itemPrice * itemQuantity;
+
+      console.log(`Item total: ${itemPrice}`);
+      
+      return total + itemPrice;
     }, 0);
   };
 
@@ -210,7 +223,14 @@ export default function HomePage() {
     e?.preventDefault();
     e?.stopPropagation();
 
-    console.log("Updating quantity for item:", item, "New quantity:", newQuantity);
+    console.log("Updating quantity for item:", {
+      itemId: item.orderItemId,
+      currentQuantity: item.quantity,
+      newQuantity: newQuantity,
+      price: item.price,
+      product: item.product
+    });
+
     try {
       const productId = item.product?.productId;
       if (!productId) {
@@ -232,23 +252,29 @@ export default function HomePage() {
           })
         );
       } else if (newQuantity !== item.quantity) {
+        // Calculate the difference in quantity
         const quantityChange = newQuantity - item.quantity;
+        
         if (quantityChange > 0) {
+          // Add more items
           await dispatch(
             addToCartApi({
               masterId: productId,
               productId,
-              quantity: quantityChange,
+              quantity: quantityChange
             })
           ).unwrap();
         } else {
+          // Remove items
           await dispatch(
             removeFromCartApi({
               productId,
-              quantity: Math.abs(quantityChange),
+              quantity: Math.abs(quantityChange)
             })
           ).unwrap();
         }
+
+        // Update local state
         dispatch(
           updateCartItemQuantity({
             productId,
@@ -257,6 +283,7 @@ export default function HomePage() {
         );
       }
 
+      // Refresh cart data from API
       await dispatch(getCartApi()).unwrap();
     } catch (error) {
       console.error("Error updating quantity:", error);
@@ -668,8 +695,7 @@ export default function HomePage() {
                         <Typography className="order-detail-price">
                           $
                           {(
-                            (item.price || item.product?.price || 0) *
-                            item.quantity
+                            item.price
                           ).toFixed(2)}
                         </Typography>
                         <IconButton
