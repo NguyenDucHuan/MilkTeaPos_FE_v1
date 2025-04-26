@@ -81,31 +81,71 @@ export default function AccountForm() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (emailError || phoneError) {
-      alert("Vui lòng kiểm tra lại thông tin nhập.");
+    // ... (kiểm tra lỗi email/phone, setLoading) ...
+    if (!initialDataLoaded && isEditMode) {
+      alert("Data is still loading, please wait.");
       return;
     }
+    if (emailError || phoneError) {
+      alert("Please correct the errors in the form.");
+      return;
+    }
+    setLoading(true);
 
-    const dataToSend = { ...formData }; // <-- Phải có dòng này!
-    // ---------------------------------------------------------
-    console.log(`Submitting data (${isEditMode ? 'Edit' : 'Create'}):`, dataToSend);
+    // ----- SỬA CÁCH CHUẨN BỊ DATA -----
+    // 1. Tạo đối tượng FormData
+    const formDataApi = new FormData();
+
+    // 2. Append các trường từ state formData vào formDataApi
+    // Lưu ý: Tên key phải khớp với thuộc tính trong UpdateUserRequest của backend
+    formDataApi.append('FullName', formData.fullName);
+    formDataApi.append('Username', formData.username); // Backend có cho update username không? Nếu không thì bỏ dòng này
+    formDataApi.append('Email', formData.email);
+    formDataApi.append('Phone', formData.phone || ''); // Gửi chuỗi rỗng nếu phone null/undefined
+    formDataApi.append('Role', formData.role);
+    formDataApi.append('Status', String(formData.status)); // Chuyển boolean thành string "true"/"false"
+
+    // 3. Chỉ append file ảnh NẾU người dùng đã chọn file MỚI
+    // formData.imageFile là state chứa File object từ input
+    if (formData.imageFile instanceof File) {
+      // Key "avatarFile" phải khớp với tên tham số IFormFile trong Controller
+      formDataApi.append('avatarFile', formData.imageFile);
+      console.log('Appending new avatarFile:', formData.imageFile.name);
+    } else {
+      console.log('No new avatar file selected.');
+      // Không cần append gì nếu không có file mới, backend sẽ tự xử lý giữ ảnh cũ
+    }
+
+    console.log(`Submitting FormData (${isEditMode ? 'Edit' : 'Create'})...`);
+    // Log FormData content (chỉ hiển thị key, không hiển thị File trực tiếp)
+    for (let [key, value] of formDataApi.entries()) {
+      console.log(`  ${key}: ${value instanceof File ? `File(${value.name})` : value}`);
+    }
     console.log(`Target User ID for PUT: ${id}`);
+    // ----------------------------------
 
-    // ----- SỬA LẠI ĐƯỜNG DẪN PUT Ở ĐÂY -----
+
+    // Gọi API với formDataApi
+    // Axios sẽ tự động đặt Content-Type là multipart/form-data khi data là FormData
     const apiCall = isEditMode
-      ? fetcher.put(`/user/update-user/${id}`, dataToSend) // Bỏ /api ở đầu
-      : fetcher.post("/user/create-user", dataToSend);   
+      // Truyền formDataApi làm data body
+      ? fetcher.put(`/user/update-user/${id}`, formDataApi)
+      // Create user có thể cũng cần FormData nếu có avatarFile
+      // Nếu API CreateUser cũng nhận [FromForm], bạn cần sửa tương tự
+      : fetcher.post("/user/create-user", formDataApi); // Giả sử create cũng dùng FormData
 
     apiCall
       .then(() => {
+        // ... xử lý thành công ...
         console.log(isEditMode ? "Account updated successfully!" : "Account created successfully!");
         alert(isEditMode ? "Account updated successfully!" : "Account created successfully!");
         navigate("/admin/accounts");
       })
       .catch(err => {
-        console.error("Failed to save account:", err?.message || err);
-        // Hiển thị lỗi chi tiết hơn nếu có từ err.response.data
+        // ... xử lý lỗi ...
+        console.error("Failed to save account:", err?.message || err, err.response);
         const serverErrorMessage = err.response?.data?.message || err.message || 'Unknown error';
+        // Lỗi 500 thường không có message rõ ràng từ data, cần xem log backend
         alert(`Failed to save account: ${serverErrorMessage}`);
       })
       .finally(() => setLoading(false));
