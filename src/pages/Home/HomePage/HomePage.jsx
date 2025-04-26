@@ -9,6 +9,10 @@ import {
   Typography,
   IconButton,
   Pagination,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -19,7 +23,6 @@ import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import DeleteIcon from "@mui/icons-material/Delete";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { listCategory } from "../../../store/slices/categorySlice";
 import { listItemApi } from "../../../store/slices/itemSlice";
 import { useOutletContext } from "react-router-dom";
@@ -47,9 +50,6 @@ export default function HomePage() {
     category: categories,
     isLoading: categoryLoading,
     error: categoryError,
-    currentPage: categoryPage,
-    totalPages: categoryTotalPages,
-    pageSize: categoryPageSize,
   } = useSelector((state) => state.category);
   const orderState = useSelector((state) => state.order);
   const {
@@ -70,13 +70,13 @@ export default function HomePage() {
     toppings: [],
     quantity: 1,
   });
-  const [categoryCurrentPage, setCategoryCurrentPage] = useState(categoryPage);
   const [itemCurrentPage, setItemCurrentPage] = useState(1);
 
   useEffect(() => {
-    dispatch(listCategory({ page: categoryCurrentPage, pageSize: categoryPageSize }));
+    // Fetch all categories without pagination
+    dispatch(listCategory());
     dispatch(getCartApi());
-  }, [dispatch, categoryCurrentPage, categoryPageSize]);
+  }, [dispatch]);
 
   useEffect(() => {
     if (selectedCategory && categories.length > 0) {
@@ -84,14 +84,6 @@ export default function HomePage() {
         (cat) => cat.categoryName === selectedCategory
       );
       if (selectedCategoryObj) {
-        console.log(
-          "Fetching products for CategoryId:",
-          selectedCategoryObj.categoryId,
-          "Page:",
-          itemCurrentPage,
-          "PageSize:",
-          itemPageSize
-        );
         dispatch(
           listItemApi({
             CategoryId: selectedCategoryObj.categoryId,
@@ -123,7 +115,6 @@ export default function HomePage() {
         console.error("Error refreshing cart:", error);
       }
     };
-
     refreshCart();
   }, [dispatch, cart.length]);
 
@@ -138,7 +129,6 @@ export default function HomePage() {
   const handleOpenModal = async (item) => {
     if (item.productType === "Combo") {
       try {
-        console.log("Adding combo to cart:", item);
         dispatch(
           addToCart({
             product: { ...item, productId: item.productId, price: item.price },
@@ -183,9 +173,7 @@ export default function HomePage() {
     const itemWithOptions = {
       ...item,
       basePrice: sizes[0]?.priceModifier || 0,
-      options: {
-        sizes,
-      },
+      options: { sizes },
     };
 
     setSelectedItem(itemWithOptions);
@@ -216,12 +204,6 @@ export default function HomePage() {
       const price = selectedVariant
         ? Number(selectedVariant.price)
         : Number(customizedItem.basePrice || 0);
-
-      console.log("Adding to cart:", customizedItem, "Price:", price);
-      if (isNaN(price)) {
-        console.error("Invalid price for item:", customizedItem);
-        return;
-      }
 
       dispatch(
         addToCart({
@@ -254,7 +236,6 @@ export default function HomePage() {
   };
 
   const calculateItemPrice = (item) => {
-    // Nếu là size Parent, lấy giá từ MasterProduct
     if (item.sizeId === "Parent") {
       const basePrice = Number(item.product?.price || 0);
       const toppingsPrice = (item.toppings || []).reduce(
@@ -264,7 +245,6 @@ export default function HomePage() {
       return (basePrice + toppingsPrice) * item.quantity;
     }
 
-    // Nếu là size khác, lấy giá từ SingleProduct
     const variantPrice = Number(item.price || 0);
     const toppingsPrice = (item.toppings || []).reduce(
       (total, topping) => total + (Number(topping.price) || 0),
@@ -275,7 +255,6 @@ export default function HomePage() {
 
   const calculateSubtotal = () => {
     if (!cart || !Array.isArray(cart)) return 0;
-    
     return cart.reduce((total, item) => {
       return total + (Number(item.subPrice) || 0);
     }, 0);
@@ -294,14 +273,14 @@ export default function HomePage() {
         await dispatch(
           removeFromCartApi({
             orderItemId: item.orderItemId,
-            quantity: item.quantity
+            quantity: item.quantity,
           })
         ).unwrap();
       } else if (newQuantity < item.quantity) {
         await dispatch(
           removeFromCartApi({
             orderItemId: item.orderItemId,
-            quantity: 1
+            quantity: 1,
           })
         ).unwrap();
       } else if (newQuantity > item.quantity) {
@@ -309,11 +288,10 @@ export default function HomePage() {
           addToCartApi({
             productId: item.productId,
             quantity: 1,
-            toppingIds: item.toppings?.map(t => t.toppingId) || []
+            toppingIds: item.toppings?.map((t) => t.toppingId) || [],
           })
         ).unwrap();
       }
-
       await dispatch(getCartApi());
     } catch (error) {
       console.error("Error updating quantity:", error);
@@ -322,17 +300,14 @@ export default function HomePage() {
 
   const handleClearCart = async () => {
     try {
-      // Xóa từng sản phẩm trong giỏ hàng
       for (const item of cart) {
         await dispatch(
           removeFromCartApi({
             orderItemId: item.orderItemId,
-            quantity: item.quantity // Xóa toàn bộ số lượng
+            quantity: item.quantity,
           })
         );
       }
-      
-      // Refresh cart data sau khi xóa
       await dispatch(getCartApi());
     } catch (error) {
       console.error("Error clearing cart:", error);
@@ -340,27 +315,16 @@ export default function HomePage() {
   };
 
   const getFilteredItems = () => {
-    console.log("Current items state:", items);
     if (!Array.isArray(items)) {
       console.warn("Items is not an array:", items);
       return [];
     }
-    console.log("Filtered items:", items);
     return items;
   };
 
   const handleCategoryClick = (category) => {
     setSelectedCategory(category);
     setItemCurrentPage(1);
-  };
-
-  const handleBackToCategories = () => {
-    setSelectedCategory(null);
-    setItemCurrentPage(1);
-  };
-
-  const handleCategoryPageChange = (event, newPage) => {
-    setCategoryCurrentPage(newPage);
   };
 
   const handleItemPageChange = (event, newPage) => {
@@ -409,109 +373,72 @@ export default function HomePage() {
   };
 
   return (
-    <Box className="home-page">
-      <Grid container spacing={2} className="home-page-grid">
-        <Grid size={7} className="menu-section">
-          <Typography className="menu-title">Menu Items</Typography>
-          <Divider className="menu-divider" />
+    <Box className="home-page" sx={{ display: "flex" }}>
+      {/* Sidebar for Categories */}
+      <Grid item size={3} sx={{ borderRight: "1px solid #e0e0e0", height: "100vh", overflowY: "auto" }}>
+        <Box sx={{ p: 2 }}>
+          <Typography variant="h6" sx={{ color: "#8a5a2a", fontWeight: "bold", mb: 2 }}>
+            Danh mục
+          </Typography>
           {categoryLoading ? (
             <Typography>Đang tải danh mục...</Typography>
           ) : categoryError ? (
             <Typography color="error">Lỗi: {categoryError}</Typography>
-          ) : isLoading ? (
+          ) : (
+            <List>
+              {Array.isArray(categories) && categories.length > 0 ? (
+                categories.map((category) => (
+                  <ListItem key={category.categoryId} disablePadding>
+                    <ListItemButton
+                      selected={selectedCategory === category.categoryName}
+                      onClick={() => handleCategoryClick(category.categoryName)}
+                      sx={{
+                        borderRadius: "8px",
+                        mb: 1,
+                        "&.Mui-selected": {
+                          backgroundColor: "#f0e6d9",
+                        },
+                        "&:hover": {
+                          backgroundColor: "#f9f5f1",
+                        },
+                      }}
+                    >
+                      <ListItemText
+                        primary={category.categoryName}
+                        primaryTypographyProps={{
+                          sx: { color: "#8a5a2a", fontWeight: "medium" },
+                        }}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                ))
+              ) : (
+                <Typography>Không có danh mục nào</Typography>
+              )}
+            </List>
+          )}
+        </Box>
+      </Grid>
+
+      {/* Main Content */}
+      <Grid container spacing={2} sx={{ flex: 1, ml: 2 }}>
+        {/* Menu Items Section */}
+        <Grid item size={8} className="menu-section">
+          <Typography className="menu-title">Menu Items</Typography>
+          <Divider className="menu-divider" />
+          {isLoading ? (
             <Typography>Đang tải sản phẩm...</Typography>
           ) : error ? (
             <Typography color="error">Lỗi: {error}</Typography>
-          ) : selectedCategory === null ? (
-            <>
-              <Grid container spacing={2} className="category-grid">
-                {Array.isArray(categories) && categories.length > 0 ? (
-                  categories.map((category) => (
-                    <Grid item xs={4} key={category.categoryId}>
-                      <Card
-                        sx={{
-                          cursor: "pointer",
-                          backgroundColor: "#f9f5f1",
-                          borderRadius: "15px",
-                          boxShadow: "none",
-                          marginTop: "20px",
-                          marginLeft: "30px",
-                          width: "300px",
-                        }}
-                        onClick={() =>
-                          handleCategoryClick(category.categoryName)
-                        }
-                      >
-                        <CardContent
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            height: "150px",
-                          }}
-                        >
-                          <Box sx={{ mr: 2 }}>
-                            <img
-                              src={
-                                category.imageUrl ||
-                                "https://via.placeholder.com/100"
-                              }
-                              alt={category.categoryName}
-                              style={{
-                                width: "100px",
-                                height: "100px",
-                                objectFit: "cover",
-                                borderRadius: "8px",
-                                margin: "7px 9px",
-                              }}
-                            />
-                          </Box>
-                          <Box>
-                            <Typography
-                              variant="h6"
-                              sx={{ color: "#8a5a2a", fontWeight: "bold" }}
-                            >
-                              {category.categoryName}
-                            </Typography>
-                            <Typography
-                              variant="body2"
-                              sx={{ color: "#8a5a2a" }}
-                            >
-                              {category.description}
-                            </Typography>
-                          </Box>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  ))
-                ) : (
-                  <Typography>Không có danh mục nào</Typography>
-                )}
-              </Grid>
-              {categoryTotalPages > 1 && (
-                <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
-                  <Pagination
-                    count={categoryTotalPages}
-                    page={categoryCurrentPage}
-                    onChange={handleCategoryPageChange}
-                    color="primary"
-                    sx={{
-                      "& .MuiPaginationItem-root": {
-                        color: "#8a5a2a",
-                      },
-                    }}
-                  />
-                </Box>
-              )}
-            </>
+          ) : !selectedCategory ? (
+            <Typography
+              variant="h6"
+              sx={{ color: "#8a5a2a", fontWeight: "bold", mt: 2 }}
+            >
+              Vui lòng chọn một danh mục
+            </Typography>
           ) : getFilteredItems().length > 0 ? (
             <>
-              <Button
-                startIcon={<ArrowBackIcon />}
-                onClick={handleBackToCategories}
-                sx={{ mb: 2, color: "#8a5a2a" }}
-              >
-                Quay lại Danh mục
-              </Button>
               <Grid container spacing={2} className="menu-items-grid">
                 {getFilteredItems().map((item) => {
                   const firstVariant = item.variants?.[0] || {};
@@ -588,8 +515,7 @@ export default function HomePage() {
                                     variant="body2"
                                     sx={{ color: "#8a5a2a" }}
                                   >
-                                    - {comboItem.quantity}{" "}
-                                    {comboItem.productName}
+                                    - {comboItem.quantity} {comboItem.productName}
                                   </Typography>
                                 ))}
                               </Box>
@@ -628,7 +554,6 @@ export default function HomePage() {
               </Grid>
               {itemTotalPages > 1 && (
                 <Box sx={{ display: "flex", justifyContent: "center", mt: 5 }}>
-                
                   <Pagination
                     count={itemTotalPages}
                     page={itemCurrentPage}
@@ -644,25 +569,17 @@ export default function HomePage() {
               )}
             </>
           ) : (
-            <Box>
-              <Button
-                startIcon={<ArrowBackIcon />}
-                onClick={handleBackToCategories}
-                sx={{ mb: 2, color: "#8a5a2a" }}
-              >
-                Quay lại Danh mục
-              </Button>
-              <Typography
-                variant="h6"
-                sx={{ color: "#8a5a2a", fontWeight: "bold" }}
-              >
-                Không có món nào trong danh mục này
-              </Typography>
-            </Box>
+            <Typography
+              variant="h6"
+              sx={{ color: "#8a5a2a", fontWeight: "bold", mt: 2 }}
+            >
+              Không có món nào trong danh mục này
+            </Typography>
           )}
         </Grid>
 
-        <Grid item size={5} className="order-section">
+        {/* Order Section */}
+        <Grid item size={4} className="order-section">
           <Box className="order-container">
             <Typography variant="h4" className="order-title">
               Đơn hàng hiện tại

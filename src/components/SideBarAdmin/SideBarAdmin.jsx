@@ -16,13 +16,14 @@ import WorkspacesIcon from '@mui/icons-material/Workspaces';
 
 const menuItems = [
   { text: "Dashboard", icon: <DashboardIcon />, path: "/admin" },
+  { text: "Orders", icon: <OrderIcon />, path: "/admin/orders" },
   { text: "Accounts", icon: <PeopleIcon />, path: "/admin/accounts" },
   { text: "Categories", icon: <CategoryIcon />, path: "/admin/categories" },
   { text: "Products", icon: <ProductIcon />, path: "/admin/products" },
   { text: "Combos", icon: <WorkspacesIcon />, path: "/admin/combos" },
-  
+  { text: "Toppings", icon: <PosIcon />, path: "/admin/toppings" },
   { text: "Payments", icon: <PaymentIcon />, path: "/admin/payments" },
-  { text: "Orders", icon: <OrderIcon />, path: "/admin/orders" },
+
 ];
 
 export default function AdminSidebar() {

@@ -21,6 +21,7 @@ import PaymentList from "../pages/Admin/PaymentMethods/List";
 import PaymentForm from "../pages/Admin/PaymentMethods/Form";
 import OrderListAdmin from "../pages/Admin/Orders/List";
 import Combos from "../pages/Admin/Combos/Combos";
+import ToppingPage from "../pages/Admin/Topping/TopingPage";
 
 
 export default function useRouterElements() {
@@ -133,6 +134,10 @@ export default function useRouterElements() {
         {
           path: "combos",
           element: <Combos />,
+        },
+        {
+          path: "toppings",
+          element: <ToppingPage />,
         },
         {
           path: PATH.PAYMENTS,

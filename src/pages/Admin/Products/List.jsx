@@ -31,12 +31,18 @@ import {
   setPage,
 } from "../../../store/slices/itemSlice";
 import { listCategory } from "../../../store/slices/categorySlice";
-import FormTopping from "./FormTopping";
 
 export default function ProductList() {
   const dispatch = useDispatch();
-  const { items, totalItems, currentPage, pageSize, totalPages, isLoading, error } =
-    useSelector((state) => state.item);
+  const {
+    items,
+    totalItems,
+    currentPage,
+    pageSize,
+    totalPages,
+    isLoading,
+    error,
+  } = useSelector((state) => state.item);
   const categoryState = useSelector((state) => state.category);
   const category = categoryState?.category || [];
   const categoryLoading = categoryState?.isLoading || false;
@@ -54,17 +60,33 @@ export default function ProductList() {
   });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-  const [hasLoadedCategories, setHasLoadedCategories] = useState(false); // Trạng thái để kiểm soát việc gọi listCategory
-  const [openToppingModal, setOpenToppingModal] = useState(false);
+  const [hasLoadedCategories, setHasLoadedCategories] = useState(false);
+  const [openVariantModal, setOpenVariantModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const stableCategory = useMemo(() => category, [category]);
+
+  // Filter categories to exclude "combo" and "topping"
+  const filteredCategories = useMemo(
+    () =>
+      stableCategory.filter((cat) => !/combo|topping/i.test(cat.categoryName)),
+    [stableCategory]
+  );
+
+  // Filter items to show only MaterProduct
+  const masterProducts = useMemo(
+    () => items.filter((product) => product.productType === "MaterProduct"),
+    [items]
+  );
 
   // Reset currentPage to 1 when the component mounts
   useEffect(() => {
     dispatch(setPage(1));
   }, [dispatch]);
 
-  // Tải danh mục chỉ một lần khi component mount
+  // Load categories only once when component mounts
   useEffect(() => {
     if (!hasLoadedCategories) {
       console.log("Gọi listCategory khi component mount");
@@ -77,24 +99,36 @@ export default function ProductList() {
     console.log("Danh sách category đã thay đổi:", stableCategory);
   }, [stableCategory]);
 
-  // Tải danh sách sản phẩm khi currentPage hoặc pageSize thay đổi
+  // Fetch products when currentPage, pageSize, selectedCategoryId, or searchTerm changes
   useEffect(() => {
     console.log(
       "Fetching products for ProductList - Page:",
       currentPage,
       "PageSize:",
-      pageSize
+      pageSize,
+      "CategoryId:",
+      selectedCategoryId,
+      "Search:",
+      searchTerm
     );
     dispatch(
-      listItemApi({ CategoryId: null, Page: currentPage, PageSize: pageSize })
+      listItemApi({
+        CategoryId: selectedCategoryId,
+        Search: searchTerm.trim() || null,
+        Page: currentPage,
+        PageSize: pageSize,
+      })
     ).then((result) => {
       if (result.meta.requestStatus === "fulfilled") {
-        console.log("Products fetched successfully for ProductList:", result.payload);
+        console.log(
+          "Products fetched successfully for ProductList:",
+          result.payload
+        );
       } else {
         console.error("Error fetching items for ProductList:", result.error);
       }
     });
-  }, [dispatch, currentPage, pageSize]);
+  }, [dispatch, currentPage, pageSize, selectedCategoryId, searchTerm]);
 
   const handleOpenModal = (product = null) => {
     if (categoryLoading) {
@@ -136,7 +170,9 @@ export default function ProductList() {
       const newFormData = {
         productName: "",
         categoryId:
-          stableCategory.length > 0 ? Number(stableCategory[0].categoryId) : "",
+          filteredCategories.length > 0
+            ? Number(filteredCategories[0].categoryId)
+            : "",
         description: "",
         sizes: [{ size: "Small", price: "0" }],
         status: true,
@@ -153,6 +189,16 @@ export default function ProductList() {
     setOpenModal(false);
     setImageFile(null);
     setImagePreview(null);
+  };
+
+  const handleOpenVariantModal = (product) => {
+    setSelectedProduct(product);
+    setOpenVariantModal(true);
+  };
+
+  const handleCloseVariantModal = () => {
+    setOpenVariantModal(false);
+    setSelectedProduct(null);
   };
 
   const handleChange = (e, index = null) => {
@@ -264,7 +310,8 @@ export default function ProductList() {
           console.log("Tạo sản phẩm thành công, gọi lại listItemApi");
           await dispatch(
             listItemApi({
-              CategoryId: null,
+              CategoryId: selectedCategoryId,
+              Search: searchTerm.trim() || null,
               Page: currentPage,
               PageSize: pageSize,
             })
@@ -283,8 +330,13 @@ export default function ProductList() {
   };
 
   const handlePageChange = (event, newPage) => {
-    console.log("Navigating to page:", newPage);
     dispatch(setPage(newPage));
+  };
+
+  const handleCategoryChange = (e) => {
+    const value = e.target.value === "all" ? null : Number(e.target.value);
+    setSelectedCategoryId(value);
+    dispatch(setPage(1)); // Reset to page 1 on filter change
   };
 
   if (isLoading) return <Typography>Loading...</Typography>;
@@ -300,84 +352,120 @@ export default function ProductList() {
     );
 
   console.log("FormData trước khi render:", formData);
-  console.log("Pagination state - Total Pages:", totalPages, "Current Page:", currentPage);
+  console.log(
+    "Pagination state - Total Pages:",
+    totalPages,
+    "Current Page:",
+    currentPage
+  );
 
   return (
     <Box sx={{ padding: 3 }}>
-      <Typography variant="h5" fontWeight="bold" gutterBottom>
-        Quản lý sản phẩm
-      </Typography>
+   
       <Paper sx={{ padding: 2 }}>
-        <Box
-          display="flex"
-          justifyContent="space-between"
-          alignItems="center"
-          mb={2}
-        >
-          <Typography variant="h6">Danh sách sản phẩm</Typography>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+        <Grid container spacing={2} alignItems="center" mb={2}>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              select
+              fullWidth
+              label="Danh mục"
+              value={selectedCategoryId === null ? "all" : selectedCategoryId}
+              onChange={handleCategoryChange}
+              disabled={categoryLoading}
+            >
+              <MenuItem value="all">Tất cả danh mục</MenuItem>
+              {categoryLoading ? (
+                <MenuItem value="" disabled>
+                  Đang tải danh mục...
+                </MenuItem>
+              ) : categoryError ? (
+                <MenuItem value="" disabled>
+                  Lỗi: {categoryError}
+                </MenuItem>
+              ) : filteredCategories.length === 0 ? (
+                <MenuItem value="" disabled>
+                  Không có danh mục
+                </MenuItem>
+              ) : (
+                filteredCategories.map((cat) => (
+                  <MenuItem key={cat.categoryId} value={Number(cat.categoryId)}>
+                    {cat.categoryName}
+                  </MenuItem>
+                ))
+              )}
+            </TextField>
+          </Grid>
+
+          <Grid
+            item
+            xs={12}
+            sm={4}
+            sx={{ display: "flex", justifyContent: "flex-end" }}
+          >
             <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => handleOpenModal()}
-              sx={{ 
+              sx={{
                 backgroundColor: "#8B5E3C",
-                '&:hover': {
-                  backgroundColor: "#6B4E2C"
-                }
+                "&:hover": {
+                  backgroundColor: "#6B4E2C",
+                },
               }}
             >
               THÊM SẢN PHẨM
             </Button>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setOpenToppingModal(true)}
-              sx={{ backgroundColor: "#8B5E3C" }}
-            >
-              THÊM TOPPING
-            </Button>
-          </Box>
-        </Box>
+          </Grid>
+        </Grid>
+    
         <Table>
           <TableHead>
-            <TableRow>
-              <TableCell>Hình ảnh</TableCell>
-              <TableCell>Tên sản phẩm</TableCell>
-              <TableCell>Danh mục</TableCell>
-              <TableCell>Giá (VND)</TableCell>
-              <TableCell>Hành động</TableCell>
+            <TableRow className="table-header">
+              <TableCell sx={{ color: "black", fontWeight: "bold" }}>
+                Hình ảnh
+              </TableCell>
+              <TableCell sx={{ color: "black", fontWeight: "bold" }}>
+                Tên sản phẩm
+              </TableCell>
+              <TableCell sx={{ color: "black", fontWeight: "bold" }}>
+                Danh mục
+              </TableCell>
+              <TableCell sx={{ color: "black", fontWeight: "bold" }}>
+                Chi Tiết
+              </TableCell>
+              <TableCell sx={{ color: "black", fontWeight: "bold" }}>
+                Hành động
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {items.length === 0 ? (
+            {masterProducts.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} align="center">
                   Không có sản phẩm nào
                 </TableCell>
               </TableRow>
             ) : (
-              items.map((product) => {
-                const sizes =
-                  product.variants?.length > 0
-                    ? product.variants.map((v) => v.sizeId).join(", ")
-                    : "N/A";
-                const prices =
-                  product.variants?.length > 0
-                    ? product.variants
-                        .map((v) =>
-                          v.price !== null && v.price !== undefined
-                            ? `${v.sizeId}: ${v.price.toLocaleString("vi-VN", {
-                                style: "currency",
-                                currency: "VND",
-                              })}`
-                            : `${v.sizeId}: N/A`
-                        )
-                        .join(", ")
+              masterProducts.map((product) => {
+                const priceDisplay =
+                  product.price !== null && product.price !== undefined
+                    ? product.price.toLocaleString("vi-VN", {
+                        style: "currency",
+                        currency: "VND",
+                      })
+                    : product.variants.length > 0
+                    ? "Xem chi tiết"
                     : "N/A";
 
                 return (
-                  <TableRow key={product.productId}>
+                  <TableRow
+                    key={product.productId}
+                    onClick={() => handleOpenVariantModal(product)}
+                    sx={{
+                      cursor: "pointer",
+                      "&:hover": { backgroundColor: "#f5f5f5" },
+                    }}
+                  >
                     <TableCell>
                       {product.imageUrl ? (
                         <Avatar
@@ -391,9 +479,14 @@ export default function ProductList() {
                     </TableCell>
                     <TableCell>{product.productName}</TableCell>
                     <TableCell>{product.categoryName || "N/A"}</TableCell>
-                    <TableCell>{prices}</TableCell>
+                    <TableCell>{priceDisplay}</TableCell>
                     <TableCell>
-                      <IconButton onClick={() => handleOpenModal(product)}>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent row click
+                          handleOpenModal(product);
+                        }}
+                      >
                         <EditIcon />
                       </IconButton>
                     </TableCell>
@@ -406,7 +499,7 @@ export default function ProductList() {
         {totalPages > 1 && (
           <Box display="flex" justifyContent="center" mt={3}>
             <Typography variant="body2" sx={{ mr: 2 }}>
-              Total Pages: {totalPages}, Current Page: {currentPage}
+      
             </Typography>
             <Pagination
               count={totalPages}
@@ -417,6 +510,8 @@ export default function ProductList() {
           </Box>
         )}
       </Paper>
+
+      {/* Add/Edit Product Modal */}
       <Modal open={openModal} onClose={handleCloseModal}>
         <Box
           sx={{
@@ -452,8 +547,8 @@ export default function ProductList() {
               value={
                 formData.categoryId !== ""
                   ? formData.categoryId
-                  : stableCategory.length > 0
-                  ? stableCategory[0].categoryId
+                  : filteredCategories.length > 0
+                  ? filteredCategories[0].categoryId
                   : ""
               }
               onChange={(e) => {
@@ -475,12 +570,12 @@ export default function ProductList() {
                 <MenuItem value="" disabled>
                   Lỗi: {categoryError}
                 </MenuItem>
-              ) : stableCategory.length === 0 ? (
+              ) : filteredCategories.length === 0 ? (
                 <MenuItem value="" disabled>
                   Không có danh mục
                 </MenuItem>
               ) : (
-                stableCategory.map((cat) => (
+                filteredCategories.map((cat) => (
                   <MenuItem key={cat.categoryId} value={Number(cat.categoryId)}>
                     {cat.categoryName}
                   </MenuItem>
@@ -592,10 +687,71 @@ export default function ProductList() {
           </form>
         </Box>
       </Modal>
-      <FormTopping 
-        open={openToppingModal} 
-        handleClose={() => setOpenToppingModal(false)} 
-      />
+
+      {/* Variant Details Modal */}
+      <Modal open={openVariantModal} onClose={handleCloseVariantModal}>
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 500,
+            bgcolor: "background.paper",
+            boxShadow: 24,
+            p: 4,
+            borderRadius: 2,
+            maxHeight: "80vh",
+            overflowY: "auto",
+          }}
+        >
+          <Typography variant="h6" fontWeight="bold" gutterBottom>
+            Chi tiết biến thể: {selectedProduct?.productName}
+          </Typography>
+          {selectedProduct?.variants.length === 0 ? (
+            <Typography>Không có biến thể nào cho sản phẩm này.</Typography>
+          ) : (
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Kích thước</TableCell>
+                  <TableCell>Giá (VND)</TableCell>
+                  <TableCell>Mô tả</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {selectedProduct?.variants.map((variant) => (
+                  <TableRow key={variant.productId}>
+                    <TableCell>{variant.sizeId}</TableCell>
+                    <TableCell>
+                      {variant.price !== null && variant.price !== undefined
+                        ? variant.price.toLocaleString("vi-VN", {
+                            style: "currency",
+                            currency: "VND",
+                          })
+                        : "N/A"}
+                    </TableCell>
+                    <TableCell>{variant.description || "N/A"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+          <Box mt={3} display="flex" justifyContent="flex-end">
+            <Button
+              variant="outlined"
+              onClick={handleCloseVariantModal}
+              sx={{
+                backgroundColor: "#8B5E3C",
+                color: "white",
+                "&:hover": { backgroundColor: "#6B4E2C" },
+              }}
+            >
+              Đóng
+            </Button>
+          </Box>
+        </Box>
+      </Modal>
     </Box>
   );
 }
