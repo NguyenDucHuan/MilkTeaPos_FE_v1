@@ -7,6 +7,15 @@ import {
   InputAdornment,
   TextField,
   CircularProgress,
+  Modal,
+  Box,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -15,9 +24,11 @@ import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
   AccessTime as PendingIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchOrders } from '../../store/slices/orderSlice';
+import fetcher from '../../apis/fetcher';
 
 const statusColors = {
   Pending: {
@@ -49,6 +60,8 @@ const OrderList = () => {
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orderDetails, setOrderDetails] = useState(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
   useEffect(() => {
     dispatch(fetchOrders());
@@ -63,8 +76,22 @@ const OrderList = () => {
     setPage(0);
   };
 
-  const handleViewDetails = (order) => {
-    setSelectedOrder(order === selectedOrder ? null : order);
+  const handleViewDetails = async (order) => {
+    try {
+      setIsLoadingDetails(true);
+      const response = await fetcher.get(`/order/get-by-id/${order.orderId}`);
+      setOrderDetails(response.data.data);
+      setSelectedOrder(order);
+    } catch (error) {
+      console.error('Error fetching order details:', error);
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  };
+
+  const handleCloseDetails = () => {
+    setSelectedOrder(null);
+    setOrderDetails(null);
   };
 
   const filteredOrders = orders?.items
@@ -233,79 +260,132 @@ const OrderList = () => {
             </div>
           </div>
 
-          {/* Order Details */}
-          {selectedOrder && (
-            <div className="mt-6 bg-white rounded-lg shadow p-6 border border-gray-200">
-              <div className="flex justify-between items-start mb-4">
-                <Typography variant="h6" className="text-gray-900 font-bold">
-                  Chi tiết đơn hàng #{selectedOrder.orderId}
-                </Typography>
-                <OrderStatus status={selectedOrder.orderstatusupdates?.[0]?.orderStatus} />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Order Info */}
-                <div className="space-y-4">
-                  <div>
-                    <Typography variant="subtitle2" className="text-gray-600">
-                      Ngày đặt hàng
-                    </Typography>
-                    <Typography variant="body1" className="text-gray-900">
-                      {formatDate(selectedOrder.createAt)}
-                    </Typography>
-                  </div>
-                  <div>
-                    <Typography variant="subtitle2" className="text-gray-600">
-                      Ghi chú
-                    </Typography>
-                    <Typography variant="body1" className="text-gray-900">
-                      {selectedOrder.note || "Không có ghi chú"}
-                    </Typography>
-                  </div>
-                  <div>
-                    <Typography variant="subtitle2" className="text-gray-600">
-                      Phương thức thanh toán
-                    </Typography>
-                    <Typography variant="body1" className="text-gray-900">
-                      {selectedOrder.paymentMethodId === 1 ? "Tiền mặt" : "Chuyển khoản"}
-                    </Typography>
-                  </div>
-                </div>
-
-                {/* Order Items */}
-                <div className="space-y-4">
-                  <Typography variant="subtitle2" className="text-gray-600">
-                    Chi tiết sản phẩm
+          {/* Order Details Modal */}
+          <Modal
+            open={!!selectedOrder}
+            onClose={handleCloseDetails}
+            aria-labelledby="order-details-modal"
+          >
+            <Box
+              sx={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '80%',
+                maxWidth: '800px',
+                bgcolor: 'background.paper',
+                boxShadow: 24,
+                p: 4,
+                borderRadius: 2,
+                maxHeight: '90vh',
+                overflow: 'auto',
+              }}
+            >
+              {isLoadingDetails ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                  <CircularProgress />
+                </Box>
+              ) : orderDetails ? (
+                <>
+                  <Typography variant="h6" component="h2" gutterBottom>
+                    Chi tiết đơn hàng #{orderDetails.orderId}
                   </Typography>
-                  {selectedOrder.orderitems?.map((item, index) => (
-                    <div key={index} className="flex justify-between items-center py-2 border-b">
-                      <div>
-                        <Typography variant="body1" className="text-gray-900">
-                          {item.product?.productName}
-                        </Typography>
-                        <Typography variant="body2" className="text-gray-600">
-                          Số lượng: {item.quantity}
-                        </Typography>
-                      </div>
-                      <Typography variant="body1" className="text-gray-900 font-medium">
-                        {formatCurrency(item.price * item.quantity)}
-                      </Typography>
-                    </div>
-                  ))}
-                  <div className="pt-4 border-t">
-                    <div className="flex justify-between items-center">
-                      <Typography variant="subtitle1" className="text-gray-900 font-bold">
-                        Tổng cộng
-                      </Typography>
-                      <Typography variant="h6" className="text-gray-900 font-bold">
-                        {formatCurrency(selectedOrder.totalAmount)}
-                      </Typography>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+                  
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      Thông tin đơn hàng
+                    </Typography>
+                    <Typography variant="body2">
+                      Ngày đặt: {formatDate(orderDetails.createAt)}
+                    </Typography>
+                    <Typography variant="body2">
+                      Tổng tiền: {formatCurrency(orderDetails.totalAmount)}
+                    </Typography>
+                    <Typography variant="body2">
+                      Trạng thái: <OrderStatus status={orderDetails.orderstatusupdates?.[0]?.orderStatus} />
+                    </Typography>
+                    <Typography variant="body2">
+                      Phương thức thanh toán: {orderDetails.paymentMethod?.methodName}
+                    </Typography>
+                    <Typography variant="body2">
+                      Ghi chú: {orderDetails.note || 'Không có'}
+                    </Typography>
+                  </Box>
+
+                  <Typography variant="subtitle1" gutterBottom>
+                    Danh sách sản phẩm
+                  </Typography>
+                  <TableContainer component={Paper}>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Sản phẩm</TableCell>
+                          <TableCell>Size</TableCell>
+                          <TableCell>Toppings</TableCell>
+                          <TableCell align="right">Số lượng</TableCell>
+                          <TableCell align="right">Đơn giá</TableCell>
+                          <TableCell align="right">Thành tiền</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {orderDetails.orderitems
+                          ?.filter(item => !item.masterId)
+                          .map((item) => {
+                            // Tìm các topping liên quan nếu là sản phẩm chính
+                            const toppings = item.product?.productType !== 'Extra' 
+                              ? orderDetails.orderitems.filter(
+                                  topping => topping.masterId === item.orderItemId
+                                )
+                              : [];
+                            
+                            // Tính tổng giá của sản phẩm và topping
+                            const basePrice = item.price;
+                            const toppingsPrice = toppings.reduce(
+                              (total, topping) => total + topping.price,
+                              0
+                            );
+                            const totalPrice = basePrice + toppingsPrice;
+                            
+                            return (
+                              <TableRow key={item.orderItemId}>
+                                <TableCell>{item.product?.productName}</TableCell>
+                                <TableCell>{item.product?.sizeId || 'Mặc định'}</TableCell>
+                                <TableCell>
+                                  {toppings.length > 0 ? (
+                                    toppings.map((topping, index) => (
+                                      <span key={topping.orderItemId}>
+                                        {index > 0 ? ', ' : ''}
+                                        {topping.product?.productName}
+                                      </span>
+                                    ))
+                                  ) : 'Không có'}
+                                </TableCell>
+                                <TableCell align="right">{item.quantity}</TableCell>
+                                <TableCell align="right">
+                                  {formatCurrency(totalPrice)}
+                                </TableCell>
+                                <TableCell align="right">
+                                  {formatCurrency(totalPrice * item.quantity)}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+
+                  <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+                    <IconButton onClick={handleCloseDetails}>
+                      <CloseIcon />
+                    </IconButton>
+                  </Box>
+                </>
+              ) : (
+                <Typography>Không tìm thấy thông tin chi tiết đơn hàng</Typography>
+              )}
+            </Box>
+          </Modal>
         </div>
       </Container>
     </div>

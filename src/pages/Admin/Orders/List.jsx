@@ -37,7 +37,7 @@ export default function OrderList() {
                 <TableCell>{index + 1}</TableCell>
                 <TableCell>{order.id}</TableCell>
                 <TableCell>{new Date(order.date).toLocaleString()}</TableCell>
-                <TableCell>{order.totalAmount.toLocaleString()} VND</TableCell>
+                <TableCell>{order.totalAmount.toLocaleString('vi-VN')} VNĐ</TableCell>
                 <TableCell>{order.note}</TableCell>
                 <TableCell>{order.staffName}</TableCell>
                 <TableCell>{order.paymentMethod}</TableCell>
@@ -50,3 +50,4 @@ export default function OrderList() {
     </Box>
   );
 }
+
