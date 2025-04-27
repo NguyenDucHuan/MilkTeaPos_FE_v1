@@ -127,6 +127,44 @@ export default function HomePage() {
   };
 
   const handleOpenModal = async (item) => {
+    console.log("Item being processed:", item);
+    console.log("Product Type:", item.productType);
+
+    // Xử lý topping trực tiếp
+    if (item.productType?.toLowerCase() === "extra") {
+      console.log("Processing as topping");
+      try {
+        // Thêm vào giỏ hàng local
+        dispatch(
+          addToCart({
+            product: { ...item, productId: item.productId, price: item.price },
+            quantity: 1,
+            size: "Parent",
+          })
+        );
+        // Gọi API thêm vào giỏ hàng
+        await dispatch(
+          addToCartApi({
+            productId: item.productId,
+            quantity: 1,
+            toppingIds: []
+          })
+        ).unwrap();
+        // Cập nhật giỏ hàng
+        await dispatch(getCartApi()).unwrap();
+      } catch (error) {
+        console.error("Error adding topping to cart:", error);
+        dispatch(
+          updateCartItemQuantity({
+            productId: item.productId,
+            quantity: 0,
+          })
+        );
+      }
+      return;
+    }
+
+    // Xử lý combo
     if (item.productType === "Combo") {
       try {
         dispatch(
@@ -157,6 +195,7 @@ export default function HomePage() {
       return;
     }
 
+    // Xử lý sản phẩm thông thường (không phải topping và không phải combo)
     if (!item || !item.variants || !Array.isArray(item.variants)) {
       console.error("Invalid item or variants:", item);
       return;
