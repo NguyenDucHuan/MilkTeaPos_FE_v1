@@ -20,6 +20,14 @@ import {
   InputAdornment,
   Collapse,
   MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
 } from "@mui/material";
 import {
   Edit as EditIcon,
@@ -27,6 +35,7 @@ import {
   ExpandMore as ExpandMoreIcon,
   Remove as RemoveIcon,
   Delete as DeleteIcon,
+  Visibility as VisibilityIcon,
 } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
 import { listItemApi, setPage } from "../../../store/slices/itemSlice";
@@ -69,6 +78,8 @@ export default function Combos() {
   const [expandedProduct, setExpandedProduct] = useState(null);
   const [allProducts, setAllProducts] = useState([]); // To store all products for the modal
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [openDetailsModal, setOpenDetailsModal] = useState(false);
+  const [selectedCombo, setSelectedCombo] = useState(null);
 
   // Filter only combo products
   const combos = useMemo(() => {
@@ -379,6 +390,16 @@ export default function Combos() {
     setSelectedCategory(category);
   };
 
+  const handleOpenDetails = (combo) => {
+    setSelectedCombo(combo);
+    setOpenDetailsModal(true);
+  };
+
+  const handleCloseDetails = () => {
+    setOpenDetailsModal(false);
+    setSelectedCombo(null);
+  };
+
   if (productsLoading) return <Typography>Loading...</Typography>;
   if (productsError) return <Typography color="error">Error: {productsError}</Typography>;
 
@@ -429,9 +450,6 @@ export default function Combos() {
                 Mô tả
               </TableCell>
               <TableCell sx={{ fontWeight: "bold", color: "#333" }}>
-                Sản phẩm
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", color: "#333" }}>
                 Giá (VND)
               </TableCell>
               <TableCell sx={{ fontWeight: "bold", color: "#333" }}>
@@ -445,7 +463,7 @@ export default function Combos() {
           <TableBody>
             {combos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ color: "#888" }}>
+                <TableCell colSpan={5} align="center" sx={{ color: "#888" }}>
                   Không có combo nào
                 </TableCell>
               </TableRow>
@@ -457,34 +475,6 @@ export default function Combos() {
                 >
                   <TableCell>{combo.productName}</TableCell>
                   <TableCell>{combo.description || "N/A"}</TableCell>
-                  <TableCell>
-                    {combo.comboItems && combo.comboItems.length > 0
-                      ? combo.comboItems
-                          .map((item) => {
-                            const toppingsForProduct =
-                              hardcodedToppings[item.productId] || [];
-                            const toppingDetails = item.toppings
-                              ? item.toppings
-                                  .map((t) => {
-                                    const topping = toppingsForProduct.find(
-                                      (top) => top.toppingId === t.toppingId
-                                    );
-                                    return topping
-                                      ? `${topping.toppingName} (x${t.quantity})`
-                                      : "";
-                                  })
-                                  .filter(Boolean)
-                                  .join(", ")
-                              : "None";
-                            return `${item.productName} (Qty: ${
-                              item.quantity
-                            }, Toppings: ${
-                              toppingDetails || "None"
-                            }, Discount: ${item.discount}%)`;
-                          })
-                          .join("; ")
-                      : "No items"}
-                  </TableCell>
                   <TableCell>
                     {parseFloat(combo.price).toLocaleString("vi-VN", {
                       style: "currency",
@@ -506,15 +496,26 @@ export default function Combos() {
                     </Box>
                   </TableCell>
                   <TableCell>
-                    <IconButton
-                      onClick={() => handleOpenModal(combo)}
-                      sx={{
-                        color: "#8B5E3C",
-                        "&:hover": { color: "#70482F" },
-                      }}
-                    >
-                      <EditIcon />
-                    </IconButton>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <IconButton
+                        onClick={() => handleOpenDetails(combo)}
+                        sx={{
+                          color: "#8B5E3C",
+                          "&:hover": { color: "#70482F" },
+                        }}
+                      >
+                        <VisibilityIcon />
+                      </IconButton>
+                      <IconButton
+                        onClick={() => handleOpenModal(combo)}
+                        sx={{
+                          color: "#8B5E3C",
+                          "&:hover": { color: "#70482F" },
+                        }}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))
@@ -536,6 +537,109 @@ export default function Combos() {
           </Box>
         )}
       </Paper>
+
+      {/* Modal chi tiết combo */}
+      <Dialog
+        open={openDetailsModal}
+        onClose={handleCloseDetails}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ borderBottom: "2px solid #8B5E3C", pb: 1 }}>
+          Chi tiết Combo: {selectedCombo?.productName}
+        </DialogTitle>
+        <DialogContent>
+          {selectedCombo && (
+            <Box sx={{ mt: 2 }}>
+              <Box sx={{ 
+                width: '100%', 
+                height: 300, 
+                mb: 3,
+                overflow: 'hidden',
+                borderRadius: 2,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              }}>
+                <img
+                  src={selectedCombo.imageUrl || '/placeholder-image.jpg'}
+                  alt={selectedCombo.productName}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+              </Box>
+              <Typography variant="h6" gutterBottom>
+                Thông tin cơ bản
+              </Typography>
+              <List>
+                <ListItem>
+                  <ListItemText
+                    primary="Mô tả"
+                    secondary={selectedCombo.description || "Không có mô tả"}
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Giá"
+                    secondary={parseFloat(selectedCombo.price).toLocaleString("vi-VN", {
+                      style: "currency",
+                      currency: "VND",
+                    })}
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Trạng thái"
+                    secondary={selectedCombo.status ? "Kích hoạt" : "Tắt"}
+                  />
+                </ListItem>
+              </List>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="h6" gutterBottom>
+                Danh sách sản phẩm có trong combo
+              </Typography>
+              <List>
+                {selectedCombo.comboItems && selectedCombo.comboItems.length > 0 ? (
+                  selectedCombo.comboItems.map((item) => {
+                    const product = allProducts.find(p => p.productId === item.productId);
+                    if (!product) return null;
+                    
+                    const sizeInfo = product.variants?.find(v => v.sizeId === item.size);
+                    const sizeText = sizeInfo ? ` (Size: ${item.size})` : '';
+                    
+                    return (
+                      <ListItem key={item.productId}>
+                        <ListItemText
+                          primary={`${product.productName}${sizeText}`}
+                          secondary={`Số lượng: ${item.quantity}, Giảm giá: ${item.discount}%`}
+                        />
+                      </ListItem>
+                    );
+                  })
+                ) : (
+                  <ListItem>
+                    <ListItemText primary="Chưa có sản phẩm" />
+                  </ListItem>
+                )}
+              </List>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={handleCloseDetails}
+            sx={{
+              color: "#8B5E3C",
+              "&:hover": { color: "#70482F" },
+            }}
+          >
+            Đóng
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal chỉnh sửa combo */}
       <Modal open={openModal} onClose={handleCloseModal}>
         <Box
           sx={{

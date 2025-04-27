@@ -846,7 +846,6 @@ export default function HomePage() {
       {/* Phần hiển thị combo */}
       <Box sx={{ mt: 4 }}>
         <Typography variant="h5" sx={{ mb: 2, color: '#8B5E3C' }}>
-          Combo Ưu Đãi
         </Typography>
         <Grid container spacing={2}>
           {combos.map((item) => (
