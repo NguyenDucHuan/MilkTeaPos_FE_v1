@@ -14,7 +14,7 @@ import {
   ListItemButton,
   ListItemText,
 } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import "./HomePage.css";
 import ModalCheckout from "../../../components/Modal/ModalCheckout";
@@ -71,6 +71,8 @@ export default function HomePage() {
     quantity: 1,
   });
   const [itemCurrentPage, setItemCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(6); // Số sản phẩm hiển thị trên mỗi trang
 
   useEffect(() => {
     // Fetch all categories without pagination
@@ -409,6 +411,24 @@ export default function HomePage() {
     } catch (error) {
       console.error("Error creating order:", error);
     }
+  };
+
+  // Lọc và phân trang combo
+  const combos = useMemo(() => {
+    const filteredCombos = items.filter(item => item.categoryId === 5 && item.categoryName === "Combo");
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredCombos.slice(startIndex, endIndex);
+  }, [items, currentPage, pageSize]);
+
+  // Tính tổng số trang
+  const totalPages = useMemo(() => {
+    const totalCombos = items.filter(item => item.categoryId === 5 && item.categoryName === "Combo").length;
+    return Math.ceil(totalCombos / pageSize);
+  }, [items, pageSize]);
+
+  const handlePageChange = (event, newPage) => {
+    setCurrentPage(newPage);
   };
 
   return (
@@ -822,6 +842,39 @@ export default function HomePage() {
         order={cart || []}
         total={total}
       />
+
+      {/* Phần hiển thị combo */}
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="h5" sx={{ mb: 2, color: '#8B5E3C' }}>
+          Combo Ưu Đãi
+        </Typography>
+        <Grid container spacing={2}>
+          {combos.map((item) => (
+            <Grid item xs={12} sm={6} md={4} key={item.productId}>
+              {/* Card hiển thị combo */}
+            </Grid>
+          ))}
+        </Grid>
+        {totalPages > 1 && (
+          <Box display="flex" justifyContent="center" mt={3}>
+            <Pagination
+              count={totalPages}
+              page={currentPage}
+              onChange={handlePageChange}
+              color="primary"
+              sx={{
+                '& .Mui-selected': {
+                  bgcolor: '#8B5E3C !important',
+                  color: 'white',
+                },
+                '& .MuiPaginationItem-root': {
+                  color: '#8B5E3C',
+                },
+              }}
+            />
+          </Box>
+        )}
+      </Box>
     </Box>
   );
 }
