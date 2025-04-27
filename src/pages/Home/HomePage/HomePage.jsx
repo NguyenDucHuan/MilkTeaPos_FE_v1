@@ -574,7 +574,7 @@ export default function HomePage() {
                               className="menu-item-price"
                               sx={{ marginTop: "5px", color: "#8a5a2a" }}
                             >
-                              ${price.toFixed(2)}
+                              {price.toLocaleString('vi-VN')} VNĐ
                             </Typography>
                             <Box className="menu-item-actions">
                               <button
@@ -678,13 +678,13 @@ export default function HomePage() {
                   <Box className="order-summary-item">
                     <Typography variant="body2">TỔNG CỘNG:</Typography>
                     <Typography variant="body2">
-                      ${calculateSubtotal().toFixed(2)}
+                      {calculateSubtotal().toLocaleString('vi-VN')} VNĐ
                     </Typography>
                   </Box>
                   <Box className="order-summary-item">
                     <Typography variant="body2">THÀNH TIỀN:</Typography>
                     <Typography variant="body2" fontWeight="bold">
-                      ${calculateSubtotal().toFixed(2)}
+                      {calculateSubtotal().toLocaleString('vi-VN')} VNĐ
                     </Typography>
                   </Box>
                 </Box>
@@ -764,7 +764,7 @@ export default function HomePage() {
                           <AddIcon />
                         </IconButton>
                         <Typography className="order-detail-price">
-                          ${(item.subPrice || 0).toFixed(2)}
+                          {(item.subPrice || 0).toLocaleString('vi-VN')} VNĐ
                         </Typography>
                         <IconButton
                           size="small"

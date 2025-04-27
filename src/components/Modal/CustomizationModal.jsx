@@ -228,7 +228,7 @@ const CustomizationModal = ({
                     key={size.label}
                     value={size.label}
                     control={<Radio className="customization-modal__radio" />}
-                    label={`${size.label} = $${size.priceModifier.toFixed(2)}`}
+                    label={`${size.label} = ${size.priceModifier.toLocaleString('vi-VN')} VNĐ`}
                     className="customization-modal__label"
                   />
                 ))
@@ -297,15 +297,19 @@ const CustomizationModal = ({
               Toppings
             </Typography>
             <Box sx={{ mt: 2 }}>
-              <Typography variant="h6" sx={{ mb: 1 }}>Toppings</Typography>
               {loading ? (
                 <Typography>Loading toppings...</Typography>
               ) : (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                <Box sx={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                  gap: 2,
+                  padding: '10px'
+                }}>
                   {toppings.map((topping) => (
                     <Chip
                       key={topping.productId}
-                      label={`${topping.productName} ($${topping.price})`}
+                      label={`${topping.productName} (${topping.price.toLocaleString('vi-VN')} VNĐ)`}
                       onClick={() => {
                         const isSelected = customization.toppings.some(t => t.productId === topping.productId);
                         if (isSelected) {
@@ -322,6 +326,13 @@ const CustomizationModal = ({
                       }}
                       color={customization.toppings.some(t => t.productId === topping.productId) ? "primary" : "default"}
                       variant={customization.toppings.some(t => t.productId === topping.productId) ? "filled" : "outlined"}
+                      sx={{
+                        height: '40px',
+                        fontSize: '14px',
+                        '&:hover': {
+                          backgroundColor: '#f0e6d9',
+                        }
+                      }}
                     />
                   ))}
                 </Box>
@@ -351,8 +362,8 @@ const CustomizationModal = ({
           </Box> */}
 
           <Box className="customization-modal__actions">
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Total: ${calculateTotalPrice().toFixed(2)}
+            <Typography variant="h6" className="customization-modal__total">
+              Tổng cộng: {calculateTotalPrice().toLocaleString('vi-VN')} VNĐ
             </Typography>
             <Button
               onClick={onClose}

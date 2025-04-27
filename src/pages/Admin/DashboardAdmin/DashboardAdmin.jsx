@@ -134,11 +134,23 @@ export default function DashboardAdmin() {
         display: true,
         text: "Revenue",
       },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            return `${context.parsed.y.toLocaleString('vi-VN')} VNĐ`;
+          }
+        }
+      }
     },
     scales: {
       y: {
         beginAtZero: true,
         max: Math.max(...revenueValues, 1000),
+        ticks: {
+          callback: function(value) {
+            return value.toLocaleString('vi-VN') + ' VNĐ';
+          }
+        }
       },
     },
   };
@@ -212,7 +224,7 @@ export default function DashboardAdmin() {
               <Box sx={{ marginTop: "20px" }}>
                 <Typography className="dashboard__title">Total Revenue</Typography>
                 <Typography className="dashboard__number">
-                  ${statistic?.totalRevenue?.toFixed(2) || "0.00"}
+                  {statistic?.totalRevenue?.toLocaleString('vi-VN')} VNĐ
                 </Typography>
               </Box>
             </Box>
