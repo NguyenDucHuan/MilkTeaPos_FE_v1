@@ -3,7 +3,7 @@ import { Outlet } from "react-router-dom";
 import Footer from "../../components/Footer/Footer";
 import Header from "../../components/Header/Header";
 import { useDispatch, useSelector } from "react-redux";
-import { listCategory } from "../../store/slices/categorySlice";
+import { getallCategory } from "../../store/slices/categorySlice";
 import "./StaffLayout.css";
 
 export default function StaffLayout() {
@@ -17,7 +17,7 @@ export default function StaffLayout() {
 
   // Gọi API để lấy categories khi component mount
   useEffect(() => {
-    dispatch(listCategory());
+    dispatch(getallCategory());
   }, [dispatch]);
 
   return (

@@ -17,22 +17,19 @@ import {
 } from "@mui/material";
 import { Edit as EditIcon, Add as AddIcon } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
-import { listCategory } from "../../../store/slices/categorySlice";
+import { getallCategory } from "../../../store/slices/categorySlice";
 import CategoryForm from "./CategoryForm";
 
 export default function CategoryList() {
   const dispatch = useDispatch();
-  const { category, totalPages, currentPage } = useSelector(
-    (state) => state.category
-  );
+  const { category } = useSelector((state) => state.category);
   const [openAddModal, setOpenAddModal] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
-  const [currentPageState, setCurrentPageState] = useState(currentPage);
 
   useEffect(() => {
-    dispatch(listCategory({ page: currentPageState }));
-  }, [dispatch, currentPageState]);
+    dispatch(getallCategory());
+  }, [dispatch]);
 
   const handleToggleStatus = (id) => {
     console.log("Toggle status for ID:", id);
@@ -56,21 +53,11 @@ export default function CategoryList() {
     setSelectedCategoryId(null);
   };
 
-  const handleNextPage = () => {
-    if (currentPageState < totalPages) {
-      setCurrentPageState((prev) => prev + 1);
-    }
-  };
-
-  const handlePreviousPage = () => {
-    if (currentPageState > 1) {
-      setCurrentPageState((prev) => prev - 1);
-    }
-  };
-
   return (
     <Box sx={{ padding: 3 }}>
-      <Typography variant="h5" fontWeight="bold" gutterBottom></Typography>
+      <Typography variant="h5" fontWeight="bold" gutterBottom>
+        Category List
+      </Typography>
 
       <Paper sx={{ padding: 2 }}>
         <Box
@@ -79,7 +66,7 @@ export default function CategoryList() {
           alignItems="center"
           mb={2}
         >
-          <Typography variant="h6"></Typography>
+          <Typography variant="h6">Categories</Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -100,49 +87,34 @@ export default function CategoryList() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {category.map((cat, index) => (
-              <TableRow key={cat.id}>
-                <TableCell>{index + 1}</TableCell>
-                <TableCell>{cat.categoryName}</TableCell>
-                <TableCell>
-                  <Switch
-                    checked={cat.status}
-                    onChange={() => handleToggleStatus(cat.id)}
-                    color="primary"
-                  />
-                </TableCell>
-                <TableCell>
-                  <IconButton onClick={() => handleOpenEditModal(cat.id)}>
-                    <EditIcon color="action" />
-                  </IconButton>
+            {Array.isArray(category) && category.length > 0 ? (
+              category.map((cat, index) => (
+                <TableRow key={cat.id}>
+                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>{cat.categoryName}</TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={cat.status}
+                      onChange={() => handleToggleStatus(cat.id)}
+                      color="primary"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <IconButton onClick={() => handleOpenEditModal(cat.id)}>
+                      <EditIcon color="action" />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={4} align="center">
+                  <Typography>No categories available</Typography>
                 </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
-
-        <Box
-          display="flex"
-          justifyContent="space-between"
-          alignItems="center"
-          mt={2}
-        >
-          <Button
-            onClick={handlePreviousPage}
-            disabled={currentPageState === 1}
-          >
-            Trang trước
-          </Button>
-          <Typography variant="body1">
-            Trang {currentPageState} / {totalPages}
-          </Typography>
-          <Button
-            onClick={handleNextPage}
-            disabled={currentPageState === totalPages}
-          >
-            Trang tiếp theo
-          </Button>
-        </Box>
       </Paper>
 
       {/* Add Category Modal */}

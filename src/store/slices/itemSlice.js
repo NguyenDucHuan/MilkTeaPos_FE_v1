@@ -3,42 +3,31 @@ import fetcher from "../../apis/fetcher";
 
 export const listItemApi = createAsyncThunk(
   "item/listItemApi",
-  async ({ CategoryId, Page = 1, PageSize = 6 }, { rejectWithValue }) => {
+  async ({ CategoryId, Search, Page = 1, PageSize = 6 }, { rejectWithValue }) => {
     try {
-      console.log(
-        "Calling API with CategoryId:",
-        CategoryId,
-        "Page:",
+      const queryParams = new URLSearchParams({
         Page,
-        "PageSize:",
-        PageSize
-      );
-      const response = await fetcher.get(
-        `/products?CategoryId=${CategoryId}&Page=${Page}&PageSize=${PageSize}`
-      );
-      console.log("Full API Response:", response.data);
-      console.log("Response data:", response.data.data);
+        PageSize,
+        ...(Search && { Search }),
+        ...(CategoryId && { CategoryId }),
+      }).toString();
 
+      const response = await fetcher.get(`/products?${queryParams}`);
       if (response.data?.data) {
         const { items, totalCount, totalPages } = response.data.data;
-        console.log(
-          "Items with prices:",
-          items.map((item) => ({
-            id: item.productId,
-            name: item.productName,
-            price: item.price,
-            variants: item.variants,
-          }))
-        );
-        return { items, totalItems: totalCount, currentPage: Page, pageSize: PageSize, totalPages };
+        return {
+          items,
+          totalItems: totalCount,
+          currentPage: Page,
+          pageSize: PageSize,
+          totalPages,
+        };
       } else {
-        console.error("Invalid response format:", response.data);
-        throw new Error("Invalid response format");
+        throw new Error("Định dạng phản hồi không hợp lệ");
       }
     } catch (error) {
-      console.error("API Error:", error);
       return rejectWithValue(
-        error.response?.data?.message || "Có lỗi xảy ra. Vui lòng thử lại."
+        error.response?.data?.message || "Đã xảy ra lỗi. Vui lòng thử lại."
       );
     }
   }
@@ -48,17 +37,11 @@ export const createProduct = createAsyncThunk(
   "item/createProduct",
   async (formData, { rejectWithValue }) => {
     try {
-      const response = await fetcher.post(
-        "/products/create-product",
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
-      );
-      console.log("Create product response:", response.data);
+      const response = await fetcher.post("/products/create-product", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       return response.data;
     } catch (error) {
-      console.error("Create product error:", error);
       return rejectWithValue({
         message: error.message || "Không thể tạo sản phẩm",
         status: error.response?.status,
@@ -70,10 +53,10 @@ export const createProduct = createAsyncThunk(
 
 export const updateProduct = createAsyncThunk(
   "item/updateProduct",
-  async ({ id, formData }, { rejectWithValue }) => {
+  async (formData, { rejectWithValue }) => {
     try {
       const response = await fetcher.put(
-        `/api/products/update-product/${id}`,
+        "/products/update-product/id", // Giữ endpoint cố định, không thêm productId vào URL
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
@@ -103,10 +86,8 @@ export const createExtraProduct = createAsyncThunk(
           headers: { "Content-Type": "multipart/form-data" },
         }
       );
-      console.log("Create extra product response:", response.data);
       return response.data;
     } catch (error) {
-      console.error("Create extra product error:", error);
       return rejectWithValue({
         message: error.message || "Không thể tạo topping",
         status: error.response?.status,
@@ -137,7 +118,6 @@ const itemSlice = createSlice({
       .addCase(listItemApi.pending, (state) => {
         state.isLoading = true;
         state.error = null;
-        console.log("listItemApi pending");
       })
       .addCase(listItemApi.fulfilled, (state, action) => {
         state.isLoading = false;
@@ -146,17 +126,7 @@ const itemSlice = createSlice({
         state.totalItems = action.payload.totalItems || 0;
         state.currentPage = action.payload.currentPage || 1;
         state.pageSize = action.payload.pageSize || 6;
-        state.totalPages = action.payload.totalPages || 1; // Use the API's totalPages
-        console.log(
-          "listItemApi fulfilled, updated state:",
-          {
-            items: state.items,
-            totalItems: state.totalItems,
-            currentPage: state.currentPage,
-            pageSize: state.pageSize,
-            totalPages: state.totalPages,
-          }
-        );
+        state.totalPages = action.payload.totalPages || 1;
       })
       .addCase(listItemApi.rejected, (state, action) => {
         state.isLoading = false;
@@ -164,7 +134,6 @@ const itemSlice = createSlice({
         state.items = [];
         state.totalItems = 0;
         state.totalPages = 0;
-        console.log("listItemApi rejected, error:", action.payload);
       })
       .addCase(createProduct.pending, (state) => {
         state.isLoading = true;
@@ -173,7 +142,7 @@ const itemSlice = createSlice({
       .addCase(createProduct.fulfilled, (state, action) => {
         state.isLoading = false;
         state.error = null;
-        state.items.push(action.payload);
+        state.items.push(action.payload.data);
         state.totalItems += 1;
         state.totalPages = Math.ceil(state.totalItems / state.pageSize);
       })

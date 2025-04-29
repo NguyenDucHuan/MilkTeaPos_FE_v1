@@ -23,7 +23,7 @@ import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { listCategory } from "../../../store/slices/categorySlice";
+import { getallCategory } from "../../../store/slices/categorySlice";
 import { listItemApi } from "../../../store/slices/itemSlice";
 import { useOutletContext } from "react-router-dom";
 import {
@@ -76,7 +76,7 @@ export default function HomePage() {
 
   useEffect(() => {
     // Fetch all categories without pagination
-    dispatch(listCategory());
+    dispatch(getallCategory());
     dispatch(getCartApi());
   }, [dispatch]);
 
