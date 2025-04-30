@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -19,11 +19,23 @@ import {
   Grid,
   InputAdornment,
   Collapse,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
 } from "@mui/material";
 import {
   Edit as EditIcon,
   Add as AddIcon,
   ExpandMore as ExpandMoreIcon,
+  Remove as RemoveIcon,
+  Delete as DeleteIcon,
+  Visibility as VisibilityIcon,
 } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
 import { listItemApi, setPage } from "../../../store/slices/itemSlice";
@@ -48,7 +60,7 @@ const hardcodedToppings = {
 
 export default function Combos() {
   const dispatch = useDispatch();
-  const { items: combos, currentPage, pageSize, totalPages, totalItems, isLoading: productsLoading, error: productsError } =
+  const { items: allItems, currentPage, pageSize, totalPages, totalItems, isLoading: productsLoading, error: productsError } =
     useSelector((state) => state.item);
   const [openModal, setOpenModal] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -65,27 +77,38 @@ export default function Combos() {
   const [imagePreview, setImagePreview] = useState(null);
   const [expandedProduct, setExpandedProduct] = useState(null);
   const [allProducts, setAllProducts] = useState([]); // To store all products for the modal
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [openDetailsModal, setOpenDetailsModal] = useState(false);
+  const [selectedCombo, setSelectedCombo] = useState(null);
+
+  // Filter only combo products
+  const combos = useMemo(() => {
+    return allItems.filter(item => item.categoryId === 5 && item.categoryName === "Combo");
+  }, [allItems]);
 
   // Reset currentPage to 1 when the component mounts
   useEffect(() => {
     dispatch(setPage(1));
   }, [dispatch]);
 
-  // Fetch combos (categoryId: 5) with pagination
+  // Fetch products with pagination
   useEffect(() => {
     console.log(
-      "Fetching combos for Combos - CategoryId: 5, Page:",
+      "Fetching products for Combos - Page:",
       currentPage,
       "PageSize:",
       pageSize
     );
     dispatch(
-      listItemApi({ CategoryId: 5, Page: currentPage, PageSize: pageSize })
+      listItemApi({ 
+        Page: currentPage, 
+        PageSize: pageSize
+      })
     ).then((result) => {
       if (result.meta.requestStatus === "fulfilled") {
-        console.log("Combos fetched successfully:", result.payload);
+        console.log("Products fetched successfully:", result.payload);
       } else {
-        console.error("Error fetching combos:", result.error);
+        console.error("Error fetching products:", result.error);
       }
     });
   }, [dispatch, currentPage, pageSize]);
@@ -93,15 +116,39 @@ export default function Combos() {
   // Fetch all products for the modal (without pagination)
   useEffect(() => {
     console.log("Fetching all products for modal...");
-    dispatch(listItemApi({ CategoryId: null, Page: 1, PageSize: 1000 })).then((result) => {
+    dispatch(listItemApi({ 
+      Page: 1, 
+      PageSize: 1000
+    })).then((result) => {
       if (result.meta.requestStatus === "fulfilled") {
-        setAllProducts(result.payload.items || []);
-        console.log("All products fetched for modal:", result.payload.items);
+        // Lọc chỉ lấy các sản phẩm có productType là MaterProduct
+        const filteredProducts = (result.payload.items || []).filter(
+          product => product.productType === "MaterProduct"
+        );
+        setAllProducts(filteredProducts);
+        console.log("All products fetched for modal:", filteredProducts);
       } else {
         console.error("Error fetching all products for modal:", result.error);
       }
     });
   }, [dispatch]);
+
+  // Group products by category
+  const productsByCategory = useMemo(() => {
+    const grouped = {};
+    allProducts.forEach(product => {
+      if (!grouped[product.categoryName]) {
+        grouped[product.categoryName] = [];
+      }
+      grouped[product.categoryName].push(product);
+    });
+    return grouped;
+  }, [allProducts]);
+
+  // Get unique categories
+  const categories = useMemo(() => {
+    return Object.keys(productsByCategory);
+  }, [productsByCategory]);
 
   const handleOpenModal = (combo = null) => {
     if (allProducts.length === 0) {
@@ -156,26 +203,54 @@ export default function Combos() {
 
   const handleProductToggle = (productId) => {
     setFormData((prev) => {
-      const existingItem = prev.ComboItems.find(
-        (item) => item.productId === productId
-      );
-      if (existingItem) {
-        return {
-          ...prev,
-          ComboItems: prev.ComboItems.filter(
-            (item) => item.productId !== productId
-          ),
-        };
-      } else {
-        return {
-          ...prev,
-          ComboItems: [
-            ...prev.ComboItems,
-            { productId, quantity: 1, toppings: [], discount: 0 },
-          ],
-        };
-      }
+      const product = allProducts.find(p => p.productId === productId);
+      return {
+        ...prev,
+        ComboItems: [
+          ...prev.ComboItems,
+          { 
+            id: Date.now(),
+            productId, 
+            quantity: 1, 
+            discount: 0,
+            size: product?.variants?.[0]?.sizeId || "Default",
+            sizePrice: product?.variants?.[0]?.price || 0,
+            toppings: []
+          },
+        ],
+      };
     });
+  };
+
+  const handleRemoveItem = (itemId) => {
+    setFormData((prev) => ({
+      ...prev,
+      ComboItems: prev.ComboItems.filter(item => item.id !== itemId)
+    }));
+  };
+
+  const handleSizeChange = (itemId, size, price) => {
+    setFormData((prev) => ({
+      ...prev,
+      ComboItems: prev.ComboItems.map((item) =>
+        item.id === itemId 
+          ? { ...item, size, sizePrice: price }
+          : item
+      ),
+    }));
+  };
+
+  const handleQuantityChange = (itemId, change) => {
+    setFormData((prev) => ({
+      ...prev,
+      ComboItems: prev.ComboItems.map((item) => {
+        if (item.id === itemId) {
+          const newQuantity = Math.max(1, item.quantity + change);
+          return { ...item, quantity: newQuantity };
+        }
+        return item;
+      }),
+    }));
   };
 
   const handleProductFieldChange = (productId, field, value) => {
@@ -269,16 +344,20 @@ export default function Combos() {
       formDataToSend.append(`ComboItems[${index}][productId]`, item.productId);
       formDataToSend.append(`ComboItems[${index}][quantity]`, item.quantity);
       formDataToSend.append(`ComboItems[${index}][discount]`, item.discount);
-      item.toppings.forEach((topping, tIndex) => {
-        formDataToSend.append(
-          `ComboItems[${index}][toppings][${tIndex}][toppingId]`,
-          topping.toppingId
-        );
-        formDataToSend.append(
-          `ComboItems[${index}][toppings][${tIndex}][quantity]`,
-          topping.quantity
-        );
-      });
+      formDataToSend.append(`ComboItems[${index}][size]`, item.size);
+      formDataToSend.append(`ComboItems[${index}][sizePrice]`, item.sizePrice);
+      if (item.toppings && item.toppings.length > 0) {
+        item.toppings.forEach((topping, tIndex) => {
+          formDataToSend.append(
+            `ComboItems[${index}][toppings][${tIndex}][toppingId]`,
+            topping.toppingId
+          );
+          formDataToSend.append(
+            `ComboItems[${index}][toppings][${tIndex}][quantity]`,
+            topping.quantity
+          );
+        });
+      }
     });
     if (formData.Image) {
       formDataToSend.append("Image", formData.Image);
@@ -305,6 +384,20 @@ export default function Combos() {
   const handlePageChange = (event, newPage) => {
     console.log("Navigating to page:", newPage);
     dispatch(setPage(newPage));
+  };
+
+  const handleCategoryChange = (category) => {
+    setSelectedCategory(category);
+  };
+
+  const handleOpenDetails = (combo) => {
+    setSelectedCombo(combo);
+    setOpenDetailsModal(true);
+  };
+
+  const handleCloseDetails = () => {
+    setOpenDetailsModal(false);
+    setSelectedCombo(null);
   };
 
   if (productsLoading) return <Typography>Loading...</Typography>;
@@ -357,9 +450,6 @@ export default function Combos() {
                 Mô tả
               </TableCell>
               <TableCell sx={{ fontWeight: "bold", color: "#333" }}>
-                Sản phẩm
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", color: "#333" }}>
                 Giá (VND)
               </TableCell>
               <TableCell sx={{ fontWeight: "bold", color: "#333" }}>
@@ -373,7 +463,7 @@ export default function Combos() {
           <TableBody>
             {combos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ color: "#888" }}>
+                <TableCell colSpan={5} align="center" sx={{ color: "#888" }}>
                   Không có combo nào
                 </TableCell>
               </TableRow>
@@ -385,34 +475,6 @@ export default function Combos() {
                 >
                   <TableCell>{combo.productName}</TableCell>
                   <TableCell>{combo.description || "N/A"}</TableCell>
-                  <TableCell>
-                    {combo.comboItems && combo.comboItems.length > 0
-                      ? combo.comboItems
-                          .map((item) => {
-                            const toppingsForProduct =
-                              hardcodedToppings[item.productId] || [];
-                            const toppingDetails = item.toppings
-                              ? item.toppings
-                                  .map((t) => {
-                                    const topping = toppingsForProduct.find(
-                                      (top) => top.toppingId === t.toppingId
-                                    );
-                                    return topping
-                                      ? `${topping.toppingName} (x${t.quantity})`
-                                      : "";
-                                  })
-                                  .filter(Boolean)
-                                  .join(", ")
-                              : "None";
-                            return `${item.productName} (Qty: ${
-                              item.quantity
-                            }, Toppings: ${
-                              toppingDetails || "None"
-                            }, Discount: ${item.discount}%)`;
-                          })
-                          .join("; ")
-                      : "No items"}
-                  </TableCell>
                   <TableCell>
                     {parseFloat(combo.price).toLocaleString("vi-VN", {
                       style: "currency",
@@ -434,15 +496,26 @@ export default function Combos() {
                     </Box>
                   </TableCell>
                   <TableCell>
-                    <IconButton
-                      onClick={() => handleOpenModal(combo)}
-                      sx={{
-                        color: "#8B5E3C",
-                        "&:hover": { color: "#70482F" },
-                      }}
-                    >
-                      <EditIcon />
-                    </IconButton>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <IconButton
+                        onClick={() => handleOpenDetails(combo)}
+                        sx={{
+                          color: "#8B5E3C",
+                          "&:hover": { color: "#70482F" },
+                        }}
+                      >
+                        <VisibilityIcon />
+                      </IconButton>
+                      <IconButton
+                        onClick={() => handleOpenModal(combo)}
+                        sx={{
+                          color: "#8B5E3C",
+                          "&:hover": { color: "#70482F" },
+                        }}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))
@@ -464,6 +537,109 @@ export default function Combos() {
           </Box>
         )}
       </Paper>
+
+      {/* Modal chi tiết combo */}
+      <Dialog
+        open={openDetailsModal}
+        onClose={handleCloseDetails}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ borderBottom: "2px solid #8B5E3C", pb: 1 }}>
+          Chi tiết Combo: {selectedCombo?.productName}
+        </DialogTitle>
+        <DialogContent>
+          {selectedCombo && (
+            <Box sx={{ mt: 2 }}>
+              <Box sx={{ 
+                width: '100%', 
+                height: 300, 
+                mb: 3,
+                overflow: 'hidden',
+                borderRadius: 2,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              }}>
+                <img
+                  src={selectedCombo.imageUrl || '/placeholder-image.jpg'}
+                  alt={selectedCombo.productName}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+              </Box>
+              <Typography variant="h6" gutterBottom>
+                Thông tin cơ bản
+              </Typography>
+              <List>
+                <ListItem>
+                  <ListItemText
+                    primary="Mô tả"
+                    secondary={selectedCombo.description || "Không có mô tả"}
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Giá"
+                    secondary={parseFloat(selectedCombo.price).toLocaleString("vi-VN", {
+                      style: "currency",
+                      currency: "VND",
+                    })}
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Trạng thái"
+                    secondary={selectedCombo.status ? "Kích hoạt" : "Tắt"}
+                  />
+                </ListItem>
+              </List>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="h6" gutterBottom>
+                Danh sách sản phẩm có trong combo
+              </Typography>
+              <List>
+                {selectedCombo.comboItems && selectedCombo.comboItems.length > 0 ? (
+                  selectedCombo.comboItems.map((item) => {
+                    const product = allProducts.find(p => p.productId === item.productId);
+                    if (!product) return null;
+                    
+                    const sizeInfo = product.variants?.find(v => v.sizeId === item.size);
+                    const sizeText = sizeInfo ? ` (Size: ${item.size})` : '';
+                    
+                    return (
+                      <ListItem key={item.productId}>
+                        <ListItemText
+                          primary={`${product.productName}${sizeText}`}
+                          secondary={`Số lượng: ${item.quantity}, Giảm giá: ${item.discount}%`}
+                        />
+                      </ListItem>
+                    );
+                  })
+                ) : (
+                  <ListItem>
+                    <ListItemText primary="Chưa có sản phẩm" />
+                  </ListItem>
+                )}
+              </List>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={handleCloseDetails}
+            sx={{
+              color: "#8B5E3C",
+              "&:hover": { color: "#70482F" },
+            }}
+          >
+            Đóng
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal chỉnh sửa combo */}
       <Modal open={openModal} onClose={handleCloseModal}>
         <Box
           sx={{
@@ -491,7 +667,7 @@ export default function Combos() {
           </Typography>
           <form onSubmit={handleSubmit}>
             <Grid container spacing={3}>
-              <Grid item xs={12} md={5}>
+              <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
                   label="Tên Combo"
@@ -527,39 +703,6 @@ export default function Combos() {
                     },
                   }}
                 />
-                <TextField
-                  fullWidth
-                  type="file"
-                  label="Hình ảnh Combo"
-                  name="Image"
-                  onChange={handleImageChange}
-                  margin="normal"
-                  InputLabelProps={{ shrink: true }}
-                  inputProps={{ accept: "image/*" }}
-                  variant="outlined"
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 1,
-                      "&:hover fieldset": { borderColor: "#8B5E3C" },
-                      "&.Mui-focused fieldset": { borderColor: "#8B5E3C" },
-                    },
-                  }}
-                />
-                {imagePreview && (
-                  <Box mt={2} display="flex" justifyContent="center">
-                    <img
-                      src={imagePreview}
-                      alt="Xem trước hình ảnh"
-                      style={{
-                        width: 100,
-                        height: 100,
-                        objectFit: "cover",
-                        borderRadius: 4,
-                        border: "1px solid #ddd",
-                      }}
-                    />
-                  </Box>
-                )}
                 <TextField
                   fullWidth
                   label="Giá (VND)"
@@ -599,261 +742,222 @@ export default function Combos() {
                   sx={{ mt: 2, color: "#555" }}
                 />
               </Grid>
-              <Grid item xs={12} md={7}>
-                <Typography
-                  variant="subtitle1"
-                  fontWeight="bold"
-                  color="#333"
-                  mb={2}
-                >
-                  Chọn Sản phẩm và Topping
-                </Typography>
-                <Box
-                  sx={{
-                    maxHeight: 400,
-                    overflowY: "auto",
-                    border: "1px solid #e0e0e0",
-                    borderRadius: 1,
-                    p: 2,
-                    bgcolor: "#fafafa",
-                  }}
-                >
+              <Grid item xs={12} md={6}>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Hình ảnh
+                  </Typography>
+                  <input
+                    accept="image/*"
+                    type="file"
+                    onChange={handleImageChange}
+                    style={{ display: 'none' }}
+                    id="image-upload"
+                  />
+                  <label htmlFor="image-upload">
+                    <Button
+                      variant="outlined"
+                      component="span"
+                      fullWidth
+                      sx={{ mb: 2 }}
+                    >
+                      Chọn ảnh
+                    </Button>
+                  </label>
+                  {imagePreview && (
+                    <Box
+                      component="img"
+                      src={imagePreview}
+                      alt="Preview"
+                      sx={{
+                        width: '100%',
+                        height: '200px',
+                        objectFit: 'cover',
+                        borderRadius: 1,
+                      }}
+                    />
+                  )}
+                </Box>
+              </Grid>
+              <Grid item xs={12}>
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="h6" sx={{ mb: 2, color: '#8B5E3C' }}>
+                    Chọn danh mục
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <Button
+                      variant={selectedCategory === null ? "contained" : "outlined"}
+                      onClick={() => handleCategoryChange(null)}
+                      sx={{
+                        bgcolor: selectedCategory === null ? '#8B5E3C' : 'transparent',
+                        color: selectedCategory === null ? 'white' : '#8B5E3C',
+                        borderColor: '#8B5E3C',
+                        '&:hover': {
+                          bgcolor: selectedCategory === null ? '#70482F' : '#f5f5f5',
+                        }
+                      }}
+                    >
+                      Tất cả
+                    </Button>
+                    {categories.map((category) => (
+                      <Button
+                        key={category}
+                        variant={selectedCategory === category ? "contained" : "outlined"}
+                        onClick={() => handleCategoryChange(category)}
+                        sx={{
+                          bgcolor: selectedCategory === category ? '#8B5E3C' : 'transparent',
+                          color: selectedCategory === category ? 'white' : '#8B5E3C',
+                          borderColor: '#8B5E3C',
+                          '&:hover': {
+                            bgcolor: selectedCategory === category ? '#70482F' : '#f5f5f5',
+                          }
+                        }}
+                      >
+                        {category}
+                      </Button>
+                    ))}
+                  </Box>
+                </Box>
+              </Grid>
+              <Grid item xs={12}>
+                <Grid container spacing={2}>
+                  {(selectedCategory ? productsByCategory[selectedCategory] : allProducts).map((product) => (
+                    <Grid item xs={12} sm={6} md={4} key={product.productId}>
+                      <Paper
+                        sx={{
+                          p: 2,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          borderRadius: 1,
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                        }}
+                      >
+                        <Box sx={{ 
+                          width: '100%', 
+                          height: 200, 
+                          mb: 2,
+                          overflow: 'hidden',
+                          borderRadius: 1
+                        }}>
+                          <img
+                            src={product.imageUrl || '/placeholder-image.jpg'}
+                            alt={product.productName}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover'
+                            }}
+                          />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="subtitle1" gutterBottom>
+                            {product.productName}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            {product.description}
+                          </Typography>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => handleProductToggle(product.productId)}
+                            fullWidth
+                          >
+                            Thêm vào combo
+                          </Button>
+                        </Box>
+                      </Paper>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Grid>
+              <Grid item xs={12}>
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Sản phẩm đã chọn
+                  </Typography>
                   <Grid container spacing={2}>
-                    {allProducts.map((product) => {
-                      const comboItem = formData.ComboItems.find(
-                        (item) => item.productId === product.productId
-                      );
-                      const toppingsForProduct =
-                        hardcodedToppings[product.productId] || [];
-                      const isExpanded = expandedProduct === product.productId;
+                    {formData.ComboItems.map((item) => {
+                      const product = allProducts.find(p => p.productId === item.productId);
                       return (
-                        <Grid item xs={12} sm={4} key={product.productId}>
-                          <Box
+                        <Grid item xs={12} sm={6} md={4} key={item.id}>
+                          <Paper
                             sx={{
                               p: 2,
-                              borderRadius: 2,
-                              bgcolor: comboItem ? "#f5f0e8" : "white",
-                              boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                              "&:hover": {
-                                bgcolor: comboItem ? "#ede7df" : "#f9f9f9",
-                              },
-                              position: "relative",
+                              border: '1px solid',
+                              borderColor: 'primary.main',
+                              borderRadius: 1,
+                              height: '100%',
+                              display: 'flex',
+                              flexDirection: 'column',
                             }}
                           >
-                            <Box
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 1,
-                                mb: 1,
-                              }}
-                            >
-                              <Checkbox
-                                checked={!!comboItem}
-                                onChange={() =>
-                                  handleProductToggle(product.productId)
-                                }
-                                size="small"
-                                sx={{
-                                  color: "#8B5E3C",
-                                  "&.Mui-checked": { color: "#8B5E3C" },
+                            <Box sx={{ 
+                              width: '100%', 
+                              height: 150, 
+                              mb: 2,
+                              overflow: 'hidden',
+                              borderRadius: 1
+                            }}>
+                              <img
+                                src={product?.imageUrl || '/placeholder-image.jpg'}
+                                alt={product?.productName}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover'
                                 }}
                               />
-                              {product.imageUrl ? (
-                                <img
-                                  src={product.imageUrl}
-                                  alt={product.productName}
-                                  style={{
-                                    width: 40,
-                                    height: 40,
-                                    objectFit: "cover",
-                                    borderRadius: 4,
-                                  }}
-                                />
-                              ) : (
-                                <Box
-                                  sx={{
-                                    width: 40,
-                                    height: 40,
-                                    bgcolor: "#f0f0f0",
-                                    borderRadius: 4,
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    fontSize: "0.8rem",
-                                    color: "#888",
-                                  }}
-                                >
-                                  N/A
-                                </Box>
-                              )}
                             </Box>
-                            <Typography
-                              sx={{
-                                fontSize: "0.85rem",
-                                color: "#333",
-                                fontWeight: "medium",
-                                mb: 1,
-                                textAlign: "center",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {product.productName}
-                            </Typography>
-                            {comboItem && (
-                              <IconButton
-                                onClick={() =>
-                                  setExpandedProduct(
-
-
-                                    isExpanded ? null : product.productId
-                                  )
-                                }
-                                sx={{
-                                  position: "absolute",
-                                  top: 8,
-                                  right: 8,
-                                  color: "#8B5E3C",
-                                  transform: isExpanded
-                                    ? "rotate(180deg)"
-                                    : "rotate(0deg)",
-                                  transition: "transform 0.2s",
-                                }}
-                              >
-                                <ExpandMoreIcon />
-                              </IconButton>
-                            )}
-                            <Collapse in={isExpanded}>
-                              {comboItem && (
-                                <Box sx={{ mt: 2 }}>
-                                  <Box
-                                    sx={{
-                                      display: "flex",
-                                      gap: 1,
-                                      mb: 2,
-                                      flexWrap: "wrap",
-                                    }}
+                            <Box sx={{ flex: 1 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleRemoveItem(item.id)}
+                                  sx={{ color: 'error.main' }}
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                                <Typography variant="subtitle1">
+                                  {product?.productName}
+                                </Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                                <TextField
+                                  select
+                                  size="small"
+                                  value={item.size}
+                                  onChange={(e) => {
+                                    const variant = product?.variants?.find(v => v.sizeId === e.target.value);
+                                    handleSizeChange(item.id, e.target.value, variant?.price || 0);
+                                  }}
+                                  sx={{ minWidth: 120 }}
+                                >
+                                  {product?.variants?.map((variant) => (
+                                    <MenuItem key={variant.sizeId} value={variant.sizeId}>
+                                      {variant.sizeId}
+                                    </MenuItem>
+                                  ))}
+                                </TextField>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleQuantityChange(item.id, -1)}
                                   >
-                                    <TextField
-                                      label="Số lượng"
-                                      type="number"
-                                      value={comboItem.quantity}
-                                      onChange={(e) =>
-                                        handleProductFieldChange(
-                                          product.productId,
-                                          "quantity",
-                                          e.target.value
-                                        )
-                                      }
-                                      size="small"
-                                      sx={{ width: 100 }}
-                                      inputProps={{ min: 1 }}
-                                      variant="outlined"
-                                    />
-                                    <TextField
-                                      label="Giảm giá"
-                                      type="number"
-                                      value={comboItem.discount}
-                                      onChange={(e) =>
-                                        handleProductFieldChange(
-                                          product.productId,
-                                          "discount",
-                                          e.target.value
-                                        )
-                                      }
-                                      size="small"
-                                      sx={{ width: 100 }}
-                                      InputProps={{
-                                        endAdornment: (
-                                          <InputAdornment position="end">
-                                            %
-                                          </InputAdornment>
-                                        ),
-                                      }}
-                                      inputProps={{ min: 0, max: 100 }}
-                                      variant="outlined"
-                                    />
-                                  </Box>
-                                  <Typography
-                                    variant="subtitle2"
-                                    color="#555"
-                                    mb={1}
+                                    <RemoveIcon />
+                                  </IconButton>
+                                  <Typography>{item.quantity}</Typography>
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleQuantityChange(item.id, 1)}
                                   >
-                                    Topping
-                                  </Typography>
-                                  {toppingsForProduct.length > 0 ? (
-                                    <Box
-                                      sx={{ maxHeight: 150, overflowY: "auto" }}
-                                    >
-                                      {toppingsForProduct.map((topping) => {
-                                        const selectedTopping =
-                                          comboItem.toppings.find(
-                                            (t) =>
-                                              t.toppingId === topping.toppingId
-                                          );
-                                        return (
-                                          <Box
-                                            key={topping.toppingId}
-                                            sx={{
-                                              display: "flex",
-                                              alignItems: "center",
-                                              gap: 1,
-                                              mb: 1,
-                                            }}
-                                          >
-                                            <Typography
-                                              sx={{
-                                                fontSize: "0.8rem",
-                                                flex: 1,
-                                                color: "#444",
-                                              }}
-                                            >
-                                              {topping.toppingName} (
-                                              {topping.price.toLocaleString(
-                                                "vi-VN",
-                                                {
-                                                  style: "currency",
-                                                  currency: "VND",
-                                                }
-                                              )}
-                                              )
-                                            </Typography>
-                                            <TextField
-                                              type="number"
-                                              value={
-                                                selectedTopping
-                                                  ? selectedTopping.quantity
-                                                  : 0
-                                              }
-                                              onChange={(e) =>
-                                                handleToppingChange(
-                                                  product.productId,
-                                                  topping.toppingId,
-                                                  e.target.value
-                                                )
-                                              }
-                                              size="small"
-                                              sx={{ width: 70 }}
-                                              inputProps={{ min: 0 }}
-                                              variant="outlined"
-                                            />
-                                          </Box>
-                                        );
-                                      })}
-                                    </Box>
-                                  ) : (
-                                    <Typography
-                                      sx={{ fontSize: "0.8rem", color: "#888" }}
-                                    >
-                                      Không có topping nào
-                                    </Typography>
-                                  )}
+                                    <AddIcon />
+                                  </IconButton>
                                 </Box>
-                              )}
-                            </Collapse>
-                          </Box>
+                              </Box>
+                            </Box>
+                          </Paper>
                         </Grid>
                       );
                     })}

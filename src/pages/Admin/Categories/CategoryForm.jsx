@@ -11,7 +11,7 @@ import {
 } from '@mui/material';
 import { useDispatch } from 'react-redux';
 import { useForm, Controller } from 'react-hook-form';
-import { createCategory, listCategory } from '../../../store/slices/categorySlice';
+import { createCategory, getallCategory } from '../../../store/slices/categorySlice';
 
 export default function CategoryForm({ isModal = false, onClose }) {
   const dispatch = useDispatch();
@@ -61,7 +61,7 @@ export default function CategoryForm({ isModal = false, onClose }) {
       if (isModal && onClose) {
         onClose();
       }
-      dispatch(listCategory()); // Làm mới danh sách
+      dispatch(getallCategory()); // Làm mới danh sách
     } catch (err) {
       console.error('Lỗi khi tạo danh mục:', {
         message: err.message,

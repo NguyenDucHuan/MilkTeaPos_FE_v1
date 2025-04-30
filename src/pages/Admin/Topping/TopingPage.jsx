@@ -28,7 +28,7 @@ import {
   createExtraProduct,
   setPage,
 } from "../../../store/slices/itemSlice";
-import { listCategory } from "../../../store/slices/categorySlice";
+import { getallCategory } from "../../../store/slices/categorySlice";
 
 export default function ToppingPage() {
   const dispatch = useDispatch();
@@ -56,8 +56,8 @@ export default function ToppingPage() {
   // Load categories only once when component mounts
   useEffect(() => {
     if (!hasLoadedCategories) {
-      console.log("Gọi listCategory khi component mount");
-      dispatch(listCategory());
+      console.log("Gọi getallCategory khi component mount");
+      dispatch(getallCategory());
       setHasLoadedCategories(true);
     }
   }, [dispatch, hasLoadedCategories]);

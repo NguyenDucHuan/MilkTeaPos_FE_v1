@@ -179,7 +179,7 @@ export default function ModalCheckout({ open, onClose, order, total }) {
                       )}
                     </Typography>
                     <Typography variant="body2">
-                      ${(Number(item.subPrice) || 0).toFixed(2)}
+                      {(Number(item.subPrice) || 0).toLocaleString('vi-VN')} VNĐ
                     </Typography>
                   </Box>
                 ))
@@ -200,13 +200,13 @@ export default function ModalCheckout({ open, onClose, order, total }) {
               <Box className="order-summary-item">
                 <Typography variant="body2">TỔNG CỘNG:</Typography>
                 <Typography variant="body2">
-                  ${calculateSubtotal(order).toFixed(2)}
+                  {calculateSubtotal(order).toLocaleString('vi-VN')} VNĐ
                 </Typography>
               </Box>
               <Box className="order-summary-item">
                 <Typography variant="body2">THÀNH TIỀN:</Typography>
                 <Typography variant="body2" fontWeight="bold">
-                  ${calculateSubtotal(order).toFixed(2)}
+                  {calculateSubtotal(order).toLocaleString('vi-VN')} VNĐ
                 </Typography>
               </Box>
             </Box>

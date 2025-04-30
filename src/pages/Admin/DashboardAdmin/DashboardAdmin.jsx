@@ -88,6 +88,7 @@ export default function DashboardAdmin() {
     const ordersLabels = statisticOverview?.orderChart?.map((item) => item.label) || [];
     const ordersValues = statisticOverview?.orderChart?.map((item) => item.value) || [];
 
+<<<<<<< HEAD
     const revenueData = {
         labels: revenueLabels,
         datasets: [{ label: "Revenue", data: revenueValues, borderColor: "#ac8e6f", tension: 0.1, fill: false }],
@@ -96,6 +97,51 @@ export default function DashboardAdmin() {
         labels: ordersLabels,
         datasets: [{ label: "Orders", data: ordersValues, backgroundColor: "#ac8e6f" }],
     };
+=======
+  // Dữ liệu và tùy chọn cho biểu đồ Revenue (Line Chart)
+  const revenueData = {
+    labels: revenueLabels,
+    datasets: [
+      {
+        label: "Revenue",
+        data: revenueValues,
+        fill: false,
+        borderColor: "#ac8e6f",
+        tension: 0.1,
+      },
+    ],
+  };
+  const revenueOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        display: false,
+      },
+      title: {
+        display: true,
+        text: "Revenue",
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            return `${context.parsed.y.toLocaleString('vi-VN')} VNĐ`;
+          }
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        max: Math.max(...revenueValues, 1000),
+        ticks: {
+          callback: function(value) {
+            return value.toLocaleString('vi-VN') + ' VNĐ';
+          }
+        }
+      },
+    },
+  };
+>>>>>>> 02004421398db2153e388f4fbb77e98f3c9098dd
 
     useEffect(() => {
         let apiAction;
@@ -148,12 +194,50 @@ export default function DashboardAdmin() {
         setSelectedYear(Number(event.target.value));
     };
 
+<<<<<<< HEAD
     const handleStartDateChange = (newValue) => {
         setStartDate(newValue);
         if (endDate && newValue && newValue > endDate) {
             setEndDate(null); // Reset end date if start date is now after it
         }
     };
+=======
+  return (
+    <Box className="dashboard-admin">
+      {/* Phần thẻ thông tin */}
+      <Box className="dashboard-admin__cards">
+        <Grid container spacing={2}>
+          <Grid item size={4}>
+            <Box className="dashboard-admin__card">
+              <Box sx={{ marginTop: "20px" }}>
+                <Typography className="dashboard__title">Total Revenue</Typography>
+                <Typography className="dashboard__number">
+                  {statistic?.totalRevenue?.toLocaleString('vi-VN')} VNĐ
+                </Typography>
+              </Box>
+            </Box>
+          </Grid>
+          <Grid item size={4}>
+            <Box className="dashboard-admin__card">
+              <Box sx={{ marginTop: "20px" }}>
+                <Typography className="dashboard__title">Total Orders</Typography>
+                <Typography className="dashboard__number">
+                  {statistic?.totalOrder || 0}
+                </Typography>
+              </Box>
+            </Box>
+          </Grid>
+          <Grid item size={4}>
+            <Box className="dashboard-admin__card">
+              <Box sx={{ marginTop: "20px" }}>
+                <Typography className="dashboard__title">Popular Category</Typography>
+                <Typography className="dashboard__number">Classic</Typography>
+              </Box>
+            </Box>
+          </Grid>
+        </Grid>
+      </Box>
+>>>>>>> 02004421398db2153e388f4fbb77e98f3c9098dd
 
     const handleEndDateChange = (newValue) => {
          if (startDate && newValue && newValue < startDate) {

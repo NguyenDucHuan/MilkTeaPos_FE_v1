@@ -14,7 +14,7 @@ import {
   ListItemButton,
   ListItemText,
 } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import "./HomePage.css";
 import ModalCheckout from "../../../components/Modal/ModalCheckout";
@@ -23,7 +23,7 @@ import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { listCategory } from "../../../store/slices/categorySlice";
+import { getallCategory } from "../../../store/slices/categorySlice";
 import { listItemApi } from "../../../store/slices/itemSlice";
 import { useOutletContext } from "react-router-dom";
 import {
@@ -71,10 +71,12 @@ export default function HomePage() {
     quantity: 1,
   });
   const [itemCurrentPage, setItemCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(6); // Số sản phẩm hiển thị trên mỗi trang
 
   useEffect(() => {
     // Fetch all categories without pagination
-    dispatch(listCategory());
+    dispatch(getallCategory());
     dispatch(getCartApi());
   }, [dispatch]);
 
@@ -127,6 +129,44 @@ export default function HomePage() {
   };
 
   const handleOpenModal = async (item) => {
+    console.log("Item being processed:", item);
+    console.log("Product Type:", item.productType);
+
+    // Xử lý topping trực tiếp
+    if (item.productType?.toLowerCase() === "extra") {
+      console.log("Processing as topping");
+      try {
+        // Thêm vào giỏ hàng local
+        dispatch(
+          addToCart({
+            product: { ...item, productId: item.productId, price: item.price },
+            quantity: 1,
+            size: "Parent",
+          })
+        );
+        // Gọi API thêm vào giỏ hàng
+        await dispatch(
+          addToCartApi({
+            productId: item.productId,
+            quantity: 1,
+            toppingIds: []
+          })
+        ).unwrap();
+        // Cập nhật giỏ hàng
+        await dispatch(getCartApi()).unwrap();
+      } catch (error) {
+        console.error("Error adding topping to cart:", error);
+        dispatch(
+          updateCartItemQuantity({
+            productId: item.productId,
+            quantity: 0,
+          })
+        );
+      }
+      return;
+    }
+
+    // Xử lý combo
     if (item.productType === "Combo") {
       try {
         dispatch(
@@ -157,6 +197,7 @@ export default function HomePage() {
       return;
     }
 
+    // Xử lý sản phẩm thông thường (không phải topping và không phải combo)
     if (!item || !item.variants || !Array.isArray(item.variants)) {
       console.error("Invalid item or variants:", item);
       return;
@@ -372,6 +413,24 @@ export default function HomePage() {
     }
   };
 
+  // Lọc và phân trang combo
+  const combos = useMemo(() => {
+    const filteredCombos = items.filter(item => item.categoryId === 5 && item.categoryName === "Combo");
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredCombos.slice(startIndex, endIndex);
+  }, [items, currentPage, pageSize]);
+
+  // Tính tổng số trang
+  const totalPages = useMemo(() => {
+    const totalCombos = items.filter(item => item.categoryId === 5 && item.categoryName === "Combo").length;
+    return Math.ceil(totalCombos / pageSize);
+  }, [items, pageSize]);
+
+  const handlePageChange = (event, newPage) => {
+    setCurrentPage(newPage);
+  };
+
   return (
     <Box className="home-page" sx={{ display: "flex" }}>
       {/* Sidebar for Categories */}
@@ -535,7 +594,7 @@ export default function HomePage() {
                               className="menu-item-price"
                               sx={{ marginTop: "5px", color: "#8a5a2a" }}
                             >
-                              ${price.toFixed(2)}
+                              {price.toLocaleString('vi-VN')} VNĐ
                             </Typography>
                             <Box className="menu-item-actions">
                               <button
@@ -639,13 +698,13 @@ export default function HomePage() {
                   <Box className="order-summary-item">
                     <Typography variant="body2">TỔNG CỘNG:</Typography>
                     <Typography variant="body2">
-                      ${calculateSubtotal().toFixed(2)}
+                      {calculateSubtotal().toLocaleString('vi-VN')} VNĐ
                     </Typography>
                   </Box>
                   <Box className="order-summary-item">
                     <Typography variant="body2">THÀNH TIỀN:</Typography>
                     <Typography variant="body2" fontWeight="bold">
-                      ${calculateSubtotal().toFixed(2)}
+                      {calculateSubtotal().toLocaleString('vi-VN')} VNĐ
                     </Typography>
                   </Box>
                 </Box>
@@ -725,7 +784,7 @@ export default function HomePage() {
                           <AddIcon />
                         </IconButton>
                         <Typography className="order-detail-price">
-                          ${(item.subPrice || 0).toFixed(2)}
+                          {(item.subPrice || 0).toLocaleString('vi-VN')} VNĐ
                         </Typography>
                         <IconButton
                           size="small"
@@ -783,6 +842,38 @@ export default function HomePage() {
         order={cart || []}
         total={total}
       />
+
+      {/* Phần hiển thị combo */}
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="h5" sx={{ mb: 2, color: '#8B5E3C' }}>
+        </Typography>
+        <Grid container spacing={2}>
+          {combos.map((item) => (
+            <Grid item xs={12} sm={6} md={4} key={item.productId}>
+              {/* Card hiển thị combo */}
+            </Grid>
+          ))}
+        </Grid>
+        {totalPages > 1 && (
+          <Box display="flex" justifyContent="center" mt={3}>
+            <Pagination
+              count={totalPages}
+              page={currentPage}
+              onChange={handlePageChange}
+              color="primary"
+              sx={{
+                '& .Mui-selected': {
+                  bgcolor: '#8B5E3C !important',
+                  color: 'white',
+                },
+                '& .MuiPaginationItem-root': {
+                  color: '#8B5E3C',
+                },
+              }}
+            />
+          </Box>
+        )}
+      </Box>
     </Box>
   );
 }
