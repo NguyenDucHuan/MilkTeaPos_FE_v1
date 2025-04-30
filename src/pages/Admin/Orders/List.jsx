@@ -15,8 +15,7 @@ import {
     TablePagination,
     Collapse,
     Grid,
-    Alert,
-    Snackbar // Thêm Snackbar để thông báo lỗi fetch items
+    Alert // Để hiển thị lỗi
 } from "@mui/material";
 import {
     Search as SearchIcon,
@@ -28,8 +27,8 @@ import {
     AccessTime as PendingIcon,
 } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
+// *** 1. KIỂM TRA ĐƯỜNG DẪN IMPORT ***
 import { fetchOrders } from '../../../store/slices/orderSlice';
-import axios from 'axios'; // *** THÊM: Cần thư viện để gọi API (hoặc dùng fetch) ***
 
 // --- Định nghĩa màu sắc và icon cho trạng thái ---
 const statusColors = {
@@ -41,7 +40,6 @@ const statusColors = {
 
 // --- Component hiển thị trạng thái ---
 const OrderStatus = ({ status }) => {
-    // ... (giữ nguyên)
     const statusInfo = statusColors[status] || statusColors.Pending;
     const StatusIcon = statusInfo.icon;
     return (
@@ -57,7 +55,9 @@ const OrderStatus = ({ status }) => {
 // --- Component chính ---
 export default function OrderListAdmin() {
     const dispatch = useDispatch();
-    const { orders: ordersData, isLoading: isLoadingOrders, error: errorOrders } = useSelector((state) => state.order);
+    // --- Lấy state từ Redux ---
+    // *** 2. KIỂM TRA TÊN SLICE 'order' ***
+    const { orders: ordersData, isLoading, error } = useSelector((state) => state.order);
 
     // --- State cho UI ---
     const [page, setPage] = useState(0);
@@ -65,58 +65,12 @@ export default function OrderListAdmin() {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedOrderId, setSelectedOrderId] = useState(null);
 
-    // --- THÊM STATE: Lưu trữ chi tiết items của order đang chọn ---
-    const [detailedItems, setDetailedItems] = useState({
-        loading: false,
-        error: null,
-        data: [],
-        orderId: null // Lưu ID của order đang xem chi tiết
-    });
-    const [snackbarOpen, setSnackbarOpen] = useState(false);
-    const [snackbarMessage, setSnackbarMessage] = useState('');
-
-    // --- Fetch danh sách orders ---
+    // --- Fetch dữ liệu ---
     useEffect(() => {
-        dispatch(fetchOrders());
-    }, [dispatch]);
-
-    // --- Hàm gọi API lấy chi tiết items ---
-    const fetchOrderItems = async (orderId) => {
-        // Nếu đã có dữ liệu cho orderId này và không có lỗi, không fetch lại (tùy chọn)
-        // if (detailedItems.orderId === orderId && detailedItems.data.length > 0 && !detailedItems.error) {
-        //     setDetailedItems(prev => ({ ...prev, loading: false }));
-        //     return;
-        // }
-
-        setDetailedItems({ loading: true, error: null, data: [], orderId: orderId });
-        try {
-            // *** THAY THẾ BẰNG URL API VÀ CẤU HÌNH AXIOS/FETCH CỦA BẠN ***
-            // Giả sử base URL đã được cấu hình hoặc bạn dùng URL tuyệt đối
-            const response = await axios.get(`/order-item/get-by-order-id/${orderId}`, {
-                 // Thêm headers nếu cần (ví dụ: Authorization)
-                 // headers: { Authorization: `Bearer ${your_token}` }
-            });
-
-             // *** KIỂM TRA CẤU TRÚC RESPONSE THỰC TẾ ***
-             // Giả sử response.data là mảng items
-            if (Array.isArray(response.data)) {
-                 setDetailedItems({ loading: false, error: null, data: response.data, orderId: orderId });
-            } else {
-                 // Xử lý trường hợp response không như mong đợi
-                 console.error("API response is not an array:", response.data);
-                 setDetailedItems({ loading: false, error: 'Dữ liệu trả về không hợp lệ.', data: [], orderId: orderId });
-                 setSnackbarMessage('Lỗi: Dữ liệu chi tiết đơn hàng không hợp lệ.');
-                 setSnackbarOpen(true);
-            }
-
-        } catch (err) {
-            console.error("Error fetching order items:", err);
-            const errorMessage = err.response?.data?.message || err.message || 'Không thể tải chi tiết đơn hàng.';
-            setDetailedItems({ loading: false, error: errorMessage, data: [], orderId: orderId });
-            setSnackbarMessage(`Lỗi: ${errorMessage}`);
-            setSnackbarOpen(true);
-        }
-    };
+        // Nếu API không hỗ trợ phân trang, chỉ cần gọi dispatch(fetchOrders())
+        // Nếu có, bạn có thể truyền page và rowsPerPage
+        dispatch(fetchOrders()); // Giả sử fetch tất cả rồi lọc/phân trang ở client
+    }, [dispatch]); // Chỉ fetch 1 lần khi mount
 
     // --- Xử lý UI ---
     const handleChangePage = (event, newPage) => setPage(newPage);
@@ -128,30 +82,11 @@ export default function OrderListAdmin() {
         setSearchTerm(event.target.value);
         setPage(0);
     };
-
-    // --- CẬP NHẬT: Xử lý xem chi tiết và gọi API items ---
-    const handleViewDetails = (orderId) => {
-        const newSelectedOrderId = selectedOrderId === orderId ? null : orderId;
-        setSelectedOrderId(newSelectedOrderId);
-
-        // Nếu mở collapse (newSelectedOrderId có giá trị) thì fetch items
-        if (newSelectedOrderId) {
-            fetchOrderItems(newSelectedOrderId);
-        } else {
-            // Nếu đóng collapse, có thể reset state items (tùy chọn)
-             setDetailedItems({ loading: false, error: null, data: [], orderId: null });
-        }
-    };
-
-    const handleCloseSnackbar = (event, reason) => {
-        if (reason === 'clickaway') {
-            return;
-        }
-        setSnackbarOpen(false);
-    };
-
+    const handleViewDetails = (orderId) => setSelectedOrderId(prevId => (prevId === orderId ? null : orderId));
 
     // --- Chuẩn bị dữ liệu ---
+    // *** 3. KIỂM TRA CẤU TRÚC API RESPONSE (ordersData) ***
+    // Chuyển đổi ordersData thành mảng ordersList một cách an toàn
     const ordersList = Array.isArray(ordersData?.items)
         ? ordersData.items
         : Array.isArray(ordersData)
@@ -160,34 +95,28 @@ export default function OrderListAdmin() {
 
     // Lọc dữ liệu trên client
     const filteredOrders = ordersList.filter((order) => {
-        // ... (giữ nguyên logic filter)
-        if (!order) return false;
+        if (!order) return false; // Bỏ qua nếu order là null/undefined
         const searchLower = searchTerm.toLowerCase();
-        const id = order.id ?? order.orderId;
+        // *** 4. KIỂM TRA TÊN CÁC TRƯỜNG DỮ LIỆU TRONG 'order' ***
+        const id = order.id ?? order.orderId; // Ưu tiên 'id', nếu không có thì dùng 'orderId'
         const note = order.note ?? '';
-        const staffName = order.staffName ?? '';
-        const paymentMethod = order.paymentMethod ?? (order.paymentMethodId === 1 ? 'Tiền mặt' : (order.paymentMethodId === 2 ? 'Chuyển khoản' : '')); // Cập nhật nếu có nhiều phương thức
-        const currentStatus = order.orderstatusupdates?.[0]?.orderStatus || 'Pending';
+        const staffName = order.staffName ?? ''; // Cần API trả về trường này
+        const paymentMethod = order.paymentMethod ?? (order.paymentMethodId === 1 ? 'Tiền mặt' : ''); // Cần API trả về paymentMethod hoặc logic từ ID
+        const currentStatus = order.orderstatusupdates?.[0]?.orderStatus || 'Pending'; // Giả sử lấy trạng thái đầu tiên
         const statusLabel = statusColors[currentStatus]?.label.toLowerCase() || '';
-
-        // Thêm tìm kiếm sản phẩm nếu dữ liệu order gốc có items (hiện tại không có)
-        // const productSearch = order.orderitems?.some(item =>
-        //     item.product?.productName?.toLowerCase().includes(searchLower)
-        // ) ?? false;
 
         return (
             id?.toString().toLowerCase().includes(searchLower) ||
             note.toLowerCase().includes(searchLower) ||
             staffName.toLowerCase().includes(searchLower) ||
             paymentMethod.toLowerCase().includes(searchLower) ||
-            statusLabel.includes(searchLower) //||
-            // productSearch // Bỏ tìm kiếm product ở đây vì items fetch sau
+            statusLabel.includes(searchLower)
         );
     });
 
     // --- Hàm định dạng ---
     const formatDate = (dateString) => {
-        // ... (giữ nguyên)
+        // ... (Giữ nguyên hàm formatDate)
          if (!dateString) return 'N/A';
         try {
             const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
@@ -195,8 +124,8 @@ export default function OrderListAdmin() {
         } catch (e) { return 'Invalid Date'; }
     };
     const formatCurrency = (amount) => {
-        // ... (giữ nguyên)
-        if (typeof amount !== 'number' && typeof amount !== 'string') return 'N/A';
+        // ... (Giữ nguyên hàm formatCurrency)
+        if (typeof amount !== 'number' && typeof amount !== 'string') return 'N/A'; // Cho phép cả string số
          const numericAmount = Number(amount);
          if (isNaN(numericAmount)) return 'N/A';
          return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(numericAmount);
@@ -211,7 +140,7 @@ export default function OrderListAdmin() {
                     Danh sách đơn hàng
                 </Typography>
                 <TextField
-                    placeholder="Tìm kiếm ID, ghi chú, nhân viên..." // Cập nhật placeholder nếu cần
+                    placeholder="Tìm kiếm..."
                     value={searchTerm}
                     onChange={handleSearch}
                     size="small"
@@ -220,24 +149,24 @@ export default function OrderListAdmin() {
                 />
             </Box>
 
-            {/* Loading / Error cho danh sách orders */}
-            {isLoadingOrders && (
+            {/* Loading / Error */}
+            {isLoading && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}><CircularProgress /></Box>
             )}
-            {errorOrders && !isLoadingOrders && (
+            {error && !isLoading && ( // Chỉ hiển thị lỗi khi không loading
                 <Alert severity="error" sx={{ mb: 2 }}>
-                    {typeof errorOrders === 'string' ? errorOrders : 'Có lỗi xảy ra khi tải danh sách đơn hàng.'}
+                    {typeof error === 'string' ? error : 'Có lỗi xảy ra khi tải danh sách đơn hàng.'}
                 </Alert>
             )}
 
-            {/* Table và Pagination */}
-            {!isLoadingOrders && (
+            {/* Table và Pagination (chỉ hiển thị khi không loading) */}
+            {!isLoading && (
                 <Paper sx={{ width: '100%', overflow: 'hidden' }}>
                     <Box sx={{ overflowX: 'auto' }}>
                         <Table stickyHeader size="small">
                             <TableHead>
                                 <TableRow>
-                                    {/* ... (giữ nguyên các header) ... */}
+                                    {/* Các cột header của Admin */}
                                     <TableCell sx={{ fontWeight: 'bold' }}>STT</TableCell>
                                     <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
                                     <TableCell sx={{ fontWeight: 'bold' }}>Ngày tạo</TableCell>
@@ -250,7 +179,7 @@ export default function OrderListAdmin() {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {filteredOrders.length === 0 && !isLoadingOrders ? (
+                                {filteredOrders.length === 0 && !isLoading ? ( // Thêm điều kiện !isLoading
                                     <TableRow>
                                         <TableCell colSpan={9} align="center">Không tìm thấy đơn hàng.</TableCell>
                                     </TableRow>
@@ -258,16 +187,16 @@ export default function OrderListAdmin() {
                                     filteredOrders
                                         .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                                         .map((order, index) => {
-                                            const orderId = order.id ?? order.orderId; // Xác định orderId
+                                            // *** 5. KIỂM TRA CÁCH LẤY TRẠNG THÁI ***
                                             const currentStatus = order.orderstatusupdates?.[0]?.orderStatus || 'Pending';
-                                            const isSelected = selectedOrderId === orderId; // Kiểm tra có đang chọn row này không
+                                            const isSelected = selectedOrderId === (order.id ?? order.orderId); // Dùng ID đã xác định
 
                                             return (
-                                                <React.Fragment key={orderId}>
-                                                    {/* === Hàng chính === */}
+                                                <React.Fragment key={order.id ?? order.orderId}>
                                                     <TableRow hover sx={{ '& > *': { borderBottom: 'unset' } }}>
                                                         <TableCell>{page * rowsPerPage + index + 1}</TableCell>
-                                                        <TableCell>#{orderId}</TableCell>
+                                                        {/* *** 6. KIỂM TRA TÊN CÁC TRƯỜNG KHI HIỂN THỊ *** */}
+                                                        <TableCell>#{order.id ?? order.orderId}</TableCell>
                                                         <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatDate(order.createAt)}</TableCell>
                                                         <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 500 }}>{formatCurrency(order.totalAmount)}</TableCell>
                                                         <TableCell sx={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -275,87 +204,57 @@ export default function OrderListAdmin() {
                                                         </TableCell>
                                                         <TableCell>{order.staffName || 'N/A'}</TableCell>
                                                         <TableCell>
-                                                            {order.paymentMethod || (order.paymentMethodId === 1 ? "Tiền mặt" : (order.paymentMethodId === 2 ? "Chuyển khoản" : "N/A"))}
+                                                            {order.paymentMethod || (order.paymentMethodId === 1 ? "Tiền mặt" : "Chuyển khoản")}
                                                         </TableCell>
                                                         <TableCell>
                                                             <OrderStatus status={currentStatus} />
                                                         </TableCell>
                                                         <TableCell align="center">
-                                                            <IconButton size="small" onClick={() => handleViewDetails(orderId)}>
+                                                            <IconButton size="small" onClick={() => handleViewDetails(order.id ?? order.orderId)}>
                                                                 {isSelected ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                                                             </IconButton>
                                                         </TableCell>
                                                     </TableRow>
-
-                                                    {/* === Hàng chi tiết (Collapse) === */}
+                                                    {/* Hàng chi tiết (Collapse) */}
                                                     <TableRow>
                                                         <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={9}>
                                                             <Collapse in={isSelected} timeout="auto" unmountOnExit>
                                                                 <Box sx={{ m: 1, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
                                                                     <Typography variant="h6" gutterBottom component="div">
-                                                                        Chi tiết đơn hàng #{orderId}
+                                                                        Chi tiết đơn hàng #{order.id ?? order.orderId}
                                                                     </Typography>
                                                                     <Grid container spacing={2}>
-                                                                        {/* Thông tin cơ bản (Giữ nguyên) */}
+                                                                        {/* Thông tin cơ bản */}
                                                                         <Grid item xs={12} md={5}>
+                                                                            {/* ... (Hiển thị các thông tin cơ bản, kiểm tra tên trường) ... */}
                                                                             <Typography variant="body2" ><strong>Ngày đặt:</strong> {formatDate(order.createAt)}</Typography>
                                                                             <Typography variant="body2" ><strong>Nhân viên:</strong> {order.staffName || 'N/A'}</Typography>
-                                                                            <Typography variant="body2" ><strong>Thanh toán:</strong> {order.paymentMethod || (order.paymentMethodId === 1 ? "Tiền mặt" : (order.paymentMethodId === 2 ? "Chuyển khoản" : "N/A"))}</Typography>
+                                                                            <Typography variant="body2" ><strong>Thanh toán:</strong> {order.paymentMethod || (order.paymentMethodId === 1 ? "Tiền mặt" : "Chuyển khoản")}</Typography>
                                                                             <Typography variant="body2" ><strong>Trạng thái:</strong> {statusColors[currentStatus]?.label || 'N/A'}</Typography>
                                                                             <Typography variant="body2" sx={{ mt: 1 }}><strong>Ghi chú:</strong></Typography>
-                                                                            <Typography variant="body2" sx={{ pl: 1, whiteSpace: 'pre-wrap' /* Để xuống dòng nếu ghi chú dài */ }}>{order.note || 'Không có'}</Typography>
+                                                                            <Typography variant="body2" sx={{ pl: 1 }}>{order.note || 'Không có'}</Typography>
                                                                         </Grid>
-
-                                                                        {/* === CẬP NHẬT: Chi tiết sản phẩm === */}
+                                                                        {/* Chi tiết sản phẩm */}
                                                                         <Grid item xs={12} md={7}>
-                                                                            <Typography variant="subtitle1" fontWeight="bold" gutterBottom> {/* Đổi thành subtitle1 cho to hơn */}
-                                                                                Sản phẩm:
-                                                                            </Typography>
-
-                                                                            {/* Hiển thị loading/error/danh sách items */}
-                                                                            {detailedItems.loading && detailedItems.orderId === orderId && ( // Chỉ loading cho đúng order đang mở
-                                                                                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 50 }}>
-                                                                                    <CircularProgress size={24} />
-                                                                                </Box>
-                                                                            )}
-                                                                            {detailedItems.error && detailedItems.orderId === orderId &&( // Chỉ báo lỗi cho đúng order đang mở
-                                                                                <Alert severity="error" sx={{ mt: 1 }}>{detailedItems.error}</Alert>
-                                                                            )}
-                                                                            {!detailedItems.loading && !detailedItems.error && detailedItems.orderId === orderId && (
-                                                                                <>
-                                                                                    {detailedItems.data.length > 0 ? (
-                                                                                        detailedItems.data.map((item) => ( // Không cần itemIndex nếu có ID
-                                                                                            // *** KIỂM TRA LẠI KEY (dùng item.orderItemId hoặc item.id nếu có) ***
-                                                                                            <Box key={item.orderItemId || item.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.8, borderBottom: '1px dashed #e0e0e0' }}>
-                                                                                                <Box>
-                                                                                                    <Typography variant="body2">
-                                                                                                        {/* *** KIỂM TRA TÊN TRƯỜNG PRODUCT NAME *** */}
-                                                                                                        {item.product?.productName || item.productName || 'N/A'}
-                                                                                                    </Typography>
-                                                                                                    <Typography variant="caption" color="text.secondary">
-                                                                                                        {/* *** KIỂM TRA TÊN TRƯỜNG SỐ LƯỢNG *** */}
-                                                                                                        Số lượng: {item.quantity ?? 0}
-                                                                                                    </Typography>
-                                                                                                </Box>
-                                                                                                <Typography variant="body2" fontWeight={500} sx={{ whiteSpace: 'nowrap', ml: 2 }}>
-                                                                                                    {/* *** KIỂM TRA TÊN TRƯỜNG GIÁ *** */}
-                                                                                                    {formatCurrency((item.price ?? 0) * (item.quantity ?? 0))}
-                                                                                                </Typography>
-                                                                                            </Box>
-                                                                                        ))
-                                                                                    ) : (
-                                                                                        <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
-                                                                                            Không có sản phẩm trong đơn hàng này.
+                                                                            <Typography variant="subtitle2" fontWeight="bold">Sản phẩm:</Typography>
+                                                                            {/* *** 7. KIỂM TRA CẤU TRÚC orderitems và item.product *** */}
+                                                                            {order.orderitems?.length > 0 ? (
+                                                                                order.orderitems.map((item, itemIndex) => (
+                                                                                    <Box key={itemIndex} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderBottom: '1px dashed #e0e0e0' }}>
+                                                                                        <Typography variant="body2">
+                                                                                            {item.product?.productName || 'N/A'} {/* Giả sử có item.product.productName */}
+                                                                                            <span style={{ color: '#757575' }}> (x{item.quantity})</span> {/* Giả sử có item.quantity */}
                                                                                         </Typography>
-                                                                                    )}
-
-                                                                                    {/* Tổng tiền (Giữ nguyên để đối chiếu) */}
-                                                                                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1.5, pt: 1.5, borderTop: '1px solid #bdbdbd' }}>
-                                                                                         <Typography variant="body1" fontWeight="bold" sx={{mr: 1}}>Tổng cộng:</Typography>
-                                                                                         <Typography variant="body1" fontWeight="bold">{formatCurrency(order.totalAmount)}</Typography>
+                                                                                        {/* Giả sử có item.price */}
+                                                                                        <Typography variant="body2">{formatCurrency((item.price ?? 0) * (item.quantity ?? 0))}</Typography>
                                                                                     </Box>
-                                                                                </>
-                                                                            )}
+                                                                                ))
+                                                                            ) : (<Typography variant="body2" sx={{ color: 'text.secondary' }}>Không có sản phẩm.</Typography>)}
+                                                                            {/* Tổng tiền */}
+                                                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1, pt: 1, borderTop: '1px solid #bdbdbd' }}>
+                                                                                <Typography variant="body1" fontWeight="bold">Tổng cộng:</Typography>
+                                                                                <Typography variant="body1" fontWeight="bold">{formatCurrency(order.totalAmount)}</Typography>
+                                                                            </Box>
                                                                         </Grid>
                                                                     </Grid>
                                                                 </Box>
@@ -370,27 +269,20 @@ export default function OrderListAdmin() {
                         </Table>
                     </Box>
                     {/* Phân trang */}
+                    {/* *** 8. KIỂM TRA logic phân trang (client vs server) *** */}
+                    {/* count nên là totalOrdersCount nếu API trả về tổng số */}
+                    {/* Nếu lọc/phân trang ở client thì count={filteredOrders.length} */}
                     <TablePagination
                         rowsPerPageOptions={[5, 10, 25]}
                         component="div"
-                        count={filteredOrders.length}
+                        count={filteredOrders.length} // Giả định lọc client
                         rowsPerPage={rowsPerPage}
                         page={page}
                         onPageChange={handleChangePage}
                         onRowsPerPageChange={handleChangeRowsPerPage}
-                        labelRowsPerPage="Số hàng mỗi trang:"
-                        labelDisplayedRows={({ from, to, count }) => `${from}–${to} trên ${count !== -1 ? count : `hơn ${to}`}`}
                     />
                 </Paper>
             )}
-             {/* Snackbar hiển thị lỗi fetch items */}
-             <Snackbar
-                open={snackbarOpen}
-                autoHideDuration={6000}
-                onClose={handleCloseSnackbar}
-                message={snackbarMessage}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            />
         </Box>
     );
 }
