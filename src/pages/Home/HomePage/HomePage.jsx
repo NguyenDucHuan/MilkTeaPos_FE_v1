@@ -23,7 +23,7 @@ import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { getallCategory } from "../../../store/slices/categorySlice";
+import { getAllCategoriesForHomepage } from "../../../store/slices/categorySlice";
 import { listItemApi } from "../../../store/slices/itemSlice";
 import { useOutletContext } from "react-router-dom";
 import {
@@ -75,8 +75,8 @@ export default function HomePage() {
   const [pageSize] = useState(6); // Số sản phẩm hiển thị trên mỗi trang
 
   useEffect(() => {
-    // Fetch all categories without pagination
-    dispatch(getallCategory());
+    // Fetch all categories for homepage
+    dispatch(getAllCategoriesForHomepage());
     dispatch(getCartApi());
   }, [dispatch]);
 
@@ -136,7 +136,6 @@ export default function HomePage() {
     if (item.productType?.toLowerCase() === "extra") {
       console.log("Processing as topping");
       try {
-        // Thêm vào giỏ hàng local
         dispatch(
           addToCart({
             product: { ...item, productId: item.productId, price: item.price },
@@ -144,15 +143,13 @@ export default function HomePage() {
             size: "Parent",
           })
         );
-        // Gọi API thêm vào giỏ hàng
         await dispatch(
           addToCartApi({
             productId: item.productId,
             quantity: 1,
-            toppingIds: []
+            toppingIds: [],
           })
         ).unwrap();
-        // Cập nhật giỏ hàng
         await dispatch(getCartApi()).unwrap();
       } catch (error) {
         console.error("Error adding topping to cart:", error);
@@ -197,7 +194,7 @@ export default function HomePage() {
       return;
     }
 
-    // Xử lý sản phẩm thông thường (không phải topping và không phải combo)
+    // Xử lý sản phẩm thông thường
     if (!item || !item.variants || !Array.isArray(item.variants)) {
       console.error("Invalid item or variants:", item);
       return;
@@ -413,17 +410,19 @@ export default function HomePage() {
     }
   };
 
-  // Lọc và phân trang combo
   const combos = useMemo(() => {
-    const filteredCombos = items.filter(item => item.categoryId === 5 && item.categoryName === "Combo");
+    const filteredCombos = items.filter(
+      (item) => item.categoryId === 5 && item.categoryName === "Combo"
+    );
     const startIndex = (currentPage - 1) * pageSize;
     const endIndex = startIndex + pageSize;
     return filteredCombos.slice(startIndex, endIndex);
   }, [items, currentPage, pageSize]);
 
-  // Tính tổng số trang
   const totalPages = useMemo(() => {
-    const totalCombos = items.filter(item => item.categoryId === 5 && item.categoryName === "Combo").length;
+    const totalCombos = items.filter(
+      (item) => item.categoryId === 5 && item.categoryName === "Combo"
+    ).length;
     return Math.ceil(totalCombos / pageSize);
   }, [items, pageSize]);
 
@@ -433,7 +432,6 @@ export default function HomePage() {
 
   return (
     <Box className="home-page" sx={{ display: "flex" }}>
-      {/* Sidebar for Categories */}
       <Grid item size={3} sx={{ borderRight: "1px solid #e0e0e0", height: "100vh", overflowY: "auto" }}>
         <Box sx={{ p: 2 }}>
           <Typography variant="h6" sx={{ color: "#8a5a2a", fontWeight: "bold", mb: 2 }}>
@@ -479,9 +477,7 @@ export default function HomePage() {
         </Box>
       </Grid>
 
-      {/* Main Content */}
       <Grid container spacing={2} sx={{ flex: 1, ml: 2 }}>
-        {/* Menu Items Section */}
         <Grid item size={8} className="menu-section">
           <Typography className="menu-title">Menu Items</Typography>
           <Divider className="menu-divider" />
@@ -559,7 +555,7 @@ export default function HomePage() {
                                 sx={{
                                   marginTop: "5px",
                                   display: "flex",
-                                  flexDirection: "row",
+                                  flexDirection: "column",
                                 }}
                               >
                                 <Typography
@@ -594,7 +590,7 @@ export default function HomePage() {
                               className="menu-item-price"
                               sx={{ marginTop: "5px", color: "#8a5a2a" }}
                             >
-                              {price.toLocaleString('vi-VN')} VNĐ
+                              {price.toLocaleString("vi-VN")} VNĐ
                             </Typography>
                             <Box className="menu-item-actions">
                               <button
@@ -637,7 +633,6 @@ export default function HomePage() {
           )}
         </Grid>
 
-        {/* Order Section */}
         <Grid item size={4} className="order-section">
           <Box className="order-container">
             <Typography variant="h4" className="order-title">
@@ -698,13 +693,13 @@ export default function HomePage() {
                   <Box className="order-summary-item">
                     <Typography variant="body2">TỔNG CỘNG:</Typography>
                     <Typography variant="body2">
-                      {calculateSubtotal().toLocaleString('vi-VN')} VNĐ
+                      {calculateSubtotal().toLocaleString("vi-VN")} VNĐ
                     </Typography>
                   </Box>
                   <Box className="order-summary-item">
                     <Typography variant="body2">THÀNH TIỀN:</Typography>
                     <Typography variant="body2" fontWeight="bold">
-                      {calculateSubtotal().toLocaleString('vi-VN')} VNĐ
+                      {calculateSubtotal().toLocaleString("vi-VN")} VNĐ
                     </Typography>
                   </Box>
                 </Box>
@@ -784,7 +779,7 @@ export default function HomePage() {
                           <AddIcon />
                         </IconButton>
                         <Typography className="order-detail-price">
-                          {(item.subPrice || 0).toLocaleString('vi-VN')} VNĐ
+                          {(item.subPrice || 0).toLocaleString("vi-VN")} VNĐ
                         </Typography>
                         <IconButton
                           size="small"
@@ -843,37 +838,7 @@ export default function HomePage() {
         total={total}
       />
 
-      {/* Phần hiển thị combo */}
-      <Box sx={{ mt: 4 }}>
-        <Typography variant="h5" sx={{ mb: 2, color: '#8B5E3C' }}>
-        </Typography>
-        <Grid container spacing={2}>
-          {combos.map((item) => (
-            <Grid item xs={12} sm={6} md={4} key={item.productId}>
-              {/* Card hiển thị combo */}
-            </Grid>
-          ))}
-        </Grid>
-        {totalPages > 1 && (
-          <Box display="flex" justifyContent="center" mt={3}>
-            <Pagination
-              count={totalPages}
-              page={currentPage}
-              onChange={handlePageChange}
-              color="primary"
-              sx={{
-                '& .Mui-selected': {
-                  bgcolor: '#8B5E3C !important',
-                  color: 'white',
-                },
-                '& .MuiPaginationItem-root': {
-                  color: '#8B5E3C',
-                },
-              }}
-            />
-          </Box>
-        )}
-      </Box>
+   
     </Box>
   );
 }

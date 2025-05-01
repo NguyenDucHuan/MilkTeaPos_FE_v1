@@ -3,7 +3,10 @@ import fetcher from "../../apis/fetcher";
 
 export const listItemApi = createAsyncThunk(
   "item/listItemApi",
-  async ({ CategoryId, Search, Page = 1, PageSize = 6 }, { rejectWithValue }) => {
+  async (
+    { CategoryId, Search, Page = 1, PageSize = 6 },
+    { rejectWithValue }
+  ) => {
     try {
       const queryParams = new URLSearchParams({
         Page,
@@ -37,9 +40,13 @@ export const createProduct = createAsyncThunk(
   "item/createProduct",
   async (formData, { rejectWithValue }) => {
     try {
-      const response = await fetcher.post("/products/create-product", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const response = await fetcher.post(
+        "/products/create-product",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
       return response.data;
     } catch (error) {
       return rejectWithValue({
@@ -53,10 +60,11 @@ export const createProduct = createAsyncThunk(
 
 export const updateProduct = createAsyncThunk(
   "item/updateProduct",
-  async (formData, { rejectWithValue }) => {
+  async ({ productId, formData }, { rejectWithValue }) => {
     try {
+      formData.append("ProductId", productId.toString()); 
       const response = await fetcher.put(
-        "/products/update-product/id", // Giữ endpoint cố định, không thêm productId vào URL
+        "/products/update-product/id",
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
@@ -74,7 +82,6 @@ export const updateProduct = createAsyncThunk(
     }
   }
 );
-
 export const createExtraProduct = createAsyncThunk(
   "item/createExtraProduct",
   async (formData, { rejectWithValue }) => {

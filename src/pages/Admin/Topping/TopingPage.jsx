@@ -29,6 +29,7 @@ import {
   setPage,
 } from "../../../store/slices/itemSlice";
 import { getallCategory } from "../../../store/slices/categorySlice";
+import FormTopping from "./FormTopping"; // Import the FormTopping component
 
 export default function ToppingPage() {
   const dispatch = useDispatch();
@@ -95,8 +96,8 @@ export default function ToppingPage() {
       return;
     }
     if (!toppingCategory) {
-      alert("Danh mục Topping không tồn tại!");
-      return;
+   
+      // Still allow opening the modal, but warn the user
     }
     setOpenModal(true);
   };
@@ -110,6 +111,52 @@ export default function ToppingPage() {
     dispatch(setPage(newPage));
   };
 
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    const formData = e.target.elements;
+    if (!formData.productName.value.trim()) {
+      alert("Vui lòng nhập tên topping!");
+      return;
+    }
+    if (isNaN(formData.price.value) || formData.price.value <= 0) {
+      alert("Vui lòng nhập giá hợp lệ!");
+      return;
+    }
+
+    const formDataToSend = new FormData();
+    formDataToSend.append("ProductName", formData.productName.value);
+    formDataToSend.append("Description", formData.description.value || "");
+    formDataToSend.append("Price", parseFloat(formData.price.value));
+    formDataToSend.append("Status", formData.status.checked);
+    // Use toppingCategory.categoryId if available, otherwise handle the missing category case
+    formDataToSend.append("CategoryId", toppingCategory?.categoryId || "");
+    if (formData.image.files[0]) {
+      formDataToSend.append("Image", formData.image.files[0]);
+    }
+
+    try {
+      const resultAction = await dispatch(createExtraProduct(formDataToSend));
+      if (createExtraProduct.fulfilled.match(resultAction)) {
+        alert("Thêm topping thành công!");
+        dispatch(
+          listItemApi({
+            CategoryId: toppingCategory?.categoryId || "",
+            Page: currentPage,
+            PageSize: pageSize,
+          })
+        );
+        handleCloseModal();
+      } else {
+        throw new Error(
+          resultAction.payload?.message || "Không thể thêm topping"
+        );
+      }
+    } catch (error) {
+      console.error("Error creating topping:", error);
+      alert(error.message || "Có lỗi xảy ra khi thêm topping!");
+    }
+  };
+
   if (isLoading) return <Typography>Loading...</Typography>;
   if (error)
     return <Typography color="error">Error: {error.message || error}</Typography>;
@@ -119,8 +166,49 @@ export default function ToppingPage() {
         Error loading categories: {categoryError}
       </Typography>
     );
-  if (!toppingCategory)
-    return <Typography color="error">Danh mục Topping không tồn tại!</Typography>;
+
+  // If no topping category exists, show a button to add a new topping
+  if (!toppingCategory) {
+    return (
+      <Box sx={{ padding: 3 }}>
+        <Typography variant="h5" fontWeight="bold" gutterBottom>
+          Quản lý Topping
+        </Typography>
+        <Box
+          display="flex"
+          flexDirection="column"
+          alignItems="center"
+          justifyContent="center"
+          sx={{ mt: 4 }}
+        >
+          <Typography variant="h6" color="textSecondary" gutterBottom>
+            Chưa có danh mục Topping!
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenModal}
+            sx={{
+              backgroundColor: "#8B5E3C",
+              "&:hover": {
+                backgroundColor: "#6B4E2C",
+              },
+            }}
+          >
+            THÊM TOPPING
+          </Button>
+        </Box>
+
+        {/* FormTopping Modal */}
+        <FormTopping
+          open={openModal}
+          handleClose={handleCloseModal}
+          onSubmit={handleFormSubmit}
+          toppingCategoryId={toppingCategory?.categoryId || ""}
+        />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ padding: 3 }}>
@@ -216,122 +304,12 @@ export default function ToppingPage() {
       </Paper>
 
       {/* FormTopping Modal */}
-      <Modal open={openModal} onClose={handleCloseModal}>
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: 500,
-            bgcolor: "background.paper",
-            boxShadow: 24,
-            p: 4,
-            borderRadius: 2,
-          }}
-        >
-          <Typography variant="h6" fontWeight="bold" gutterBottom>
-            Thêm Topping mới
-          </Typography>
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const formData = e.target.elements;
-              if (!formData.productName.value.trim()) {
-                alert("Vui lòng nhập tên topping!");
-                return;
-              }
-              if (isNaN(formData.price.value) || formData.price.value <= 0) {
-                alert("Vui lòng nhập giá hợp lệ!");
-                return;
-              }
-
-              const formDataToSend = new FormData();
-              formDataToSend.append("ProductName", formData.productName.value);
-              formDataToSend.append("Description", formData.description.value || "");
-              formDataToSend.append("Price", parseFloat(formData.price.value));
-              formDataToSend.append("Status", formData.status.checked);
-              formDataToSend.append("CategoryId", toppingCategory.categoryId);
-              if (formData.image.files[0]) {
-                formDataToSend.append("Image", formData.image.files[0]);
-              }
-
-              try {
-                const resultAction = await dispatch(createExtraProduct(formDataToSend));
-                if (createExtraProduct.fulfilled.match(resultAction)) {
-                  alert("Thêm topping thành công!");
-                  dispatch(
-                    listItemApi({
-                      CategoryId: toppingCategory.categoryId,
-                      Page: currentPage,
-                      PageSize: pageSize,
-                    })
-                  );
-                  handleCloseModal();
-                } else {
-                  throw new Error(
-                    resultAction.payload?.message || "Không thể thêm topping"
-                  );
-                }
-              } catch (error) {
-                console.error("Error creating topping:", error);
-                alert(error.message || "Có lỗi xảy ra khi thêm topping!");
-              }
-            }}
-          >
-            <TextField
-              fullWidth
-              label="Tên topping"
-              name="productName"
-              margin="normal"
-              required
-            />
-            <TextField
-              fullWidth
-              label="Mô tả"
-              name="description"
-              margin="normal"
-              multiline
-              rows={3}
-            />
-            <TextField
-              fullWidth
-              label="Giá (VND)"
-              name="price"
-              type="number"
-              margin="normal"
-              required
-              inputProps={{ min: 0 }}
-            />
-            <TextField
-              fullWidth
-              type="file"
-              label="Hình ảnh"
-              name="image"
-              margin="normal"
-              InputLabelProps={{ shrink: true }}
-              inputProps={{ accept: "image/*" }}
-            />
-            <FormControlLabel
-              control={<Switch name="status" defaultChecked color="primary" />}
-              label="Trạng thái kích hoạt"
-              sx={{ mt: 2 }}
-            />
-            <Box mt={3} display="flex" gap={2}>
-              <Button
-                variant="contained"
-                type="submit"
-                sx={{ backgroundColor: "#8B5E3C" }}
-              >
-                Thêm mới
-              </Button>
-              <Button variant="outlined" onClick={handleCloseModal}>
-                Hủy
-              </Button>
-            </Box>
-          </form>
-        </Box>
-      </Modal>
+      <FormTopping
+        open={openModal}
+        handleClose={handleCloseModal}
+        onSubmit={handleFormSubmit}
+        toppingCategoryId={toppingCategory.categoryId}
+      />
     </Box>
   );
 }

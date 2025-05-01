@@ -6,7 +6,6 @@ export const getStatisticByDateApi = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await fetcher.get(`/statistic/by-date`);
-      console.log("Dữ liệu phản hồi API:", response.data);
       return response.data;
     } catch (error) {
       const errorMessage =
@@ -25,7 +24,6 @@ export const getStatisticByMonthApi = createAsyncThunk(
       const response = await fetcher.get(
         `/statistic/by-month?month=${month}&year=${year}`
       );
-      console.log("Dữ liệu phản hồi API:", response.data);
       return response.data;
     } catch (error) {
       const errorMessage =

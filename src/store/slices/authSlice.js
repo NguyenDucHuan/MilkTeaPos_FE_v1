@@ -47,11 +47,11 @@ const authSlice = createSlice({
     // Action để cập nhật user từ token đã lưu (ví dụ khi tải lại trang)
     setUserFromToken: (state, action) => {
       const token = action.payload;
-      console.log("[authSlice] setUserFromToken called with token:", !!token);
+
       if (token) {
         try {
           const decodedToken = jwtDecode(token);
-          console.log("[authSlice] Decoded token for setUser:", decodedToken);
+       
           // Tạo đối tượng user từ decoded token
           state.user = {
             id: decodedToken['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/sid'],
@@ -63,7 +63,7 @@ const authSlice = createSlice({
           state.isAuthenticated = true;
           state.loading = false;
           state.error = null;
-          console.log("[authSlice] User restored from token:", state.user);
+
         } catch (error) {
           console.error("[authSlice] Failed to decode token for setUserFromToken:", error);
           // Nếu token lỗi, đảm bảo state là đã logout

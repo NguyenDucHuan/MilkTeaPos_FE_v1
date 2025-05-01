@@ -9,14 +9,14 @@ function App() {
 
   // --- THÊM useEffect ĐỂ KHÔI PHỤC SESSION ---
   useEffect(() => {
-    console.log("[App] Component mounted. Checking for existing token...");
+
     const accessToken = localStorage.getItem('accessToken'); // Lấy token từ localStorage
-    console.log("[App] Token found in localStorage:", !!accessToken);
+ 
 
     if (accessToken) {
       // Nếu có token, dispatch action để cập nhật user vào Redux state
       // Action này sẽ giải mã token và thiết lập user/isAuthenticated trong Redux
-      console.log("[App] Dispatching setUserFromToken...");
+ 
       dispatch(setUserFromToken(accessToken));
     }
     // Dependency array là [dispatch] để chỉ chạy một lần khi component App được mount
