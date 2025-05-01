@@ -15,6 +15,7 @@ import {
 import { Add as AddIcon, Delete as DeleteIcon } from "@mui/icons-material";
 import { useDispatch } from "react-redux";
 import { createProduct, updateProduct } from "../../../store/slices/itemSlice";
+import toast from "react-hot-toast";
 
 const ProductModal = ({
   open,
@@ -45,13 +46,15 @@ const ProductModal = ({
       const sizes =
         product.variants?.length > 0
           ? product.variants.map((variant) => ({
+              productId: variant.productId,
               size: variant.sizeId || "Small",
               price:
                 variant.price !== null && variant.price !== undefined
                   ? variant.price.toString()
                   : "0",
+              status: variant.status !== undefined ? variant.status : true,
             }))
-          : [{ size: "Small", price: "0" }];
+          : [{ size: "Small", price: "0", status: true }];
       const newFormData = {
         productName: product.productName,
         categoryId: Number(product.categoryId),
@@ -63,6 +66,7 @@ const ProductModal = ({
       setImagePreview(product.imageUrl || null);
       setImageFile(null);
     } else {
+      setEditProductId(null); // Đảm bảo editProductId là null khi tạo mới
       const newFormData = {
         productName: "",
         categoryId:
@@ -70,7 +74,7 @@ const ProductModal = ({
             ? Number(filteredCategories[0].categoryId)
             : null,
         description: "",
-        sizes: [{ size: "Small", price: "0" }],
+        sizes: [{ size: "Small", price: "0", status: true }],
         status: true,
       };
       setFormData(newFormData);
@@ -84,7 +88,11 @@ const ProductModal = ({
     if (index !== null) {
       setFormData((prev) => {
         const newSizes = [...prev.sizes];
-        newSizes[index] = { ...newSizes[index], [name]: value };
+        if (name === "status") {
+          newSizes[index] = { ...newSizes[index], [name]: value === "true" }; // Cập nhật status
+        } else {
+          newSizes[index] = { ...newSizes[index], [name]: value }; // Cập nhật size hoặc price
+        }
         return { ...prev, sizes: newSizes };
       });
     } else {
@@ -136,57 +144,80 @@ const ProductModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     const selectedCategory = filteredCategories.find(
       (cat) => cat.categoryId === formData.categoryId
     );
     if (!selectedCategory) {
-      alert("Please select a valid category!");
+      toast.error("Vui lòng chọn danh mục hợp lệ!");
       return;
     }
-
+  
     if (formData.sizes.length === 0) {
-      alert("Please add at least one size!");
+      toast.error("Vui lòng thêm ít nhất một kích thước!");
       return;
     }
-
+  
     for (let i = 0; i < formData.sizes.length; i++) {
       const price = parseFloat(formData.sizes[i].price);
       if (isNaN(price) || price < 0) {
-        alert(`Price for size ${formData.sizes[i].size} is invalid!`);
+        toast.error(`Giá cho kích thước ${formData.sizes[i].size} không hợp lệ!`);
         return;
       }
     }
-
+  
     const formDataToSend = new FormData();
-    if (isEditMode) {
-      formDataToSend.append("productId", editProductId);
-    }
     formDataToSend.append("productName", formData.productName);
     formDataToSend.append("categoryId", formData.categoryId);
     formDataToSend.append("description", formData.description || "");
-    formData.sizes.forEach((sizeObj, index) => {
-      formDataToSend.append(`sizes[${index}][size]`, sizeObj.size);
-      formDataToSend.append(
-        `sizes[${index}][price]`,
-        parseFloat(sizeObj.price)
-      );
-    });
-    formDataToSend.append("status", formData.status);
+    formDataToSend.append("status", formData.status.toString());
     if (imageFile) {
-      formDataToSend.append("parentImage", imageFile);
+      formDataToSend.append("parentImage", imageFile); 
     }
-
+  
+    if (!isEditMode) {
+      // API create: Sử dụng "sizes"
+      formData.sizes.forEach((sizeObj, index) => {
+        formDataToSend.append(`sizes[${index}][size]`, sizeObj.size);
+        formDataToSend.append(`sizes[${index}][price]`, sizeObj.price.toString());
+        formDataToSend.append(`sizes[${index}][status]`, sizeObj.status.toString());
+        if (imageFile) {
+          formDataToSend.append(`sizes[${index}][image]`, imageFile);
+        }
+      });
+    } else {
+      // API update: Sử dụng "Variants"
+      formData.sizes.forEach((sizeObj, index) => {
+        if (sizeObj.productId) {
+          formDataToSend.append(`Variants[${index}].ProductId`, sizeObj.productId.toString());
+        }
+        formDataToSend.append(`Variants[${index}].SizeId`, sizeObj.size);
+        formDataToSend.append(`Variants[${index}].Prize`, sizeObj.price.toString());
+        formDataToSend.append(`Variants[${index}].Status`, sizeObj.status.toString());
+        formDataToSend.append(`Variants[${index}].Description`, formData.description || "");
+        if (imageFile) {
+          formDataToSend.append(`Variants[${index}].Image`, imageFile);
+        }
+      });
+    }
+  
+    const formDataEntries = [...formDataToSend.entries()];
+    console.log("formDataToSend entries:", formDataEntries);
+  
     try {
       if (isEditMode) {
-        await dispatch(updateProduct(formDataToSend)).unwrap();
+        formDataToSend.append("ProductId", editProductId);
+        await dispatch(updateProduct({ productId: editProductId, formData: formDataToSend })).unwrap();
+        toast.success("Sản phẩm đã được cập nhật thành công!");
       } else {
         await dispatch(createProduct(formDataToSend)).unwrap();
+        toast.success("Sản phẩm đã được tạo thành công!");
       }
       onSubmitSuccess();
       onClose();
     } catch (error) {
-      alert(error.message || "An error occurred while processing the product!");
+      alert(error.message || "Có lỗi xảy ra khi xử lý sản phẩm!");
+      toast.error(error.message || "Có lỗi xảy ra khi xử lý sản phẩm!");
     }
   };
 
@@ -265,44 +296,61 @@ const ProductModal = ({
             Sizes and Prices
           </Typography>
           {formData.sizes.map((sizeObj, index) => (
-            <Grid container spacing={2} key={index} sx={{ mb: 2 }}>
-              <Grid item xs={5}>
-                <TextField
-                  select
-                  fullWidth
-                  label="Size"
-                  name="size"
-                  value={sizeObj.size}
-                  onChange={(e) => handleChange(e, index)}
-                  required
-                >
-                  <MenuItem value="Small">Small</MenuItem>
-                  <MenuItem value="Medium">Medium</MenuItem>
-                  <MenuItem value="Large">Large</MenuItem>
-                </TextField>
-              </Grid>
-              <Grid item xs={5}>
-                <TextField
-                  fullWidth
-                  label="Price (VND)"
-                  name="price"
-                  type="number"
-                  value={sizeObj.price}
-                  onChange={(e) => handleChange(e, index)}
-                  required
-                  inputProps={{ min: 0 }}
-                />
-              </Grid>
-              <Grid item xs={2}>
-                <IconButton
-                  onClick={() => handleRemoveSize(index)}
-                  disabled={formData.sizes.length === 1}
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </Grid>
-            </Grid>
-          ))}
+  <Grid container spacing={2} key={index} sx={{ mb: 2 }}>
+    <Grid item xs={4}>
+      <TextField
+        select
+        fullWidth
+        label="Size"
+        name="size"
+        value={sizeObj.size}
+        onChange={(e) => handleChange(e, index)}
+        required
+      >
+        <MenuItem value="Small">Small</MenuItem>
+        <MenuItem value="Medium">Medium</MenuItem>
+        <MenuItem value="Large">Large</MenuItem>
+      </TextField>
+    </Grid>
+    <Grid item xs={3}>
+      <TextField
+        fullWidth
+        label="Price (VND)"
+        name="price"
+        type="number"
+        value={sizeObj.price}
+        onChange={(e) => handleChange(e, index)}
+        required
+        inputProps={{ min: 0 }}
+      />
+    </Grid>
+    <Grid item xs={3}>
+      <FormControlLabel
+        control={
+          <Switch
+            checked={sizeObj.status}
+            onChange={(e) =>
+              handleChange(
+                { target: { name: "status", value: e.target.checked.toString() } },
+                index
+              )
+            }
+            color="primary"
+          />
+        }
+        label="Active"
+      />
+    </Grid>
+    <Grid item xs={2}>
+      <IconButton
+        onClick={() => handleRemoveSize(index)}
+        disabled={formData.sizes.length === 1}
+      >
+        <DeleteIcon />
+      </IconButton>
+    </Grid>
+  </Grid>
+))}
           <Button
             variant="outlined"
             startIcon={<AddIcon />}

@@ -15,12 +15,7 @@ fetcher.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    console.log("Request details:", {
-      url: config.baseURL + config.url, // Log URL đầy đủ
-      method: config.method,
-      headers: config.headers,
-      data: config.data,
-    });
+
     return config;
   },
   (error) => Promise.reject(error)

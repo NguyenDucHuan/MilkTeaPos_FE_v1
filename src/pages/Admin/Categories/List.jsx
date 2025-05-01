@@ -14,6 +14,7 @@ import {
   Modal,
   Backdrop,
   Fade,
+  Pagination,
 } from "@mui/material";
 import { Edit as EditIcon, Add as AddIcon } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
@@ -22,41 +23,43 @@ import CategoryForm from "./CategoryForm";
 
 export default function CategoryList() {
   const dispatch = useDispatch();
-  const { category } = useSelector((state) => state.category);
-  const [openAddModal, setOpenAddModal] = useState(false);
-  const [openEditModal, setOpenEditModal] = useState(false);
-  const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+  const { category, isLoading, pagination } = useSelector((state) => state.category);
+  const [openModal, setOpenModal] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
-    dispatch(getallCategory());
-  }, [dispatch]);
+    dispatch(getallCategory({ sortAscending: false, page, pageSize: 10 }));
+  }, [dispatch, page]);
 
-  const handleToggleStatus = (id) => {
-    console.log("Toggle status for ID:", id);
+  useEffect(() => {
+    console.log('CategoryList - category array:', category);
+  }, [category]);
+
+  const handleToggleStatus = async (category) => {
+    alert('Chức năng cập nhật trạng thái chưa được hỗ trợ bởi backend. Vui lòng liên hệ đội ngũ backend để thêm endpoint mới.');
+    return;
   };
 
-  const handleOpenAddModal = () => {
-    setOpenAddModal(true);
+  const handleOpenModal = (category = null) => {
+    console.log('Opening modal with category:', category);
+    setSelectedCategory(category);
+    setOpenModal(true);
   };
 
-  const handleCloseAddModal = () => {
-    setOpenAddModal(false);
+  const handleCloseModal = () => {
+    setOpenModal(false);
+    setSelectedCategory(null);
   };
 
-  const handleOpenEditModal = (id) => {
-    setSelectedCategoryId(id);
-    setOpenEditModal(true);
-  };
-
-  const handleCloseEditModal = () => {
-    setOpenEditModal(false);
-    setSelectedCategoryId(null);
+  const handlePageChange = (event, value) => {
+    setPage(value);
   };
 
   return (
     <Box sx={{ padding: 3 }}>
       <Typography variant="h5" fontWeight="bold" gutterBottom>
-        Category List
+        Danh sách danh mục
       </Typography>
 
       <Paper sx={{ padding: 2 }}>
@@ -66,14 +69,14 @@ export default function CategoryList() {
           alignItems="center"
           mb={2}
         >
-          <Typography variant="h6">Categories</Typography>
+          <Typography variant="h6">Danh mục</Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={handleOpenAddModal}
+            onClick={() => handleOpenModal()}
             sx={{ backgroundColor: "#8B5E3C" }}
           >
-            ADD CATEGORY
+            Thêm danh mục
           </Button>
         </Box>
 
@@ -87,76 +90,51 @@ export default function CategoryList() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {Array.isArray(category) && category.length > 0 ? (
-              category.map((cat, index) => (
-                <TableRow key={cat.id}>
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell>{cat.categoryName}</TableCell>
-                  <TableCell>
-                    <Switch
-                      checked={cat.status}
-                      onChange={() => handleToggleStatus(cat.id)}
-                      color="primary"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <IconButton onClick={() => handleOpenEditModal(cat.id)}>
-                      <EditIcon color="action" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={4} align="center">
-                  <Typography>No categories available</Typography>
+            {category.map((cat, index) => (
+              <TableRow key={cat.categoryId}>
+                <TableCell>{index + 1}</TableCell>
+                <TableCell>{cat.categoryName}</TableCell>
+                <TableCell>
+                  <Switch
+                    checked={cat.status ?? false}
+                    onChange={() => handleToggleStatus(cat)}
+                    color="primary"
+                    disabled={isLoading}
+                  />
+                </TableCell>
+                <TableCell>
+                  <IconButton onClick={() => handleOpenModal(cat)}>
+                    <EditIcon color="action" />
+                  </IconButton>
                 </TableCell>
               </TableRow>
-            )}
+            ))}
           </TableBody>
         </Table>
+
+        {pagination.totalPages > 1 && (
+          <Box display="flex" justifyContent="center" mt={3}>
+            <Pagination
+              count={pagination.totalPages}
+              page={page}
+              onChange={handlePageChange}
+              color="primary"
+              disabled={isLoading}
+            />
+          </Box>
+        )}
       </Paper>
 
-      {/* Add Category Modal */}
       <Modal
-        open={openAddModal}
-        onClose={handleCloseAddModal}
+        open={openModal}
+        onClose={handleCloseModal}
         closeAfterTransition
         BackdropComponent={Backdrop}
         BackdropProps={{
           timeout: 500,
         }}
       >
-        <Fade in={openAddModal}>
-          <Box
-            sx={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: 600,
-              bgcolor: "background.paper",
-              boxShadow: 24,
-              p: 4,
-              borderRadius: 2,
-            }}
-          >
-            <CategoryForm isModal={true} onClose={handleCloseAddModal} />
-          </Box>
-        </Fade>
-      </Modal>
-
-      {/* Edit Category Modal */}
-      <Modal
-        open={openEditModal}
-        onClose={handleCloseEditModal}
-        closeAfterTransition
-        BackdropComponent={Backdrop}
-        BackdropProps={{
-          timeout: 500,
-        }}
-      >
-        <Fade in={openEditModal}>
+        <Fade in={openModal}>
           <Box
             sx={{
               position: "absolute",
@@ -172,8 +150,8 @@ export default function CategoryList() {
           >
             <CategoryForm
               isModal={true}
-              onClose={handleCloseEditModal}
-              id={selectedCategoryId}
+              onClose={handleCloseModal}
+              categoryData={selectedCategory}
             />
           </Box>
         </Fade>
