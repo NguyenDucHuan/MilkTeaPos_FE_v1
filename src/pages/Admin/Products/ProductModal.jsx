@@ -16,6 +16,37 @@ import { Add as AddIcon, Delete as DeleteIcon } from "@mui/icons-material";
 import { useDispatch } from "react-redux";
 import { createProduct, updateProduct, updateImageProduct } from "../../../store/slices/itemSlice";
 import toast from "react-hot-toast";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+
+// Danh sách kích thước khả dụng
+const AVAILABLE_SIZES = ["Small", "Medium", "Large"];
+
+// Validation schema với Yup
+const schema = yup.object().shape({
+  productName: yup.string().required("Tên sản phẩm không được để trống"),
+  categoryId: yup
+    .number()
+    .required("Danh mục không được để trống")
+    .typeError("Vui lòng chọn danh mục hợp lệ"),
+  description: yup.string().nullable(),
+  sizes: yup
+    .array()
+    .of(
+      yup.object().shape({
+        size: yup.string().required("Kích thước không được để trống"),
+        price: yup
+          .number()
+          .typeError("Giá phải là một số")
+          .required("Giá không được để trống")
+          .min(0, "Giá không được âm"),
+        status: yup.boolean(),
+      })
+    )
+    .min(1, "Phải có ít nhất một kích thước"),
+  status: yup.boolean(),
+});
 
 const ProductModal = ({
   open,
@@ -39,6 +70,24 @@ const ProductModal = ({
   const [imagePreview, setImagePreview] = useState(null);
   const [editProductId, setEditProductId] = useState(null);
 
+  // React Hook Form setup
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+    reset,
+  } = useForm({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      productName: "",
+      categoryId: filteredCategories.length > 0 ? Number(filteredCategories[0].categoryId) : null,
+      description: "",
+      sizes: [{ size: "Small", price: "0", status: true }],
+      status: true,
+    },
+  });
+
   // Initialize form data when modal opens
   useEffect(() => {
     if (isEditMode && product) {
@@ -56,15 +105,16 @@ const ProductModal = ({
             }))
           : [{ size: "Small", price: "0", status: true }];
       const newFormData = {
-        productName: product.productName,
-        categoryId: Number(product.categoryId),
+        productName: product.productName || "",
+        categoryId: Number(product.categoryId) || null,
         description: product.description || "",
         sizes,
-        status: product.status,
+        status: product.status !== undefined ? product.status : true,
       };
       setFormData(newFormData);
       setImagePreview(product.imageUrl || null);
       setImageFile(null);
+      reset(newFormData);
     } else {
       setEditProductId(null);
       const newFormData = {
@@ -80,34 +130,24 @@ const ProductModal = ({
       setFormData(newFormData);
       setImageFile(null);
       setImagePreview(null);
+      reset(newFormData);
     }
-  }, [isEditMode, product, filteredCategories]);
-
-  const handleChange = (e, index = null) => {
-    const { name, value } = e.target;
-    if (index !== null) {
-      setFormData((prev) => {
-        const newSizes = [...prev.sizes];
-        if (name === "status") {
-          newSizes[index] = { ...newSizes[index], [name]: value === "true" };
-        } else {
-          newSizes[index] = { ...newSizes[index], [name]: value };
-        }
-        return { ...prev, sizes: newSizes };
-      });
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: name === "categoryId" ? Number(value) : value,
-      }));
-    }
-  };
+  }, [isEditMode, product, filteredCategories, reset]);
 
   const handleAddSize = () => {
+    // Lấy kích thước tiếp theo chưa được sử dụng
+    const usedSizes = formData.sizes.map((s) => s.size);
+    const nextSize = AVAILABLE_SIZES.find((size) => !usedSizes.includes(size));
+    if (!nextSize) {
+      toast.error("Không còn kích thước để thêm!");
+      return;
+    }
+    const newSizeObj = { size: nextSize, price: "0", status: true };
     setFormData((prev) => ({
       ...prev,
-      sizes: [...prev.sizes, { size: "Small", price: "0", status: true }],
+      sizes: [...prev.sizes, newSizeObj],
     }));
+    setValue("sizes", [...formData.sizes, newSizeObj]);
   };
 
   const handleRemoveSize = (index) => {
@@ -118,6 +158,12 @@ const ProductModal = ({
         sizes: newSizes.length > 0 ? newSizes : [{ size: "Small", price: "0", status: true }],
       };
     });
+    setValue(
+      "sizes",
+      formData.sizes.filter((_, i) => i !== index).length > 0
+        ? formData.sizes.filter((_, i) => i !== index)
+        : [{ size: "Small", price: "0", status: true }]
+    );
   };
 
   const handleImageChange = (e) => {
@@ -140,41 +186,19 @@ const ProductModal = ({
       ...prev,
       status: !prev.status,
     }));
+    setValue("status", !formData.status);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const selectedCategory = filteredCategories.find(
-      (cat) => cat.categoryId === formData.categoryId
-    );
-    if (!selectedCategory) {
-      toast.error("Vui lòng chọn danh mục hợp lệ!");
-      return;
-    }
-
-    if (formData.sizes.length === 0) {
-      toast.error("Vui lòng thêm ít nhất một kích thước!");
-      return;
-    }
-
-    for (let i = 0; i < formData.sizes.length; i++) {
-      const price = parseFloat(formData.sizes[i].price);
-      if (isNaN(price) || price < 0) {
-        toast.error(`Giá cho kích thước ${formData.sizes[i].size} không hợp lệ!`);
-        return;
-      }
-    }
-
+  const onSubmit = async (data) => {
     const formDataToSend = new FormData();
-    formDataToSend.append("productName", formData.productName);
-    formDataToSend.append("categoryId", formData.categoryId);
-    formDataToSend.append("description", formData.description || "");
-    formDataToSend.append("status", formData.status.toString());
+    formDataToSend.append("productName", data.productName);
+    formDataToSend.append("categoryId", data.categoryId);
+    formDataToSend.append("description", data.description || "");
+    formDataToSend.append("status", data.status.toString());
 
     if (!isEditMode) {
       // Create product
-      formData.sizes.forEach((sizeObj, index) => {
+      data.sizes.forEach((sizeObj, index) => {
         formDataToSend.append(`sizes[${index}][size]`, sizeObj.size);
         formDataToSend.append(`sizes[${index}][price]`, sizeObj.price.toString());
         formDataToSend.append(`sizes[${index}][status]`, sizeObj.status.toString());
@@ -188,14 +212,14 @@ const ProductModal = ({
         toast.error("Không tìm thấy ProductId để cập nhật!");
         return;
       }
-      formData.sizes.forEach((sizeObj, index) => {
+      data.sizes.forEach((sizeObj, index) => {
         if (sizeObj.productId) {
           formDataToSend.append(`Variants[${index}].ProductId`, sizeObj.productId.toString());
         }
         formDataToSend.append(`Variants[${index}].SizeId`, sizeObj.size);
-        formDataToSend.append(`Variants[${index}].Prize`, sizeObj.price.toString());
+        formDataToSend.append(`Variants[${index}].Price`, sizeObj.price.toString());
         formDataToSend.append(`Variants[${index}].Status`, sizeObj.status.toString());
-        formDataToSend.append(`Variants[${index}].Description`, formData.description || "");
+        formDataToSend.append(`Variants[${index}].Description`, data.description || "");
       });
       formDataToSend.append("ProductId", editProductId);
       if (imageFile) {
@@ -210,12 +234,16 @@ const ProductModal = ({
         console.log("createProduct response:", createResponse);
         toast.success("Sản phẩm đã được tạo thành công!");
       } else {
-        const updateResponse = await dispatch(updateProduct({ productId: editProductId, formData: formDataToSend })).unwrap();
+        const updateResponse = await dispatch(
+          updateProduct({ productId: editProductId, formData: formDataToSend })
+        ).unwrap();
         console.log("updateProduct response:", updateResponse);
         if (imageFile) {
           const imageFormData = new FormData();
           imageFormData.append("formFile", imageFile);
-          const imageResponse = await dispatch(updateImageProduct({ productId: editProductId, formData: imageFormData })).unwrap();
+          const imageResponse = await dispatch(
+            updateImageProduct({ productId: editProductId, formData: imageFormData })
+          ).unwrap();
           console.log("updateImageProduct response:", imageResponse);
         }
         toast.success("Sản phẩm đã được cập nhật thành công!");
@@ -227,6 +255,11 @@ const ProductModal = ({
       toast.error(error.message || "Có lỗi xảy ra khi xử lý sản phẩm!");
     }
   };
+
+  // Lấy danh sách kích thước khả dụng
+  const availableSizes = AVAILABLE_SIZES.filter(
+    (size) => !formData.sizes.some((sizeObj) => sizeObj.size === size)
+  );
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -244,108 +277,165 @@ const ProductModal = ({
         }}
       >
         <Typography variant="h6" fontWeight="bold" gutterBottom>
-          {isEditMode ? "Update Product" : "Add New Product"}
+          {isEditMode ? "Cập nhật Sản phẩm" : "Thêm Sản phẩm Mới"}
         </Typography>
-        <form onSubmit={handleSubmit}>
-          <TextField
-            fullWidth
-            label="Product Name"
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <Controller
             name="productName"
-            value={formData.productName}
-            onChange={handleChange}
-            margin="normal"
-            required
-          />
-          <TextField
-            select
-            fullWidth
-            label="Danh mục"
-            name="categoryId"
-            value={
-              formData.categoryId !== ""
-                ? formData.categoryId
-                : filteredCategories.length > 0
-                ? filteredCategories[0].categoryId
-                : ""
-            }
-            onChange={handleChange}
-            margin="normal"
-            required
-            disabled={categoryLoading}
-          >
-            {categoryLoading ? (
-              <MenuItem value="" disabled>
-                Đang tải danh mục...
-              </MenuItem>
-            ) : categoryError ? (
-              <MenuItem value="" disabled>
-                Lỗi: {categoryError}
-              </MenuItem>
-            ) : filteredCategories.length === 0 ? (
-              <MenuItem value="" disabled>
-                Không có danh mục
-              </MenuItem>
-            ) : (
-              filteredCategories.map((cat) => (
-                <MenuItem key={cat.categoryId} value={Number(cat.categoryId)}>
-                  {cat.categoryName}
-                </MenuItem>
-              ))
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                fullWidth
+                label="Tên Sản phẩm"
+                margin="normal"
+                required
+                error={!!errors.productName}
+                helperText={errors.productName?.message}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 1,
+                    "&:hover fieldset": { borderColor: "#8B5E3C" },
+                    "&.Mui-focused fieldset": { borderColor: "#8B5E3C" },
+                  },
+                }}
+              />
             )}
-          </TextField>
+          />
+          <Controller
+            name="categoryId"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                select
+                fullWidth
+                label="Danh mục"
+                margin="normal"
+                required
+                disabled={categoryLoading}
+                error={!!errors.categoryId}
+                helperText={errors.categoryId?.message}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 1,
+                    "&:hover fieldset": { borderColor: "#8B5E3C" },
+                    "&.Mui-focused fieldset": { borderColor: "#8B5E3C" },
+                  },
+                }}
+              >
+                {categoryLoading ? (
+                  <MenuItem value="" disabled>
+                    Đang tải danh mục...
+                  </MenuItem>
+                ) : categoryError ? (
+                  <MenuItem value="" disabled>
+                    Lỗi: {categoryError}
+                  </MenuItem>
+                ) : filteredCategories.length === 0 ? (
+                  <MenuItem value="" disabled>
+                    Không có danh mục
+                  </MenuItem>
+                ) : (
+                  filteredCategories.map((cat) => (
+                    <MenuItem key={cat.categoryId} value={Number(cat.categoryId)}>
+                      {cat.categoryName}
+                    </MenuItem>
+                  ))
+                )}
+              </TextField>
+            )}
+          />
           <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
-            Sizes and Prices
+            Kích thước và Giá
           </Typography>
           {formData.sizes.map((sizeObj, index) => (
             <Grid container spacing={2} key={index} sx={{ mb: 2 }}>
               <Grid item xs={4}>
-                <TextField
-                  select
-                  fullWidth
-                  label="Size"
-                  name="size"
-                  value={sizeObj.size}
-                  onChange={(e) => handleChange(e, index)}
-                  required
-                >
-                  <MenuItem value="Small">Small</MenuItem>
-                  <MenuItem value="Medium">Medium</MenuItem>
-                  <MenuItem value="Large">Large</MenuItem>
-                </TextField>
-              </Grid>
-              <Grid item xs={3}>
-                <TextField
-                  fullWidth
-                  label="Price (VND)"
-                  name="price"
-                  type="number"
-                  value={sizeObj.price}
-                  onChange={(e) => handleChange(e, index)}
-                  required
-                  inputProps={{ min: 0 }}
+                <Controller
+                  name={`sizes[${index}].size`}
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      select
+                      fullWidth
+                      label="Kích thước"
+                      required
+                      error={!!errors.sizes?.[index]?.size}
+                      helperText={errors.sizes?.[index]?.size?.message}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 1,
+                          "&:hover fieldset": { borderColor: "#8B5E3C" },
+                          "&.Mui-focused fieldset": { borderColor: "#8B5E3C" },
+                        },
+                      }}
+                    >
+                      <MenuItem value="Small">Small</MenuItem>
+                      <MenuItem value="Medium">Medium</MenuItem>
+                      <MenuItem value="Large">Large</MenuItem>
+                    </TextField>
+                  )}
                 />
               </Grid>
               <Grid item xs={3}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={sizeObj.status}
-                      onChange={(e) =>
-                        handleChange(
-                          { target: { name: "status", value: e.target.checked.toString() } },
-                          index
-                        )
-                      }
-                      color="primary"
+                <Controller
+                  name={`sizes[${index}].price`}
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      fullWidth
+                      label="Giá (VND)"
+                      type="number"
+                      required
+                      inputProps={{ min: 0 }}
+                      error={!!errors.sizes?.[index]?.price}
+                      helperText={errors.sizes?.[index]?.price?.message}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 1,
+                          "&:hover fieldset": { borderColor: "#8B5E3C" },
+                          "&.Mui-focused fieldset": { borderColor: "#8B5E3C" },
+                        },
+                      }}
                     />
-                  }
-                  label="Active"
+                  )}
+                />
+              </Grid>
+              <Grid item xs={3}>
+                <Controller
+                  name={`sizes[${index}].status`}
+                  control={control}
+                  render={({ field }) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          {...field}
+                          checked={field.value}
+                          onChange={(e) => field.onChange(e.target.checked)}
+                          color="primary"
+                          sx={{
+                            "& .MuiSwitch-switchBase.Mui-checked": {
+                              color: "#8B5E3C",
+                            },
+                            "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                              bgcolor: "#8B5E3C",
+                            },
+                          }}
+                        />
+                      }
+                      label="Kích hoạt"
+                    />
+                  )}
                 />
               </Grid>
               <Grid item xs={2}>
                 <IconButton
                   onClick={() => handleRemoveSize(index)}
                   disabled={formData.sizes.length === 1}
+                  sx={{ color: "#8B5E3C" }}
                 >
                   <DeleteIcon />
                 </IconButton>
@@ -356,60 +446,130 @@ const ProductModal = ({
             variant="outlined"
             startIcon={<AddIcon />}
             onClick={handleAddSize}
-            sx={{ mb: 2 }}
+            disabled={availableSizes.length === 0}
+            sx={{
+              mb: 2,
+              borderColor: "#8B5E3C",
+              color: "#8B5E3C",
+              "&:hover": { borderColor: "#70482F", color: "#70482F" },
+              width: "100%",
+            }}
           >
-            Add Size
+            Thêm Kích thước
           </Button>
-          <TextField
-            fullWidth
-            type="file"
-            label="Product Image"
-            name="parentImage"
-            onChange={handleImageChange}
-            margin="normal"
-            InputLabelProps={{ shrink: true }}
-            inputProps={{ accept: "image/*" }}
-          />
-          {imagePreview && (
-            <Box mt={2} display="flex" justifyContent="center">
-              <Avatar
-                src={imagePreview}
-                alt="Image Preview"
-                sx={{ width: 100, height: 100 }}
-              />
-            </Box>
-          )}
-          <TextField
-            fullWidth
-            label="Description"
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Hình ảnh Sản phẩm
+            </Typography>
+            <input
+              accept="image/*"
+              type="file"
+              onChange={handleImageChange}
+              style={{ display: "none" }}
+              id="image-upload"
+            />
+            <label htmlFor="image-upload">
+              <Button
+                variant="outlined"
+                component="span"
+                fullWidth
+                sx={{
+                  borderColor: "#8B5E3C",
+                  color: "#8B5E3C",
+                  "&:hover": { borderColor: "#70482F", color: "#70482F" },
+                }}
+              >
+                Chọn Ảnh
+              </Button>
+            </label>
+            {imagePreview && (
+              <Box mt={2} display="flex" justifyContent="center">
+                <Avatar
+                  src={imagePreview}
+                  alt="Image Preview"
+                  sx={{ width: 100, height: 100 }}
+                />
+              </Box>
+            )}
+          </Box>
+          <Controller
             name="description"
-            value={formData.description}
-            onChange={handleChange}
-            margin="normal"
-            multiline
-            rows={3}
-          />
-          <FormControlLabel
-            control={
-              <Switch
-                checked={formData.status}
-                onChange={handleToggleStatus}
-                color="primary"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                fullWidth
+                label="Mô tả"
+                margin="normal"
+                multiline
+                rows={3}
+                error={!!errors.description}
+                helperText={errors.description?.message}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 1,
+                    "&:hover fieldset": { borderColor: "#8B5E3C" },
+                    "&.Mui-focused fieldset": { borderColor: "#8B5E3C" },
+                  },
+                }}
               />
-            }
-            label="Active Status"
-            sx={{ mt: 2 }}
+            )}
           />
-          <Box mt={3} display="flex" gap={2}>
+          <Controller
+            name="status"
+            control={control}
+            render={({ field }) => (
+              <FormControlLabel
+                control={
+                  <Switch
+                    {...field}
+                    checked={field.value}
+                    onChange={(e) => {
+                      field.onChange(e.target.checked);
+                      handleToggleStatus();
+                    }}
+                    color="primary"
+                    sx={{
+                      "& .MuiSwitch-switchBase.Mui-checked": {
+                        color: "#8B5E3C",
+                      },
+                      "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                        bgcolor: "#8B5E3C",
+                      },
+                    }}
+                  />
+                }
+                label="Trạng thái Kích hoạt"
+                sx={{ mt: 2 }}
+              />
+            )}
+          />
+          <Box mt={3} display="flex" gap={2} justifyContent="flex-end">
             <Button
               variant="contained"
               type="submit"
-              sx={{ backgroundColor: "#8B5E3C" }}
+              sx={{
+                bgcolor: "#8B5E3C",
+                "&:hover": { bgcolor: "#70482F" },
+                borderRadius: 1,
+                textTransform: "none",
+                fontWeight: "bold",
+              }}
             >
-              {isEditMode ? "Save Changes" : "Add Product"}
+              {isEditMode ? "Lưu Thay Đổi" : "Thêm Sản phẩm"}
             </Button>
-            <Button variant="outlined" onClick={onClose}>
-              Cancel
+            <Button
+              variant="outlined"
+              onClick={onClose}
+              sx={{
+                borderColor: "#8B5E3C",
+                color: "#8B5E3C",
+                "&:hover": { borderColor: "#70482F", color: "#70482F" },
+                borderRadius: 1,
+                textTransform: "none",
+              }}
+            >
+              Hủy
             </Button>
           </Box>
         </form>

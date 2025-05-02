@@ -10,14 +10,29 @@ import {
   FormHelperText,
   CircularProgress,
 } from "@mui/material";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import {
   createCategory,
   updateCategory,
   getallCategory,
 } from "../../../store/slices/categorySlice";
 import toast from "react-hot-toast";
+
+// Validation schema với Yup
+const schema = yup.object().shape({
+  categoryName: yup.string().required("Tên danh mục là bắt buộc"),
+  description: yup.string().required("Mô tả là bắt buộc"),
+  imageFile: yup
+    .mixed()
+    .required("Hình ảnh là bắt buộc")
+    .test("file", "Vui lòng chọn một tệp hình ảnh", (value) => {
+      return value instanceof File || (value === null && !value); // Cho phép null khi khởi tạo
+    }),
+  status: yup.boolean().required("Trạng thái là bắt buộc"),
+});
 
 export default function CategoryForm({
   isModal = false,
@@ -35,6 +50,7 @@ export default function CategoryForm({
     reset,
     formState: { errors },
   } = useForm({
+    resolver: yupResolver(schema),
     defaultValues: {
       categoryId: "",
       categoryName: "",
@@ -54,7 +70,7 @@ export default function CategoryForm({
       setValue("categoryName", categoryData.categoryName || "");
       setValue("description", categoryData.description || "");
       setValue("status", categoryData.status ?? true);
-      setValue("imageFile", null);
+      setValue("imageFile", null); // Không load ảnh cũ, yêu cầu chọn ảnh mới
     } else {
       reset({
         categoryId: "",
@@ -99,18 +115,13 @@ export default function CategoryForm({
         `${isEditMode ? "Cập nhật" : "Tạo"} danh mục thành công:`,
         result
       );
-      toast.success(`${isEditMode ? "Cập nhật" : "Tạo"} danh mục thành công!`); // Success toast
+      toast.success(`${isEditMode ? "Cập nhật" : "Tạo"} danh mục thành công!`);
       if (isModal && onClose) {
         onClose(); // Close modal
       }
       dispatch(getallCategory({ page: 1 })); // Refresh category list
     } catch (err) {
-      console.error(`Lỗi khi ${isEditMode ? "cập nhật" : "tạo"} danh mục:`, {
-        message: err.message,
-        status: err.status,
-        data: err.data,
-        stack: err.stack,
-      });
+
       toast.error(
         `Lỗi: ${
           err.message ||
@@ -129,14 +140,11 @@ export default function CategoryForm({
       <Typography variant="h6" fontWeight="bold" mb={2}>
         {isEditMode ? "Cập nhật danh mục" : "Thêm danh mục mới"}
       </Typography>
-      {Object.keys(errors).length > 0 && (
-        <pre>Lỗi xác thực: {JSON.stringify(errors, null, 2)}</pre>
-      )}
+ 
       <form onSubmit={handleSubmit(onSubmit)}>
         <Controller
           name="categoryName"
           control={control}
-          rules={{ required: "Tên danh mục là bắt buộc" }}
           render={({ field }) => (
             <TextField
               {...field}
@@ -153,7 +161,6 @@ export default function CategoryForm({
         <Controller
           name="description"
           control={control}
-          rules={{ required: "Mô tả là bắt buộc" }}
           render={({ field }) => (
             <TextField
               {...field}
@@ -172,12 +179,9 @@ export default function CategoryForm({
         <Controller
           name="imageFile"
           control={control}
-          rules={{ required: isEditMode ? false : "Hình ảnh là bắt buộc" }}
           render={({ field }) => (
             <Box sx={{ mb: 2 }}>
-              <InputLabel htmlFor="imageFile">
-                Hình ảnh {isEditMode ? "(tùy chọn)" : "(bắt buộc)"}
-              </InputLabel>
+              <InputLabel htmlFor="imageFile">Hình ảnh (bắt buộc)</InputLabel>
               <input
                 id="imageFile"
                 type="file"
