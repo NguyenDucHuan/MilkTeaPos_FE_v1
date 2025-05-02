@@ -4,7 +4,7 @@ import fetcher from "../../apis/fetcher";
 export const listItemApi = createAsyncThunk(
   "item/listItemApi",
   async (
-    { CategoryId, Search, Page = 1, PageSize = 6 },
+    { CategoryId, Search, Page = 1, PageSize = 6, ProductType },
     { rejectWithValue }
   ) => {
     try {
@@ -13,6 +13,7 @@ export const listItemApi = createAsyncThunk(
         PageSize,
         ...(Search && { Search }),
         ...(CategoryId && { CategoryId }),
+        ...(ProductType && { ProductType }),
       }).toString();
 
       const response = await fetcher.get(`/products?${queryParams}`);
@@ -62,7 +63,7 @@ export const updateProduct = createAsyncThunk(
   "item/updateProduct",
   async ({ productId, formData }, { rejectWithValue }) => {
     try {
-      formData.append("ProductId", productId.toString()); 
+      formData.append("ProductId", productId.toString());
       const response = await fetcher.put(
         "/products/update-product/id",
         formData,
@@ -70,10 +71,10 @@ export const updateProduct = createAsyncThunk(
           headers: { "Content-Type": "multipart/form-data" },
         }
       );
-      console.log("Update product response:", response.data);
+      console.log("updateProduct API response:", response.data);
       return response.data;
     } catch (error) {
-      console.error("Update product error:", error);
+      console.error("updateProduct error:", error);
       return rejectWithValue({
         message: error.message || "Không thể cập nhật sản phẩm",
         status: error.response?.status,
@@ -82,6 +83,7 @@ export const updateProduct = createAsyncThunk(
     }
   }
 );
+
 export const createExtraProduct = createAsyncThunk(
   "item/createExtraProduct",
   async (formData, { rejectWithValue }) => {
@@ -97,6 +99,31 @@ export const createExtraProduct = createAsyncThunk(
     } catch (error) {
       return rejectWithValue({
         message: error.message || "Không thể tạo topping",
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+    }
+  }
+);
+
+export const updateImageProduct = createAsyncThunk(
+  "item/updateImageProduct",
+  async ({ productId, formData }, { rejectWithValue }) => {
+    try {
+      formData.append("ProductId", productId.toString());
+      const response = await fetcher.put(
+        `/products/update-image?productID=${productId}`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+      console.log("updateImageProduct API response:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("updateImageProduct error:", error);
+      return rejectWithValue({
+        message: error.message || "Không thể cập nhật hình ảnh sản phẩm",
         status: error.response?.status,
         data: error.response?.data,
       });
@@ -134,6 +161,7 @@ const itemSlice = createSlice({
         state.currentPage = action.payload.currentPage || 1;
         state.pageSize = action.payload.pageSize || 6;
         state.totalPages = action.payload.totalPages || 1;
+        console.log("listItemApi fulfilled, updated items:", state.items);
       })
       .addCase(listItemApi.rejected, (state, action) => {
         state.isLoading = false;
@@ -170,6 +198,7 @@ const itemSlice = createSlice({
         if (index !== -1) {
           state.items[index] = action.payload.data;
         }
+        console.log("updateProduct fulfilled, updated item:", state.items[index]);
       })
       .addCase(updateProduct.rejected, (state, action) => {
         state.isLoading = false;
@@ -186,6 +215,20 @@ const itemSlice = createSlice({
         state.totalItems += 1;
       })
       .addCase(createExtraProduct.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      .addCase(updateImageProduct.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(updateImageProduct.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.error = null;
+        // Không cập nhật imageUrl tại đây vì API không trả về imageUrl
+        console.log("updateImageProduct fulfilled, state not updated due to missing imageUrl");
+      })
+      .addCase(updateImageProduct.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       });

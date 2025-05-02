@@ -20,9 +20,9 @@ export const createCombo = createAsyncThunk(
 
 export const updateCombo = createAsyncThunk(
     "combo/updateCombo",
-    async ({ id, formData }, { rejectWithValue }) => {
+    async ({formData }, { rejectWithValue }) => {
         try {
-            const response = await fetcher.put(`/products/update-combo-product/${id}`, formData, {
+            const response = await fetcher.put("/products/update-combo/id", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
             return response.data;

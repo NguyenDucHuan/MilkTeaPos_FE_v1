@@ -39,25 +39,8 @@ import {
 } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
 import { listItemApi, setPage } from "../../../store/slices/itemSlice";
-import { createCombo } from "../../../store/slices/comboSlice";
-
-const hardcodedToppings = {
-  1: [
-    { toppingId: "t1", toppingName: "Extra Cheese", price: 15000 },
-    { toppingId: "t2", toppingName: "Pepperoni", price: 20000 },
-    { toppingId: "t3", toppingName: "Mushrooms", price: 10000 },
-  ],
-  2: [
-    { toppingId: "t4", toppingName: "Bacon", price: 25000 },
-    { toppingId: "t5", toppingName: "Lettuce", price: 5000 },
-    { toppingId: "t6", toppingName: "Tomato", price: 5000 },
-  ],
-  3: [
-    { toppingId: "t7", toppingName: "Croutons", price: 8000 },
-    { toppingId: "t8", toppingName: "Grilled Chicken", price: 30000 },
-  ],
-};
-
+import { createCombo, updateCombo } from "../../../store/slices/comboSlice";
+import toast from "react-hot-toast";
 export default function Combos() {
   const dispatch = useDispatch();
   const { items: allItems, currentPage, pageSize, totalPages, totalItems, isLoading: productsLoading, error: productsError } =
@@ -76,14 +59,14 @@ export default function Combos() {
   });
   const [imagePreview, setImagePreview] = useState(null);
   const [expandedProduct, setExpandedProduct] = useState(null);
-  const [allProducts, setAllProducts] = useState([]); // To store all products for the modal
+  const [allProducts, setAllProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [openDetailsModal, setOpenDetailsModal] = useState(false);
   const [selectedCombo, setSelectedCombo] = useState(null);
 
-  // Filter only combo products
+  // Filter only combo products based on productType
   const combos = useMemo(() => {
-    return allItems.filter(item => item.categoryId === 5 && item.categoryName === "Combo");
+    return allItems.filter(item => item.productType === "Combo");
   }, [allItems]);
 
   // Reset currentPage to 1 when the component mounts
@@ -121,7 +104,6 @@ export default function Combos() {
       PageSize: 1000
     })).then((result) => {
       if (result.meta.requestStatus === "fulfilled") {
-        // Lọc chỉ lấy các sản phẩm có productType là MaterProduct
         const filteredProducts = (result.payload.items || []).filter(
           product => product.productType === "MaterProduct"
         );
@@ -264,39 +246,7 @@ export default function Combos() {
     }));
   };
 
-  const handleToppingChange = (productId, toppingId, quantity) => {
-    const parsedQuantity = parseInt(quantity) || 0;
-    if (parsedQuantity < 0) return;
-    setFormData((prev) => ({
-      ...prev,
-      ComboItems: prev.ComboItems.map((item) => {
-        if (item.productId !== productId) return item;
-        const existingTopping = item.toppings.find(
-          (t) => t.toppingId === toppingId
-        );
-        let newToppings;
-        if (existingTopping) {
-          if (parsedQuantity === 0) {
-            newToppings = item.toppings.filter(
-              (t) => t.toppingId !== toppingId
-            );
-          } else {
-            newToppings = item.toppings.map((t) =>
-              t.toppingId === toppingId ? { ...t, quantity: parsedQuantity } : t
-            );
-          }
-        } else if (parsedQuantity > 0) {
-          newToppings = [
-            ...item.toppings,
-            { toppingId, quantity: parsedQuantity },
-          ];
-        } else {
-          newToppings = item.toppings;
-        }
-        return { ...item, toppings: newToppings };
-      }),
-    }));
-  };
+
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -322,24 +272,31 @@ export default function Combos() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     if (formData.ComboItems.length === 0) {
-      alert("Please select at least one product for the combo!");
+      toast.error("Vui lòng chọn ít nhất một sản phẩm cho combo!");
       return;
     }
-
+  
     const price = parseFloat(formData.Price);
     if (isNaN(price) || price < 0) {
-      alert("Invalid price!");
+      toast.error("Giá không hợp lệ!");
       return;
     }
-
+  
     const formDataToSend = new FormData();
-    formDataToSend.append("ComboName", formData.ComboName);
-    formDataToSend.append("Description", formData.Description || "");
-    formDataToSend.append("Price", formData.Price);
-    formDataToSend.append("Status", formData.Status);
+    formDataToSend.append("productName", formData.ComboName);
+    formDataToSend.append("description", formData.Description || "");
+    formDataToSend.append("status", formData.Status.toString());
     formDataToSend.append("categoryId", formData.categoryId);
+  
+    if (isEditMode) {
+      formDataToSend.append("productId", editComboId);
+      formDataToSend.append("Prize", formData.Price);
+    } else {
+      formDataToSend.append("Price", formData.Price);
+    }
+  
     formData.ComboItems.forEach((item, index) => {
       formDataToSend.append(`ComboItems[${index}][productId]`, item.productId);
       formDataToSend.append(`ComboItems[${index}][quantity]`, item.quantity);
@@ -359,25 +316,29 @@ export default function Combos() {
         });
       }
     });
+  
     if (formData.Image) {
-      formDataToSend.append("Image", formData.Image);
+      formDataToSend.append("image", formData.Image);
     }
-
+  
     try {
       if (isEditMode) {
-        console.log("Update combo (TODO):", formDataToSend);
-        alert("Update functionality not implemented yet.");
+        await dispatch(updateCombo(formDataToSend)).unwrap();
+        toast.success("Combo đã được cập nhật thành công!");
       } else {
         await dispatch(createCombo(formDataToSend)).unwrap();
-        // Refresh the combos list after creating a new combo
-        await dispatch(
-          listItemApi({ CategoryId: 5, Page: currentPage, PageSize: pageSize })
-        );
+        toast.success("Combo đã được tạo thành công!");
       }
+      // Làm mới danh sách combo mà không cần CategoryId
+      await dispatch(
+        listItemApi({ Page: currentPage, PageSize: pageSize })
+      );
       handleCloseModal();
     } catch (error) {
       console.error("Error submitting combo:", error);
-      alert("An error occurred while submitting the combo: " + error);
+      toast.error(
+        error.message || "Có lỗi xảy ra khi xử lý combo. Vui lòng thử lại!"
+      );
     }
   };
 

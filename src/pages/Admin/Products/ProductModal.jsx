@@ -14,7 +14,7 @@ import {
 } from "@mui/material";
 import { Add as AddIcon, Delete as DeleteIcon } from "@mui/icons-material";
 import { useDispatch } from "react-redux";
-import { createProduct, updateProduct } from "../../../store/slices/itemSlice";
+import { createProduct, updateProduct, updateImageProduct } from "../../../store/slices/itemSlice";
 import toast from "react-hot-toast";
 
 const ProductModal = ({
@@ -25,14 +25,14 @@ const ProductModal = ({
   filteredCategories,
   categoryLoading,
   onSubmitSuccess,
-    categoryError,
+  categoryError,
 }) => {
   const dispatch = useDispatch();
   const [formData, setFormData] = useState({
     productName: "",
     categoryId: null,
     description: "",
-    sizes: [{ size: "Small", price: "0" }],
+    sizes: [{ size: "Small", price: "0", status: true }],
     status: true,
   });
   const [imageFile, setImageFile] = useState(null);
@@ -66,7 +66,7 @@ const ProductModal = ({
       setImagePreview(product.imageUrl || null);
       setImageFile(null);
     } else {
-      setEditProductId(null); // Đảm bảo editProductId là null khi tạo mới
+      setEditProductId(null);
       const newFormData = {
         productName: "",
         categoryId:
@@ -89,9 +89,9 @@ const ProductModal = ({
       setFormData((prev) => {
         const newSizes = [...prev.sizes];
         if (name === "status") {
-          newSizes[index] = { ...newSizes[index], [name]: value === "true" }; // Cập nhật status
+          newSizes[index] = { ...newSizes[index], [name]: value === "true" };
         } else {
-          newSizes[index] = { ...newSizes[index], [name]: value }; // Cập nhật size hoặc price
+          newSizes[index] = { ...newSizes[index], [name]: value };
         }
         return { ...prev, sizes: newSizes };
       });
@@ -106,7 +106,7 @@ const ProductModal = ({
   const handleAddSize = () => {
     setFormData((prev) => ({
       ...prev,
-      sizes: [...prev.sizes, { size: "Small", price: "0" }],
+      sizes: [...prev.sizes, { size: "Small", price: "0", status: true }],
     }));
   };
 
@@ -115,7 +115,7 @@ const ProductModal = ({
       const newSizes = prev.sizes.filter((_, i) => i !== index);
       return {
         ...prev,
-        sizes: newSizes.length > 0 ? newSizes : [{ size: "Small", price: "0" }],
+        sizes: newSizes.length > 0 ? newSizes : [{ size: "Small", price: "0", status: true }],
       };
     });
   };
@@ -144,7 +144,7 @@ const ProductModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
     const selectedCategory = filteredCategories.find(
       (cat) => cat.categoryId === formData.categoryId
     );
@@ -152,12 +152,12 @@ const ProductModal = ({
       toast.error("Vui lòng chọn danh mục hợp lệ!");
       return;
     }
-  
+
     if (formData.sizes.length === 0) {
       toast.error("Vui lòng thêm ít nhất một kích thước!");
       return;
     }
-  
+
     for (let i = 0; i < formData.sizes.length; i++) {
       const price = parseFloat(formData.sizes[i].price);
       if (isNaN(price) || price < 0) {
@@ -165,28 +165,29 @@ const ProductModal = ({
         return;
       }
     }
-  
+
     const formDataToSend = new FormData();
     formDataToSend.append("productName", formData.productName);
     formDataToSend.append("categoryId", formData.categoryId);
     formDataToSend.append("description", formData.description || "");
     formDataToSend.append("status", formData.status.toString());
-    if (imageFile) {
-      formDataToSend.append("parentImage", imageFile); 
-    }
-  
+
     if (!isEditMode) {
-      // API create: Sử dụng "sizes"
+      // Create product
       formData.sizes.forEach((sizeObj, index) => {
         formDataToSend.append(`sizes[${index}][size]`, sizeObj.size);
         formDataToSend.append(`sizes[${index}][price]`, sizeObj.price.toString());
         formDataToSend.append(`sizes[${index}][status]`, sizeObj.status.toString());
-        if (imageFile) {
-          formDataToSend.append(`sizes[${index}][image]`, imageFile);
-        }
       });
+      if (imageFile) {
+        formDataToSend.append("parentImage", imageFile);
+      }
     } else {
-      // API update: Sử dụng "Variants"
+      // Update product
+      if (!editProductId) {
+        toast.error("Không tìm thấy ProductId để cập nhật!");
+        return;
+      }
       formData.sizes.forEach((sizeObj, index) => {
         if (sizeObj.productId) {
           formDataToSend.append(`Variants[${index}].ProductId`, sizeObj.productId.toString());
@@ -195,28 +196,34 @@ const ProductModal = ({
         formDataToSend.append(`Variants[${index}].Prize`, sizeObj.price.toString());
         formDataToSend.append(`Variants[${index}].Status`, sizeObj.status.toString());
         formDataToSend.append(`Variants[${index}].Description`, formData.description || "");
-        if (imageFile) {
-          formDataToSend.append(`Variants[${index}].Image`, imageFile);
-        }
       });
+      formDataToSend.append("ProductId", editProductId);
+      if (imageFile) {
+        formDataToSend.append("parentImage", imageFile);
+      }
     }
-  
-    const formDataEntries = [...formDataToSend.entries()];
-    console.log("formDataToSend entries:", formDataEntries);
-  
+
     try {
-      if (isEditMode) {
-        formDataToSend.append("ProductId", editProductId);
-        await dispatch(updateProduct({ productId: editProductId, formData: formDataToSend })).unwrap();
-        toast.success("Sản phẩm đã được cập nhật thành công!");
-      } else {
-        await dispatch(createProduct(formDataToSend)).unwrap();
+      console.log("formDataToSend before submit:", Object.fromEntries(formDataToSend));
+      if (!isEditMode) {
+        const createResponse = await dispatch(createProduct(formDataToSend)).unwrap();
+        console.log("createProduct response:", createResponse);
         toast.success("Sản phẩm đã được tạo thành công!");
+      } else {
+        const updateResponse = await dispatch(updateProduct({ productId: editProductId, formData: formDataToSend })).unwrap();
+        console.log("updateProduct response:", updateResponse);
+        if (imageFile) {
+          const imageFormData = new FormData();
+          imageFormData.append("formFile", imageFile);
+          const imageResponse = await dispatch(updateImageProduct({ productId: editProductId, formData: imageFormData })).unwrap();
+          console.log("updateImageProduct response:", imageResponse);
+        }
+        toast.success("Sản phẩm đã được cập nhật thành công!");
       }
       onSubmitSuccess();
       onClose();
     } catch (error) {
-      alert(error.message || "Có lỗi xảy ra khi xử lý sản phẩm!");
+      console.error("Submit error:", error);
       toast.error(error.message || "Có lỗi xảy ra khi xử lý sản phẩm!");
     }
   };
@@ -249,108 +256,102 @@ const ProductModal = ({
             margin="normal"
             required
           />
-         <TextField
-                   select
-                   fullWidth
-                   label="Danh mục"
-                   name="categoryId"
-                   value={
-                     formData.categoryId !== ""
-                       ? formData.categoryId
-                       : filteredCategories.length > 0
-                       ? filteredCategories[0].categoryId
-                       : ""
-                   }
-                   onChange={(e) => {
-                     console.log(
-                       "TextField onChange triggered, selected value:",
-                       e.target.value
-                     );
-                     handleChange(e);
-                   }}
-                   margin="normal"
-                   required
-                   disabled={categoryLoading}
-                 >
-                   {categoryLoading ? (
-                     <MenuItem value="" disabled>
-                       Đang tải danh mục...
-                     </MenuItem>
-                   ) : categoryError ? (
-                     <MenuItem value="" disabled>
-                       Lỗi: {categoryError}
-                     </MenuItem>
-                   ) : filteredCategories.length === 0 ? (
-                     <MenuItem value="" disabled>
-                       Không có danh mục
-                     </MenuItem>
-                   ) : (
-                     filteredCategories.map((cat) => (
-                       <MenuItem key={cat.categoryId} value={Number(cat.categoryId)}>
-                         {cat.categoryName}
-                       </MenuItem>
-                     ))
-                   )}
-                 </TextField>
+          <TextField
+            select
+            fullWidth
+            label="Danh mục"
+            name="categoryId"
+            value={
+              formData.categoryId !== ""
+                ? formData.categoryId
+                : filteredCategories.length > 0
+                ? filteredCategories[0].categoryId
+                : ""
+            }
+            onChange={handleChange}
+            margin="normal"
+            required
+            disabled={categoryLoading}
+          >
+            {categoryLoading ? (
+              <MenuItem value="" disabled>
+                Đang tải danh mục...
+              </MenuItem>
+            ) : categoryError ? (
+              <MenuItem value="" disabled>
+                Lỗi: {categoryError}
+              </MenuItem>
+            ) : filteredCategories.length === 0 ? (
+              <MenuItem value="" disabled>
+                Không có danh mục
+              </MenuItem>
+            ) : (
+              filteredCategories.map((cat) => (
+                <MenuItem key={cat.categoryId} value={Number(cat.categoryId)}>
+                  {cat.categoryName}
+                </MenuItem>
+              ))
+            )}
+          </TextField>
           <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
             Sizes and Prices
           </Typography>
           {formData.sizes.map((sizeObj, index) => (
-  <Grid container spacing={2} key={index} sx={{ mb: 2 }}>
-    <Grid item xs={4}>
-      <TextField
-        select
-        fullWidth
-        label="Size"
-        name="size"
-        value={sizeObj.size}
-        onChange={(e) => handleChange(e, index)}
-        required
-      >
-        <MenuItem value="Small">Small</MenuItem>
-        <MenuItem value="Medium">Medium</MenuItem>
-        <MenuItem value="Large">Large</MenuItem>
-      </TextField>
-    </Grid>
-    <Grid item xs={3}>
-      <TextField
-        fullWidth
-        label="Price (VND)"
-        name="price"
-        type="number"
-        value={sizeObj.price}
-        onChange={(e) => handleChange(e, index)}
-        required
-        inputProps={{ min: 0 }}
-      />
-    </Grid>
-    <Grid item xs={3}>
-      <FormControlLabel
-        control={
-          <Switch
-            checked={sizeObj.status}
-            onChange={(e) =>
-              handleChange(
-                { target: { name: "status", value: e.target.checked.toString() } },
-                index
-              )
-            }
-            color="primary"
-          />
-        }
-        label="Active"
-      />
-    </Grid>
-    <Grid item xs={2}>
-      <IconButton
-        onClick={() => handleRemoveSize(index)}
-        disabled={formData.sizes.length === 1}
-      >
-        <DeleteIcon />
-      </IconButton>
-    </Grid>
-  </Grid>
-))}
+            <Grid container spacing={2} key={index} sx={{ mb: 2 }}>
+              <Grid item xs={4}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Size"
+                  name="size"
+                  value={sizeObj.size}
+                  onChange={(e) => handleChange(e, index)}
+                  required
+                >
+                  <MenuItem value="Small">Small</MenuItem>
+                  <MenuItem value="Medium">Medium</MenuItem>
+                  <MenuItem value="Large">Large</MenuItem>
+                </TextField>
+              </Grid>
+              <Grid item xs={3}>
+                <TextField
+                  fullWidth
+                  label="Price (VND)"
+                  name="price"
+                  type="number"
+                  value={sizeObj.price}
+                  onChange={(e) => handleChange(e, index)}
+                  required
+                  inputProps={{ min: 0 }}
+                />
+              </Grid>
+              <Grid item xs={3}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={sizeObj.status}
+                      onChange={(e) =>
+                        handleChange(
+                          { target: { name: "status", value: e.target.checked.toString() } },
+                          index
+                        )
+                      }
+                      color="primary"
+                    />
+                  }
+                  label="Active"
+                />
+              </Grid>
+              <Grid item xs={2}>
+                <IconButton
+                  onClick={() => handleRemoveSize(index)}
+                  disabled={formData.sizes.length === 1}
+                >
+                  <DeleteIcon />
+                </IconButton>
+              </Grid>
+            </Grid>
+          ))}
           <Button
             variant="outlined"
             startIcon={<AddIcon />}

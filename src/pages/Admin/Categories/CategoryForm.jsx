@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -8,6 +8,7 @@ import {
   FormControlLabel,
   InputLabel,
   FormHelperText,
+  CircularProgress,
 } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
 import { useForm, Controller } from "react-hook-form";
@@ -25,6 +26,7 @@ export default function CategoryForm({
 }) {
   const dispatch = useDispatch();
   const isEditMode = !!categoryData;
+  const [isSubmitting, setIsSubmitting] = useState(false); // Loading state
 
   const {
     control,
@@ -71,6 +73,7 @@ export default function CategoryForm({
   };
 
   const onSubmit = async (data) => {
+    setIsSubmitting(true); // Start loading
     console.log("Dữ liệu từ React Hook Form:", data);
     const formData = new FormData();
     formData.append("CategoryName", data.categoryName);
@@ -96,11 +99,11 @@ export default function CategoryForm({
         `${isEditMode ? "Cập nhật" : "Tạo"} danh mục thành công:`,
         result
       );
-      toast(`${isEditMode ? "Cập nhật" : "Tạo"} danh mục thành công!`);
+      toast.success(`${isEditMode ? "Cập nhật" : "Tạo"} danh mục thành công!`); // Success toast
       if (isModal && onClose) {
-        onClose();
+        onClose(); // Close modal
       }
-      dispatch(getallCategory({ page: 1 }));
+      dispatch(getallCategory({ page: 1 })); // Refresh category list
     } catch (err) {
       console.error(`Lỗi khi ${isEditMode ? "cập nhật" : "tạo"} danh mục:`, {
         message: err.message,
@@ -108,7 +111,7 @@ export default function CategoryForm({
         data: err.data,
         stack: err.stack,
       });
-      toast(
+      toast.error(
         `Lỗi: ${
           err.message ||
           `Không thể ${
@@ -116,6 +119,8 @@ export default function CategoryForm({
           } danh mục. Vui lòng thử lại.`
         }`
       );
+    } finally {
+      setIsSubmitting(false); // Stop loading
     }
   };
 
@@ -141,6 +146,7 @@ export default function CategoryForm({
               error={!!errors.categoryName}
               helperText={errors.categoryName?.message}
               sx={{ mb: 2 }}
+              disabled={isSubmitting}
             />
           )}
         />
@@ -159,6 +165,7 @@ export default function CategoryForm({
               error={!!errors.description}
               helperText={errors.description?.message}
               sx={{ mb: 2 }}
+              disabled={isSubmitting}
             />
           )}
         />
@@ -180,6 +187,7 @@ export default function CategoryForm({
                   field.onChange(e.target.files[0]);
                 }}
                 style={{ marginTop: 8 }}
+                disabled={isSubmitting}
               />
               {errors.imageFile && (
                 <FormHelperText error>
@@ -200,6 +208,7 @@ export default function CategoryForm({
                   checked={field.value}
                   onChange={(e) => field.onChange(e.target.checked)}
                   color="primary"
+                  disabled={isSubmitting}
                 />
               }
               label="Hiển thị"
@@ -212,11 +221,21 @@ export default function CategoryForm({
             type="submit"
             variant="contained"
             sx={{ backgroundColor: "#8B5E3C" }}
+            disabled={isSubmitting}
+            startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
           >
-            {isEditMode ? "Lưu thay đổi" : "Tạo mới"}
+            {isSubmitting
+              ? "Đang xử lý..."
+              : isEditMode
+              ? "Lưu thay đổi"
+              : "Tạo mới"}
           </Button>
           {isModal && (
-            <Button variant="outlined" onClick={onClose}>
+            <Button
+              variant="outlined"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
               Hủy
             </Button>
           )}
