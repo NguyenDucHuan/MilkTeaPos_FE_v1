@@ -28,6 +28,8 @@ import {
   ListItem,
   ListItemText,
   Divider,
+  CircularProgress,
+  Backdrop,
 } from "@mui/material";
 import {
   Edit as EditIcon,
@@ -41,10 +43,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { listItemApi, setPage } from "../../../store/slices/itemSlice";
 import { createCombo, updateCombo } from "../../../store/slices/comboSlice";
 import toast from "react-hot-toast";
+
 export default function Combos() {
   const dispatch = useDispatch();
   const { items: allItems, currentPage, pageSize, totalPages, totalItems, isLoading: productsLoading, error: productsError } =
     useSelector((state) => state.item);
+  const { isLoading: comboLoading, error: comboError } = useSelector((state) => state.combo); // Lấy trạng thái loading từ comboSlice
   const [openModal, setOpenModal] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editComboId, setEditComboId] = useState(null);
@@ -246,8 +250,6 @@ export default function Combos() {
     }));
   };
 
-
-
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -285,7 +287,7 @@ export default function Combos() {
     }
   
     const formDataToSend = new FormData();
-    formDataToSend.append("productName", formData.ComboName);
+    formDataToSend.append("ComboName", formData.ComboName);
     formDataToSend.append("description", formData.Description || "");
     formDataToSend.append("status", formData.Status.toString());
     formDataToSend.append("categoryId", formData.categoryId);
@@ -295,6 +297,11 @@ export default function Combos() {
       formDataToSend.append("Prize", formData.Price);
     } else {
       formDataToSend.append("Price", formData.Price);
+    }
+  
+    // Gửi file ảnh nếu có
+    if (formData.Image) {
+      formDataToSend.append("image", formData.Image);
     }
   
     formData.ComboItems.forEach((item, index) => {
@@ -317,10 +324,6 @@ export default function Combos() {
       }
     });
   
-    if (formData.Image) {
-      formDataToSend.append("image", formData.Image);
-    }
-  
     try {
       if (isEditMode) {
         await dispatch(updateCombo(formDataToSend)).unwrap();
@@ -329,10 +332,9 @@ export default function Combos() {
         await dispatch(createCombo(formDataToSend)).unwrap();
         toast.success("Combo đã được tạo thành công!");
       }
-      // Làm mới danh sách combo mà không cần CategoryId
-      await dispatch(
-        listItemApi({ Page: currentPage, PageSize: pageSize })
-      );
+      // Delay để đảm bảo backend đồng bộ dữ liệu
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await dispatch(listItemApi({ Page: currentPage, PageSize: pageSize }));
       handleCloseModal();
     } catch (error) {
       console.error("Error submitting combo:", error);
@@ -522,7 +524,7 @@ export default function Combos() {
               }}>
                 <img
                   src={selectedCombo.imageUrl || '/placeholder-image.jpg'}
-                  alt={selectedCombo.productName}
+                  alt={selectedCombo.productName || 'Combo'}
                   style={{
                     width: '100%',
                     height: '100%',
@@ -617,6 +619,27 @@ export default function Combos() {
             overflowY: "auto",
           }}
         >
+          {/* Hiển thị loading overlay trong modal */}
+          {comboLoading && (
+            <Backdrop
+              sx={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                bgcolor: "rgba(0, 0, 0, 0.2)",
+                zIndex: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              open={comboLoading}
+            >
+              <CircularProgress sx={{ color: "#8B5E3C" }} />
+            </Backdrop>
+          )}
+          
           <Typography
             variant="h5"
             fontWeight="bold"
@@ -638,6 +661,7 @@ export default function Combos() {
                   margin="normal"
                   required
                   variant="outlined"
+                  disabled={comboLoading} // Vô hiệu hóa khi đang loading
                   sx={{
                     "& .MuiOutlinedInput-root": {
                       borderRadius: 1,
@@ -656,6 +680,7 @@ export default function Combos() {
                   multiline
                   rows={3}
                   variant="outlined"
+                  disabled={comboLoading}
                   sx={{
                     "& .MuiOutlinedInput-root": {
                       borderRadius: 1,
@@ -675,6 +700,7 @@ export default function Combos() {
                   required
                   inputProps={{ min: 0 }}
                   variant="outlined"
+                  disabled={comboLoading}
                   sx={{
                     "& .MuiOutlinedInput-root": {
                       borderRadius: 1,
@@ -689,6 +715,7 @@ export default function Combos() {
                       checked={formData.Status}
                       onChange={handleToggleStatus}
                       color="primary"
+                      disabled={comboLoading}
                       sx={{
                         "& .MuiSwitch-switchBase.Mui-checked": {
                           color: "#8B5E3C",
@@ -714,6 +741,7 @@ export default function Combos() {
                     onChange={handleImageChange}
                     style={{ display: 'none' }}
                     id="image-upload"
+                    disabled={comboLoading}
                   />
                   <label htmlFor="image-upload">
                     <Button
@@ -721,6 +749,7 @@ export default function Combos() {
                       component="span"
                       fullWidth
                       sx={{ mb: 2 }}
+                      disabled={comboLoading}
                     >
                       Chọn ảnh
                     </Button>
@@ -757,6 +786,7 @@ export default function Combos() {
                           bgcolor: selectedCategory === null ? '#70482F' : '#f5f5f5',
                         }
                       }}
+                      disabled={comboLoading}
                     >
                       Tất cả
                     </Button>
@@ -773,6 +803,7 @@ export default function Combos() {
                             bgcolor: selectedCategory === category ? '#70482F' : '#f5f5f5',
                           }
                         }}
+                        disabled={comboLoading}
                       >
                         {category}
                       </Button>
@@ -824,6 +855,7 @@ export default function Combos() {
                             size="small"
                             onClick={() => handleProductToggle(product.productId)}
                             fullWidth
+                            disabled={comboLoading}
                           >
                             Thêm vào combo
                           </Button>
@@ -877,6 +909,7 @@ export default function Combos() {
                                   size="small"
                                   onClick={() => handleRemoveItem(item.id)}
                                   sx={{ color: 'error.main' }}
+                                  disabled={comboLoading}
                                 >
                                   <DeleteIcon />
                                 </IconButton>
@@ -894,6 +927,7 @@ export default function Combos() {
                                     handleSizeChange(item.id, e.target.value, variant?.price || 0);
                                   }}
                                   sx={{ minWidth: 120 }}
+                                  disabled={comboLoading}
                                 >
                                   {product?.variants?.map((variant) => (
                                     <MenuItem key={variant.sizeId} value={variant.sizeId}>
@@ -905,6 +939,7 @@ export default function Combos() {
                                   <IconButton
                                     size="small"
                                     onClick={() => handleQuantityChange(item.id, -1)}
+                                    disabled={comboLoading}
                                   >
                                     <RemoveIcon />
                                   </IconButton>
@@ -912,6 +947,7 @@ export default function Combos() {
                                   <IconButton
                                     size="small"
                                     onClick={() => handleQuantityChange(item.id, 1)}
+                                    disabled={comboLoading}
                                   >
                                     <AddIcon />
                                   </IconButton>
@@ -930,6 +966,7 @@ export default function Combos() {
               <Button
                 variant="contained"
                 type="submit"
+                disabled={comboLoading} // Vô hiệu hóa nút khi đang loading
                 sx={{
                   bgcolor: "#8B5E3C",
                   "&:hover": { bgcolor: "#70482F" },
@@ -939,11 +976,12 @@ export default function Combos() {
                   px: 3,
                 }}
               >
-                {isEditMode ? "Lưu Thay Đổi" : "Thêm Combo"}
+                {comboLoading ? "Đang xử lý..." : isEditMode ? "Lưu Thay Đổi" : "Thêm Combo"}
               </Button>
               <Button
                 variant="outlined"
                 onClick={handleCloseModal}
+                disabled={comboLoading}
                 sx={{
                   borderColor: "#8B5E3C",
                   color: "#8B5E3C",
