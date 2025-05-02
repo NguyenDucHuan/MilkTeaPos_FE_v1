@@ -347,23 +347,23 @@ export default function DashboardAdmin() {
             </Box>
           </Grid>
           {/* Sales by Category Chart */}
-          <Grid item size={6}>
+          {/* <Grid item size={6}>
             <Box className="dashboard-admin__chart">
               <Typography variant="h6" sx={{ mb: 2 }}>
                 Sales by Category
               </Typography>
               <Pie data={salesData} options={salesOptions} />
             </Box>
-          </Grid>
+          </Grid> */}
           {/* Top Selling Products Chart */}
-          <Grid item size={6}>
+          {/* <Grid item size={6}>
             <Box className="dashboard-admin__chart">
               <Typography variant="h6" sx={{ mb: 2 }}>
                 Top Selling Products
               </Typography>
               <Bar data={topProductsData} options={topProductsOptions} />
             </Box>
-          </Grid>
+          </Grid> */}
         </Grid>
       </Box>
     </Box>

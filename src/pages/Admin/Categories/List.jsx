@@ -36,10 +36,10 @@ export default function CategoryList() {
     console.log('CategoryList - category array:', category);
   }, [category]);
 
-  const handleToggleStatus = async (category) => {
-    alert('Chức năng cập nhật trạng thái chưa được hỗ trợ bởi backend. Vui lòng liên hệ đội ngũ backend để thêm endpoint mới.');
-    return;
-  };
+  // const handleToggleStatus = async (category) => {
+  //   alert('Chức năng cập nhật trạng thái chưa được hỗ trợ bởi backend. Vui lòng liên hệ đội ngũ backend để thêm endpoint mới.');
+  //   return;
+  // };
 
   const handleOpenModal = (category = null) => {
     console.log('Opening modal with category:', category);
@@ -83,25 +83,31 @@ export default function CategoryList() {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>No.</TableCell>
+              <TableCell>Image</TableCell>
               <TableCell>Tên danh mục</TableCell>
-              <TableCell>Trạng thái</TableCell>
+              {/* <TableCell>Trạng thái</TableCell> */}
               <TableCell>Hành động</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {category.map((cat, index) => (
               <TableRow key={cat.categoryId}>
-                <TableCell>{index + 1}</TableCell>
-                <TableCell>{cat.categoryName}</TableCell>
                 <TableCell>
+                  <img
+                    src={cat.imageUrl}
+                    alt={cat.categoryName}
+                    style={{ width: 50, height: 50, borderRadius: "50%" }}
+                  />
+                </TableCell>
+                <TableCell>{cat.categoryName}</TableCell>
+                {/* <TableCell>
                   <Switch
                     checked={cat.status ?? false}
                     onChange={() => handleToggleStatus(cat)}
                     color="primary"
                     disabled={isLoading}
                   />
-                </TableCell>
+                </TableCell> */}
                 <TableCell>
                   <IconButton onClick={() => handleOpenModal(cat)}>
                     <EditIcon color="action" />

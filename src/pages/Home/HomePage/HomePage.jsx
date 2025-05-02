@@ -504,14 +504,14 @@ export default function HomePage() {
                       : item.price || 0;
 
                   return (
-                    <Grid item key={item.productId}>
+                    <Grid size={3} item key={item.productId}>
                       <Card
                         sx={{
                           maxWidth: 345,
                           borderRadius: "15px",
                           border: "1px solid #f0e6d9",
                           width: "280px",
-                          height: "350px",
+                          height: "400px",
                         }}
                         className="menu-item"
                       >
