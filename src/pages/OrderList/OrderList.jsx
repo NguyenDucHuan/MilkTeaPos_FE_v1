@@ -80,7 +80,7 @@ const OrderList = () => {
     try {
       setIsLoadingDetails(true);
       const response = await fetcher.get(`/order/get-by-id/${order.orderId}`);
-      setOrderDetails(response.data.data);
+      setOrderDetails(response.data);
       setSelectedOrder(order);
     } catch (error) {
       console.error('Error fetching order details:', error);
@@ -129,6 +129,13 @@ const OrderList = () => {
         <span className="text-sm font-medium">{statusInfo.label}</span>
       </div>
     );
+  };
+
+  const normalizeStatus = (status) => {
+    console.log('orderStatus value:', status); // Log để kiểm tra giá trị thực tế
+    if (!status) return 'Pending';
+    if (status === 'Success') return 'Completed';
+    return status;
   };
 
   if (isLoading) {
@@ -216,7 +223,7 @@ const OrderList = () => {
                           {formatCurrency(order.totalAmount)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <OrderStatus status={order.orderstatusupdates?.[0]?.orderStatus} />
+                          <OrderStatus status={normalizeStatus(order.orderStatus)} />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <IconButton
@@ -303,7 +310,7 @@ const OrderList = () => {
                       Tổng tiền: {formatCurrency(orderDetails.totalAmount)}
                     </Typography>
                     <Typography variant="body2">
-                      Trạng thái: <OrderStatus status={orderDetails.orderstatusupdates?.[0]?.orderStatus} />
+                      Trạng thái: <OrderStatus status={normalizeStatus(orderDetails.orderStatus)} />
                     </Typography>
                     <Typography variant="body2">
                       Phương thức thanh toán: {orderDetails.paymentMethod?.methodName}
