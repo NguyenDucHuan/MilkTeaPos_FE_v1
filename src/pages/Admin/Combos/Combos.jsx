@@ -26,17 +26,14 @@ import {
   Visibility as VisibilityIcon,
 } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
-import { listItemApi, setPage } from "../../../store/slices/itemSlice";
+import { listItemApi, resetPage } from "../../../store/slices/itemSlice";
 import toast from "react-hot-toast";
 import ComboModal from "./ComboModal";
 
 export default function Combos() {
   const dispatch = useDispatch();
   const {
-    items: allItems,
-    currentPage,
-    pageSize,
-    totalPages,
+    combos: { items: combos, pagination },
     isLoading: productsLoading,
     error: productsError,
   } = useSelector((state) => state.item);
@@ -57,55 +54,35 @@ export default function Combos() {
   const [openDetailsModal, setOpenDetailsModal] = useState(false);
   const [selectedCombo, setSelectedCombo] = useState(null);
 
-  // Filter only combo products based on productType
-  const combos = useMemo(() => {
-    return allItems.filter((item) => item.productType === "Combo");
-  }, [allItems]);
+  const PAGE_SIZE = 10;
 
-  // Reset currentPage to 1 when the component mounts
-  useEffect(() => {
-    dispatch(setPage(1));
-  }, [dispatch]);
-
-  // Fetch products with pagination
   useEffect(() => {
     dispatch(
       listItemApi({
-        Page: currentPage,
-        PageSize: pageSize,
+        Page: pagination.currentPage,
+        PageSize: PAGE_SIZE,
+        ProductType: "Combo",
       })
-    ).then((result) => {
-      if (result.meta.requestStatus === "fulfilled") {
-        console.log("Products fetched successfully:", result.payload);
-      } else {
-        console.error("Error fetching products:", result.error);
-      }
-    });
-  }, [dispatch, currentPage, pageSize]);
+    );
+  }, [dispatch, pagination.currentPage]);
 
-  // Fetch all products for the modal (without pagination)
   useEffect(() => {
     dispatch(
       listItemApi({
         Page: 1,
         PageSize: 1000,
+        ProductType: "MaterProduct",
       })
     ).then((result) => {
       if (result.meta.requestStatus === "fulfilled") {
-        const filteredProducts = (result.payload.items || []).filter(
-          (product) => product.productType === "MaterProduct"
-        );
-        setAllProducts(filteredProducts);
-        console.log("All products fetched for modal:", filteredProducts);
-      } else {
-        console.error("Error fetching all products for modal:", result.error);
+        setAllProducts(result.payload.items || []);
       }
     });
   }, [dispatch]);
 
   const handleOpenModal = (combo = null) => {
     if (allProducts.length === 0) {
-      toast.error("No products available to create a combo!");
+      toast.error("Không có sản phẩm nào để tạo combo!");
       return;
     }
     if (combo) {
@@ -123,7 +100,9 @@ export default function Combos() {
       setFormData(newFormData);
       setImagePreview(combo.imageUrl || null);
     } else {
-      const newFormData = {
+      setIsEditMode(false);
+      setEditComboId(null);
+      setFormData({
         ComboName: "",
         Description: "",
         Image: null,
@@ -131,10 +110,7 @@ export default function Combos() {
         Status: true,
         ComboItems: [],
         categoryId: 5,
-      };
-      setIsEditMode(false);
-      setEditComboId(null);
-      setFormData(newFormData);
+      });
       setImagePreview(null);
     }
     setOpenModal(true);
@@ -143,7 +119,6 @@ export default function Combos() {
   const handleCloseModal = () => {
     setOpenModal(false);
     setImagePreview(null);
-    // Reset formData để tránh giữ dữ liệu cũ
     setFormData({
       ComboName: "",
       Description: "",
@@ -153,10 +128,23 @@ export default function Combos() {
       ComboItems: [],
       categoryId: 5,
     });
+    dispatch(
+      listItemApi({
+        Page: pagination.currentPage,
+        PageSize: PAGE_SIZE,
+        ProductType: "Combo",
+      })
+    );
   };
 
   const handlePageChange = (event, newPage) => {
-    dispatch(setPage(newPage));
+    dispatch(
+      listItemApi({
+        Page: newPage,
+        PageSize: PAGE_SIZE,
+        ProductType: "Combo",
+      })
+    );
   };
 
   const handleOpenDetails = (combo) => {
@@ -169,27 +157,16 @@ export default function Combos() {
     setSelectedCombo(null);
   };
 
-  if (productsLoading) return <Typography>Loading...</Typography>;
-  if (productsError) return <Typography color="error">Error: {productsError}</Typography>;
+  if (productsLoading) return <Typography>Đang tải...</Typography>;
+  if (productsError) return <Typography color="error">Lỗi: {productsError}</Typography>;
 
   return (
     <Box sx={{ padding: 3, bgcolor: "#fffbf2", minHeight: "100vh" }}>
       <Typography variant="h4" fontWeight="bold" color="#333" gutterBottom>
         Quản lý Combo
       </Typography>
-      <Paper
-        sx={{
-          padding: 3,
-          borderRadius: 2,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-        }}
-      >
-        <Box
-          display="flex"
-          justifyContent="space-between"
-          alignItems="center"
-          mb={3}
-        >
+      <Paper sx={{ padding: 3, borderRadius: 2, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Typography variant="h6" color="#555">
             Danh sách Combo
           </Typography>
@@ -211,21 +188,11 @@ export default function Combos() {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: "bold", color: "#333" }}>
-                Tên combo
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", color: "#333" }}>
-                Mô tả
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", color: "#333" }}>
-                Giá (VND)
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", color: "#333" }}>
-                Trạng thái
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold", color: "#333" }}>
-                Hành động
-              </TableCell>
+              <TableCell sx={{ fontWeight: "bold", color: "#333" }}>Tên combo</TableCell>
+              <TableCell sx={{ fontWeight: "bold", color: "#333" }}>Mô tả</TableCell>
+              <TableCell sx={{ fontWeight: "bold", color: "#333" }}>Giá (VND)</TableCell>
+              <TableCell sx={{ fontWeight: "bold", color: "#333" }}>Trạng thái</TableCell>
+              <TableCell sx={{ fontWeight: "bold", color: "#333" }}>Hành động</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -237,10 +204,7 @@ export default function Combos() {
               </TableRow>
             ) : (
               combos.map((combo) => (
-                <TableRow
-                  key={combo.productId}
-                  sx={{ "&:hover": { bgcolor: "#f9f9f9" } }}
-                >
+                <TableRow key={combo.productId} sx={{ "&:hover": { bgcolor: "#f9f9f9" } }}>
                   <TableCell>{combo.productName}</TableCell>
                   <TableCell>{combo.description || "N/A"}</TableCell>
                   <TableCell>
@@ -267,19 +231,13 @@ export default function Combos() {
                     <Box sx={{ display: "flex", gap: 1 }}>
                       <IconButton
                         onClick={() => handleOpenDetails(combo)}
-                        sx={{
-                          color: "#8B5E3C",
-                          "&:hover": { color: "#70482F" },
-                        }}
+                        sx={{ color: "#8B5E3C", "&:hover": { color: "#70482F" } }}
                       >
                         <VisibilityIcon />
                       </IconButton>
                       <IconButton
                         onClick={() => handleOpenModal(combo)}
-                        sx={{
-                          color: "#8B5E3C",
-                          "&:hover": { color: "#70482F" },
-                        }}
+                        sx={{ color: "#8B5E3C", "&:hover": { color: "#70482F" } }}
                       >
                         <EditIcon />
                       </IconButton>
@@ -290,29 +248,24 @@ export default function Combos() {
             )}
           </TableBody>
         </Table>
-        {totalPages > 1 && (
+        {pagination.totalPages >= 1 && (
           <Box display="flex" justifyContent="center" mt={3}>
-            <Typography variant="body2" sx={{ mr: 2 }}>
-              Total Pages: {totalPages}, Current Page: {currentPage}
-            </Typography>
+            {/* <Typography variant="body2" sx={{ mr: 2 }}>
+              Tổng số trang: {pagination.totalPages}, Trang hiện tại: {pagination.currentPage}
+            </Typography> */}
             <Pagination
-              count={totalPages}
-              page={currentPage}
+              count={pagination.totalPages}
+              page={pagination.currentPage}
               onChange={handlePageChange}
               color="primary"
               sx={{ "& .Mui-selected": { bgcolor: "#8B5E3C !important" } }}
+              disabled={productsLoading}
             />
           </Box>
         )}
       </Paper>
 
-      {/* Modal chi tiết combo */}
-      <Dialog
-        open={openDetailsModal}
-        onClose={handleCloseDetails}
-        maxWidth="md"
-        fullWidth
-      >
+      <Dialog open={openDetailsModal} onClose={handleCloseDetails} maxWidth="md" fullWidth>
         <DialogTitle sx={{ borderBottom: "2px solid #8B5E3C", pb: 1 }}>
           Chi tiết Combo: {selectedCombo?.productName}
         </DialogTitle>
@@ -332,11 +285,7 @@ export default function Combos() {
                 <img
                   src={selectedCombo.imageUrl || "/placeholder-image.jpg"}
                   alt={selectedCombo.productName || "Combo"}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                  }}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
               </Box>
               <Typography variant="h6" gutterBottom>
@@ -352,13 +301,10 @@ export default function Combos() {
                 <ListItem>
                   <ListItemText
                     primary="Giá"
-                    secondary={parseFloat(selectedCombo.price).toLocaleString(
-                      "vi-VN",
-                      {
-                        style: "currency",
-                        currency: "VND",
-                      }
-                    )}
+                    secondary={parseFloat(selectedCombo.price).toLocaleString("vi-VN", {
+                      style: "currency",
+                      currency: "VND",
+                    })}
                   />
                 </ListItem>
                 <ListItem>
@@ -375,13 +321,9 @@ export default function Combos() {
               <List>
                 {selectedCombo.comboItems && selectedCombo.comboItems.length > 0 ? (
                   selectedCombo.comboItems.map((item) => {
-                    const product = allProducts.find(
-                      (p) => p.productId === item.productId
-                    );
+                    const product = allProducts.find((p) => p.productId === item.productId);
                     if (!product) return null;
-                    const sizeInfo = product.variants?.find(
-                      (v) => v.sizeId === item.size
-                    );
+                    const sizeInfo = product.variants?.find((v) => v.sizeId === item.size);
                     const sizeText = sizeInfo ? ` (Size: ${item.size})` : "";
                     return (
                       <ListItem key={item.productId}>
@@ -404,17 +346,13 @@ export default function Combos() {
         <DialogActions>
           <Button
             onClick={handleCloseDetails}
-            sx={{
-              color: "#8B5E3C",
-              "&:hover": { color: "#70482F" },
-            }}
+            sx={{ color: "#8B5E3C", "&:hover": { color: "#70482F" } }}
           >
             Đóng
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Modal thêm/cập nhật combo */}
       <ComboModal
         open={openModal}
         onClose={handleCloseModal}
@@ -424,8 +362,8 @@ export default function Combos() {
         imagePreview={imagePreview}
         setImagePreview={setImagePreview}
         allProducts={allProducts}
-        currentPage={currentPage}
-        pageSize={pageSize}
+        currentPage={pagination.currentPage}
+        pageSize={PAGE_SIZE}
       />
     </Box>
   );

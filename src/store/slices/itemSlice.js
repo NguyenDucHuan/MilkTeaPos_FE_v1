@@ -4,34 +4,50 @@ import fetcher from "../../apis/fetcher";
 export const listItemApi = createAsyncThunk(
   "item/listItemApi",
   async (
-    { CategoryId, Search, Page = 1, PageSize = 6, ProductType },
+    { CategoryId, Search, Page = 1, PageSize = 10, ProductType },
     { rejectWithValue }
   ) => {
     try {
       const queryParams = new URLSearchParams({
         Page,
         PageSize,
+        ...(ProductType && { ProductType }),
         ...(Search && { Search }),
         ...(CategoryId && { CategoryId }),
-        ...(ProductType && { ProductType }),
       }).toString();
 
+      console.log("Calling API with URL:", `/products?${queryParams}`);
       const response = await fetcher.get(`/products?${queryParams}`);
-      if (response.data?.data) {
-        const { items, totalCount, totalPages } = response.data.data;
+      if (!response.data?.data) {
+        throw new Error("Dữ liệu API không hợp lệ hoặc thiếu trường data");
+      }
+
+      const { items, totalCount, totalPages } = response.data.data;
+      if (!Array.isArray(items)) {
+        console.warn("API trả về items không phải mảng:", items);
         return {
-          items,
-          totalItems: totalCount,
+          items: [],
+          totalItems: 0,
           currentPage: Page,
           pageSize: PageSize,
-          totalPages,
+          totalPages: 1,
+          productType: ProductType,
         };
-      } else {
-        throw new Error("Định dạng phản hồi không hợp lệ");
       }
+
+      console.log("API response:", { items, totalCount, totalPages });
+      return {
+        items,
+        totalItems: totalCount ?? 0,
+        currentPage: Page,
+        pageSize: PageSize,
+        totalPages: totalPages ?? 1,
+        productType: ProductType,
+      };
     } catch (error) {
+      console.error("Lỗi khi gọi API listItemApi:", error);
       return rejectWithValue(
-        error.response?.data?.message || "Đã xảy ra lỗi. Vui lòng thử lại."
+        error.response?.data?.message || "Đã xảy ra lỗi khi lấy danh sách sản phẩm."
       );
     }
   }
@@ -134,17 +150,82 @@ export const updateImageProduct = createAsyncThunk(
 const itemSlice = createSlice({
   name: "item",
   initialState: {
-    items: [],
+    materProducts: {
+      items: [],
+      pagination: {
+        currentPage: 1,
+        pageSize: 10,
+        totalPages: 1,
+        totalItems: 0,
+      },
+    },
+    combos: {
+      items: [],
+      pagination: {
+        currentPage: 1,
+        pageSize: 10,
+        totalPages: 1,
+        totalItems: 0,
+      },
+    },
+    extras: {
+      items: [],
+      pagination: {
+        currentPage: 1,
+        pageSize: 10,
+        totalPages: 1,
+        totalItems: 0,
+      },
+    },
     isLoading: false,
     error: null,
-    currentPage: 1,
-    totalPages: 0,
-    pageSize: 6,
-    totalItems: 0,
   },
   reducers: {
-    setPage: (state, action) => {
-      state.currentPage = action.payload;
+    resetPage(state, action) {
+      const productType = action.payload;
+      if (productType === "MaterProduct") {
+        state.materProducts.pagination.currentPage = 1;
+      } else if (productType === "Combo") {
+        state.combos.pagination.currentPage = 1;
+      } else if (productType === "Extra") {
+        state.extras.pagination.currentPage = 1;
+      }
+    },
+    resetState(state, action) {
+      const productType = action.payload;
+      if (productType === "MaterProduct") {
+        state.materProducts = {
+          items: [],
+          pagination: {
+            currentPage: 1,
+            pageSize: 10,
+            totalPages: 1,
+            totalItems: 0,
+          },
+        };
+      } else if (productType === "Combo") {
+        state.combos = {
+          items: [],
+          pagination: {
+            currentPage: 1,
+            pageSize: 10,
+            totalPages: 1,
+            totalItems: 0,
+          },
+        };
+      } else if (productType === "Extra") {
+        state.extras = {
+          items: [],
+          pagination: {
+            currentPage: 1,
+            pageSize: 10,
+            totalPages: 1,
+            totalItems: 0,
+          },
+        };
+      }
+      state.isLoading = false;
+      state.error = null;
     },
   },
   extraReducers: (builder) => {
@@ -156,19 +237,64 @@ const itemSlice = createSlice({
       .addCase(listItemApi.fulfilled, (state, action) => {
         state.isLoading = false;
         state.error = null;
-        state.items = action.payload.items || [];
-        state.totalItems = action.payload.totalItems || 0;
-        state.currentPage = action.payload.currentPage || 1;
-        state.pageSize = action.payload.pageSize || 6;
-        state.totalPages = action.payload.totalPages || 1;
-        console.log("listItemApi fulfilled, updated items:", state.items);
+        const { productType, items, currentPage, pageSize, totalPages, totalItems } = action.payload;
+        if (productType === "MaterProduct") {
+          state.materProducts.items = items || [];
+          state.materProducts.pagination = {
+            currentPage: currentPage || 1,
+            pageSize,
+            totalPages: totalPages || 1,
+            totalItems: totalItems || 0,
+          };
+        } else if (productType === "Combo") {
+          state.combos.items = items || [];
+          state.combos.pagination = {
+            currentPage: currentPage || 1,
+            pageSize,
+            totalPages: totalPages || 1,
+            totalItems: totalItems || 0,
+          };
+        } else if (productType === "Extra") {
+          state.extras.items = items || [];
+          state.extras.pagination = {
+            currentPage: currentPage || 1,
+            pageSize,
+            totalPages: totalPages || 1,
+            totalItems: totalItems || 0,
+          };
+        }
+        console.log("listItemApi fulfilled, updated state:", state);
       })
       .addCase(listItemApi.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
-        state.items = [];
-        state.totalItems = 0;
-        state.totalPages = 0;
+        const productType = action.meta.arg.ProductType;
+        if (productType === "MaterProduct") {
+          state.materProducts.items = [];
+          state.materProducts.pagination = {
+            currentPage: 1,
+            pageSize: state.materProducts.pagination.pageSize,
+            totalPages: 1,
+            totalItems: 0,
+          };
+        } else if (productType === "Combo") {
+          state.combos.items = [];
+          state.combos.pagination = {
+            currentPage: 1,
+            pageSize: state.combos.pagination.pageSize,
+            totalPages: 1,
+            totalItems: 0,
+          };
+        } else if (productType === "Extra") {
+          state.extras.items = [];
+          state.extras.pagination = {
+            currentPage: 1,
+            pageSize: state.extras.pagination.pageSize,
+            totalPages: 1,
+            totalItems: 0,
+          };
+        }
+        console.error("listItemApi rejected, error:", action.payload);
       })
       .addCase(createProduct.pending, (state) => {
         state.isLoading = true;
@@ -177,9 +303,6 @@ const itemSlice = createSlice({
       .addCase(createProduct.fulfilled, (state, action) => {
         state.isLoading = false;
         state.error = null;
-        state.items.push(action.payload.data);
-        state.totalItems += 1;
-        state.totalPages = Math.ceil(state.totalItems / state.pageSize);
       })
       .addCase(createProduct.rejected, (state, action) => {
         state.isLoading = false;
@@ -192,13 +315,6 @@ const itemSlice = createSlice({
       .addCase(updateProduct.fulfilled, (state, action) => {
         state.isLoading = false;
         state.error = null;
-        const index = state.items.findIndex(
-          (item) => item.productId === action.payload.data.productId
-        );
-        if (index !== -1) {
-          state.items[index] = action.payload.data;
-        }
-        console.log("updateProduct fulfilled, updated item:", state.items[index]);
       })
       .addCase(updateProduct.rejected, (state, action) => {
         state.isLoading = false;
@@ -211,8 +327,6 @@ const itemSlice = createSlice({
       .addCase(createExtraProduct.fulfilled, (state, action) => {
         state.isLoading = false;
         state.error = null;
-        state.items.push(action.payload.data);
-        state.totalItems += 1;
       })
       .addCase(createExtraProduct.rejected, (state, action) => {
         state.isLoading = false;
@@ -225,8 +339,6 @@ const itemSlice = createSlice({
       .addCase(updateImageProduct.fulfilled, (state, action) => {
         state.isLoading = false;
         state.error = null;
-        // Không cập nhật imageUrl tại đây vì API không trả về imageUrl
-        console.log("updateImageProduct fulfilled, state not updated due to missing imageUrl");
       })
       .addCase(updateImageProduct.rejected, (state, action) => {
         state.isLoading = false;
@@ -235,5 +347,5 @@ const itemSlice = createSlice({
   },
 });
 
-export const { setPage } = itemSlice.actions;
+export const { resetPage, resetState } = itemSlice.actions;
 export default itemSlice.reducer;
