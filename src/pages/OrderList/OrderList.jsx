@@ -134,7 +134,12 @@ const OrderList = () => {
   const normalizeStatus = (status) => {
     console.log('orderStatus value:', status); // Log để kiểm tra giá trị thực tế
     if (!status) return 'Pending';
-    if (status === 'Success') return 'Completed';
+    if ([
+      'Success', 'Successed', 'Successfull', 'Done', 'Completed'
+    ].includes(status)) return 'Completed';
+    if (status === 'Cancel' || status === 'Cancelled') return 'Cancelled';
+    if (status === 'Processing') return 'Processing';
+    if (status === 'Pending') return 'Pending';
     return status;
   };
 
@@ -310,7 +315,7 @@ const OrderList = () => {
                       Tổng tiền: {formatCurrency(orderDetails.totalAmount)}
                     </Typography>
                     <Typography variant="body2">
-                      Trạng thái: <OrderStatus status={normalizeStatus(orderDetails.orderStatus)} />
+                      Trạng thái: <OrderStatus status={normalizeStatus(orderDetails.orderStatus || orderDetails.status || orderDetails.orderstatusupdates?.[0]?.orderStatus)} />
                     </Typography>
                     <Typography variant="body2">
                       Phương thức thanh toán: {orderDetails.paymentMethod?.methodName}

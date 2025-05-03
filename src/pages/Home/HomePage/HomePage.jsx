@@ -842,10 +842,29 @@ export default function HomePage() {
                                   >
                                     ({topping.quantity || 1} phần)
                                   </Typography>
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      color: "#b0855b",
+                                      fontSize: "14px",
+                                      ml: 2,
+                                      fontWeight: "bold"
+                                    }}
+                                  >
+                                    {topping.price ? `${Number(topping.price).toLocaleString('vi-VN')} VNĐ` : ''}
+                                  </Typography>
                                 </Box>
                               ))}
                             </Box>
                           )}
+                        </Box>
+                        <Box sx={{ mt: 1 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{ color: '#8a5a2a', fontWeight: 'bold', fontSize: '15px' }}
+                          >
+                            Thành tiền: {(Number(item.subPrice) || calculateItemPrice(item)).toLocaleString('vi-VN')} VNĐ
+                          </Typography>
                         </Box>
                       </Box>
                       <Box sx={{ display: "flex", alignItems: "center" }}>
