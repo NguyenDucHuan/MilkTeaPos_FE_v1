@@ -107,7 +107,9 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
           p: 0,
           borderRadius: "10px",
           width: "500px",
-          height: "auto",
+          maxHeight: "90vh",
+          display: "flex",
+          flexDirection: "column",
           boxShadow: 24,
         }}
       >
@@ -119,7 +121,15 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
         </Box>
 
         {/* Body */}
-        <Box className="modal-checkout__body">
+        <Box 
+          className="modal-checkout__body"
+          sx={{
+            flex: 1,
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column"
+          }}
+        >
           <Typography
             variant="body1"
             component="p"
@@ -159,7 +169,16 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
             </Select>
           </FormControl>
 
-          <Box className="modal-checkout__details" sx={{ mt: 2 }}>
+          <Box 
+            className="modal-checkout__details" 
+            sx={{ 
+              mt: 2,
+              flex: 1,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column"
+            }}
+          >
             <Typography
               variant="body1"
               component="p"
@@ -167,30 +186,138 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
             >
               Order Summary
             </Typography>
-            <Box className="modal-checkout__details-content">
+            <Box 
+              className="modal-checkout__details-content"
+              sx={{
+                flex: 1,
+                overflowY: "auto",
+                pr: 1,
+                "&::-webkit-scrollbar": {
+                  width: "8px",
+                },
+                "&::-webkit-scrollbar-track": {
+                  background: "#f1f1f1",
+                  borderRadius: "4px",
+                },
+                "&::-webkit-scrollbar-thumb": {
+                  background: "#8a5a2a",
+                  borderRadius: "4px",
+                },
+                "&::-webkit-scrollbar-thumb:hover": {
+                  background: "#70482f",
+                },
+              }}
+            >
               {cart && Array.isArray(cart) && cart.length > 0 ? (
                 cart.map((item) => (
-                  <Box key={item.orderItemId} className="modal-checkout__details-item">
-                    <Typography variant="body2">
-                      {item.quantity}x {item.productName}
-                      {item.sizeId && item.sizeId !== "Parent" && (
-                        <span style={{ color: "#666" }}> (Size: {item.sizeId})</span>
-                      )}
+                  <Box 
+                    key={item.orderItemId} 
+                    className="modal-checkout__details-item"
+                    sx={{
+                      backgroundColor: '#f9f5f1',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      mb: 2,
+                      width: '100%',
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'flex-start',
+                      justifyContent: 'space-between'
+                    }}
+                  >
+                    <Box sx={{ flex: 1 }}>
+                      <Typography 
+                        variant="body1" 
+                        sx={{ 
+                          color: '#8a5a2a',
+                          fontWeight: 'bold',
+                          fontSize: '16px'
+                        }}
+                      >
+                        {item.quantity}x {item.productName}
+                        {item.sizeId && item.sizeId !== "Parent" && (
+                          <span style={{ color: "#666", fontWeight: "normal" }}> (Size: {item.sizeId})</span>
+                        )}
+                      </Typography>
                       {item.toppings && item.toppings.length > 0 && (
-                        <Box sx={{ fontSize: "12px", color: "#666" }}>
-                          Toppings:{" "}
+                        <Box sx={{ mt: 1, ml: 2 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: "#8a5a2a",
+                              fontSize: "14px",
+                              fontWeight: "medium",
+                              mb: 0.5
+                            }}
+                          >
+                            {item.productType === 'Combo' ? 'Sản phẩm bao gồm:' : 'Topping bao gồm:'}
+                          </Typography>
                           {item.toppings.map((topping, index) => (
-                            <span key={topping.toppingId}>
-                              {index > 0 ? ", " : ""}
-                              {topping.toppingName}
-                            </span>
+                            <Box 
+                              key={topping.toppingId}
+                              sx={{ 
+                                display: 'flex',
+                                alignItems: 'center',
+                                ml: 1,
+                                mb: 0.5
+                              }}
+                            >
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  color: "#666",
+                                  fontSize: "14px",
+                                  minWidth: '20px'
+                                }}
+                              >
+                                {index + 1}.
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  color: "#666",
+                                  fontSize: "14px",
+                                  ml: 1
+                                }}
+                              >
+                                {topping.toppingName}
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  color: "#8a5a2a",
+                                  fontSize: "14px",
+                                  ml: 1,
+                                  fontWeight: "medium"
+                                }}
+                              >
+                                ({topping.quantity || 1} phần)
+                              </Typography>
+                            </Box>
                           ))}
                         </Box>
                       )}
-                    </Typography>
-                    <Typography variant="body2">
-                      {(Number(item.subPrice) || 0).toLocaleString('vi-VN')} VNĐ
-                    </Typography>
+                    </Box>
+                    <Box sx={{ 
+                      width: '120px',
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      alignItems: 'flex-start',
+                      textAlign: 'right'
+                    }}>
+                      <Typography 
+                        variant="body1"
+                        sx={{ 
+                          color: '#8a5a2a',
+                          fontWeight: 'bold',
+                          fontSize: '16px',
+                          whiteSpace: 'nowrap',
+                          width: '100%'
+                        }}
+                      >
+                        {(Number(item.subPrice) || 0).toLocaleString('vi-VN')} VNĐ
+                      </Typography>
+                    </Box>
                   </Box>
                 ))
               ) : (
@@ -201,21 +328,21 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
               <Typography variant="body1" className="order-summary-title">
                 TÓM TẮT ĐƠN HÀNG
               </Typography>
-              <Box className="order-summary-item">
+              <Box className="order-summary-item" sx={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Typography variant="body2">SỐ MÓN:</Typography>
-                <Typography variant="body2">
+                <Typography variant="body2" sx={{ minWidth: '120px', textAlign: 'right' }}>
                   {calculateTotalQuantity(cart)}
                 </Typography>
               </Box>
-              <Box className="order-summary-item">
+              <Box className="order-summary-item" sx={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Typography variant="body2">TỔNG CỘNG:</Typography>
-                <Typography variant="body2">
+                <Typography variant="body2" sx={{ minWidth: '120px', textAlign: 'right' }}>
                   {calculateSubtotal(cart).toLocaleString('vi-VN')} VNĐ
                 </Typography>
               </Box>
-              <Box className="order-summary-item">
+              <Box className="order-summary-item" sx={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Typography variant="body2">THÀNH TIỀN:</Typography>
-                <Typography variant="body2" fontWeight="bold">
+                <Typography variant="body2" fontWeight="bold" sx={{ minWidth: '120px', textAlign: 'right' }}>
                   {calculateSubtotal(cart).toLocaleString('vi-VN')} VNĐ
                 </Typography>
               </Box>
