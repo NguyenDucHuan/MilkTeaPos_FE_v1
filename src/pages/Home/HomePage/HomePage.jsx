@@ -781,6 +781,71 @@ export default function HomePage() {
                             {item.productName}
                             {item.sizeId && item.sizeId !== "Parent" && ` (${item.sizeId})`}
                           </span>
+                          {item.toppings && item.toppings.length > 0 && (
+                            <Box sx={{ 
+                              ml: 6, 
+                              mt: 0.5,
+                              backgroundColor: '#f9f5f1',
+                              borderRadius: '8px',
+                              padding: '8px 12px',
+                              width: 'fit-content'
+                            }}>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  color: "#8a5a2a",
+                                  fontSize: "14px",
+                                  fontWeight: "bold",
+                                  mb: 1
+                                }}
+                              >
+                                Topping bao gồm:
+                              </Typography>
+                              {item.toppings.map((topping, index) => (
+                                <Box 
+                                  key={topping.toppingId} 
+                                  sx={{ 
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    ml: 1,
+                                    mb: 0.5
+                                  }}
+                                >
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      color: "#666",
+                                      fontSize: "14px",
+                                      minWidth: '20px'
+                                    }}
+                                  >
+                                    {index + 1}.
+                                  </Typography>
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      color: "#666",
+                                      fontSize: "14px",
+                                      ml: 1
+                                    }}
+                                  >
+                                    {topping.toppingName}
+                                  </Typography>
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      color: "#8a5a2a",
+                                      fontSize: "14px",
+                                      ml: 1,
+                                      fontWeight: "medium"
+                                    }}
+                                  >
+                                    ({topping.quantity || 1} phần)
+                                  </Typography>
+                                </Box>
+                              ))}
+                            </Box>
+                          )}
                         </Box>
                       </Box>
                       <Box sx={{ display: "flex", alignItems: "center" }}>
