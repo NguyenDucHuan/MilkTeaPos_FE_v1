@@ -15,7 +15,7 @@ import { listPaymentApi } from "../../store/slices/paymentSlice";
 import { useNavigate } from "react-router-dom";
 import fetcher from "../../apis/fetcher";
 
-export default function ModalCheckout({ open, onClose, order, total }) {
+export default function ModalCheckout({ open, onClose, cart, total }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { payment, isLoading, error } = useSelector((state) => state.payment);
@@ -52,12 +52,17 @@ export default function ModalCheckout({ open, onClose, order, total }) {
     return (variantPrice + toppingsPrice) * item.quantity;
   };
 
-  const calculateSubtotal = (order) => {
-    if (!order || !Array.isArray(order)) return 0;
+  const calculateSubtotal = (cart) => {
+    if (!cart || !Array.isArray(cart)) return 0;
     
-    return order.reduce((total, item) => {
+    return cart.reduce((total, item) => {
       return total + (Number(item.subPrice) || 0);
     }, 0);
+  };
+
+  const calculateTotalQuantity = (cart) => {
+    if (!cart || !Array.isArray(cart)) return 0;
+    return cart.reduce((sum, item) => sum + (item.quantity || 0), 0);
   };
 
   const handleCreateOrder = async () => {
@@ -66,7 +71,12 @@ export default function ModalCheckout({ open, onClose, order, total }) {
       const orderData = {
         note: "string",
         paymentMethodId: paymentMethod,
-        staffId: 1
+        staffId: 1,
+        orderItems: cart.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.subPrice || item.price || 0,
+        })),
       };
 
       const response = await fetcher.post("/order", orderData);
@@ -158,8 +168,8 @@ export default function ModalCheckout({ open, onClose, order, total }) {
               Order Summary
             </Typography>
             <Box className="modal-checkout__details-content">
-              {order && order.length > 0 ? (
-                order.map((item) => (
+              {cart && Array.isArray(cart) && cart.length > 0 ? (
+                cart.map((item) => (
                   <Box key={item.orderItemId} className="modal-checkout__details-item">
                     <Typography variant="body2">
                       {item.quantity}x {item.productName}
@@ -194,19 +204,19 @@ export default function ModalCheckout({ open, onClose, order, total }) {
               <Box className="order-summary-item">
                 <Typography variant="body2">SỐ MÓN:</Typography>
                 <Typography variant="body2">
-                  {order.reduce((sum, item) => sum + (item.quantity || 0), 0)}
+                  {calculateTotalQuantity(cart)}
                 </Typography>
               </Box>
               <Box className="order-summary-item">
                 <Typography variant="body2">TỔNG CỘNG:</Typography>
                 <Typography variant="body2">
-                  {calculateSubtotal(order).toLocaleString('vi-VN')} VNĐ
+                  {calculateSubtotal(cart).toLocaleString('vi-VN')} VNĐ
                 </Typography>
               </Box>
               <Box className="order-summary-item">
                 <Typography variant="body2">THÀNH TIỀN:</Typography>
                 <Typography variant="body2" fontWeight="bold">
-                  {calculateSubtotal(order).toLocaleString('vi-VN')} VNĐ
+                  {calculateSubtotal(cart).toLocaleString('vi-VN')} VNĐ
                 </Typography>
               </Box>
             </Box>
@@ -225,7 +235,7 @@ export default function ModalCheckout({ open, onClose, order, total }) {
           <Button
             variant="contained"
             color="primary"
-            disabled={!paymentMethod || order.length === 0 || isProcessing}
+            disabled={!paymentMethod || !cart || cart.length === 0 || isProcessing}
             onClick={handleCreateOrder}
           >
             {isProcessing ? <CircularProgress size={24} /> : "Thanh toán"}

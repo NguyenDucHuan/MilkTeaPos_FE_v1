@@ -39,12 +39,11 @@ import fetcher from "../../../apis/fetcher";
 export default function HomePage() {
   const dispatch = useDispatch();
   const {
-    items,
+    materProducts: { items: materProducts, pagination: materPagination },
+    combos: { items: combos },
+    extras: { items: extras },
     isLoading,
     error,
-    currentPage: itemPage,
-    totalPages: itemTotalPages,
-    pageSize: itemPageSize,
   } = useSelector((state) => state.item);
   const {
     category: categories,
@@ -58,10 +57,10 @@ export default function HomePage() {
     isLoading: orderLoading,
     error: orderError,
   } = orderState;
+  const { selectedCategory, setSelectedCategory } = useOutletContext();
   const [openCheckout, setOpenCheckout] = useState(false);
   const [openModal, setOpenModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
-  const { selectedCategory, setSelectedCategory } = useOutletContext();
   const [customization, setCustomization] = useState({
     size: "Medium",
     sizePrice: 0,
@@ -70,12 +69,10 @@ export default function HomePage() {
     toppings: [],
     quantity: 1,
   });
-  const [itemCurrentPage, setItemCurrentPage] = useState(1);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(6); // Số sản phẩm hiển thị trên mỗi trang
+  const [comboCurrentPage, setComboCurrentPage] = useState(1);
+  const [pageSize] = useState(6);
 
   useEffect(() => {
-    // Fetch all categories for homepage
     dispatch(getAllCategoriesForHomepage());
     dispatch(getCartApi());
   }, [dispatch]);
@@ -89,8 +86,9 @@ export default function HomePage() {
         dispatch(
           listItemApi({
             CategoryId: selectedCategoryObj.categoryId,
-            Page: itemCurrentPage,
-            PageSize: itemPageSize,
+            Page: materPagination.currentPage,
+            PageSize: materPagination.pageSize,
+            ProductType: selectedCategory === "Topping" ? "Extra" : selectedCategory === "Combo" ? "Combo" : "MaterProduct",
           })
         ).then((result) => {
           if (result.meta.requestStatus === "fulfilled") {
@@ -103,7 +101,7 @@ export default function HomePage() {
         console.warn("Selected category not found:", selectedCategory);
       }
     }
-  }, [dispatch, selectedCategory, categories, itemCurrentPage, itemPageSize]);
+  }, [dispatch, selectedCategory, categories, materPagination.currentPage]);
 
   useEffect(() => {
     console.log("Cart updated:", cart);
@@ -132,7 +130,6 @@ export default function HomePage() {
     console.log("Item being processed:", item);
     console.log("Product Type:", item.productType);
 
-    // Xử lý topping trực tiếp
     if (item.productType?.toLowerCase() === "extra") {
       console.log("Processing as topping");
       try {
@@ -163,7 +160,6 @@ export default function HomePage() {
       return;
     }
 
-    // Xử lý combo
     if (item.productType === "Combo") {
       try {
         dispatch(
@@ -194,7 +190,6 @@ export default function HomePage() {
       return;
     }
 
-    // Xử lý sản phẩm thông thường
     if (!item || !item.variants || !Array.isArray(item.variants)) {
       console.error("Invalid item or variants:", item);
       return;
@@ -353,20 +348,22 @@ export default function HomePage() {
   };
 
   const getFilteredItems = () => {
-    if (!Array.isArray(items)) {
-      console.warn("Items is not an array:", items);
-      return [];
+    if (selectedCategory === "Combo") {
+      return combos;
+    } else if (selectedCategory === "Topping") {
+      return extras;
+    } else {
+      return materProducts;
     }
-    return items;
   };
 
   const handleCategoryClick = (category) => {
     setSelectedCategory(category);
-    setItemCurrentPage(1);
+    setComboCurrentPage(1);
   };
 
-  const handleItemPageChange = (event, newPage) => {
-    setItemCurrentPage(newPage);
+  const handleComboPageChange = (event, newPage) => {
+    setComboCurrentPage(newPage);
   };
 
   const subtotal = calculateSubtotal();
@@ -397,8 +394,9 @@ export default function HomePage() {
           await dispatch(
             listItemApi({
               CategoryId: selectedCategoryObj.categoryId,
-              Page: itemCurrentPage,
-              PageSize: itemPageSize,
+              Page: materPagination.currentPage,
+              PageSize: materPagination.pageSize,
+              ProductType: selectedCategory === "Topping" ? "Extra" : selectedCategory === "Combo" ? "Combo" : "MaterProduct",
             })
           );
         }
@@ -410,25 +408,15 @@ export default function HomePage() {
     }
   };
 
-  const combos = useMemo(() => {
-    const filteredCombos = items.filter(
-      (item) => item.categoryId === 5 && item.categoryName === "Combo"
-    );
-    const startIndex = (currentPage - 1) * pageSize;
+  const paginatedCombos = useMemo(() => {
+    const startIndex = (comboCurrentPage - 1) * pageSize;
     const endIndex = startIndex + pageSize;
-    return filteredCombos.slice(startIndex, endIndex);
-  }, [items, currentPage, pageSize]);
+    return combos.slice(startIndex, endIndex);
+  }, [combos, comboCurrentPage, pageSize]);
 
-  const totalPages = useMemo(() => {
-    const totalCombos = items.filter(
-      (item) => item.categoryId === 5 && item.categoryName === "Combo"
-    ).length;
-    return Math.ceil(totalCombos / pageSize);
-  }, [items, pageSize]);
-
-  const handlePageChange = (event, newPage) => {
-    setCurrentPage(newPage);
-  };
+  const totalComboPages = useMemo(() => {
+    return Math.ceil(combos.length / pageSize);
+  }, [combos, pageSize]);
 
   return (
     <Box className="home-page" sx={{ display: "flex" }}>
@@ -495,7 +483,7 @@ export default function HomePage() {
           ) : getFilteredItems().length > 0 ? (
             <>
               <Grid container spacing={2} className="menu-items-grid">
-                {getFilteredItems().map((item) => {
+                {(selectedCategory === "Combo" ? paginatedCombos : getFilteredItems()).map((item) => {
                   const firstVariant = item.variants?.[0] || {};
                   const price =
                     firstVariant.price !== null &&
@@ -504,14 +492,16 @@ export default function HomePage() {
                       : item.price || 0;
 
                   return (
-                    <Grid size={3} item key={item.productId}>
+                    <Grid size={4} item key={item.productId}>
                       <Card
                         sx={{
                           maxWidth: 345,
                           borderRadius: "15px",
                           border: "1px solid #f0e6d9",
-                          width: "280px",
-                          height: "400px",
+                          width: "100%",
+                          height: "450px",
+                          display: "flex",
+                          flexDirection: "column",
                         }}
                         className="menu-item"
                       >
@@ -524,71 +514,89 @@ export default function HomePage() {
                           alt={item.productName}
                           sx={{
                             height: "150px",
-                            maxWidth: "250px",
+                            width: "100%",
                             objectFit: "cover",
-                            margin: "12px 12px",
                           }}
                         />
-                        <CardContent className="menu-item-content">
-                          <Typography
-                            variant="h6"
-                            className="menu-item-name"
-                            sx={{ marginTop: "5px", color: "#8a5a2a" }}
-                          >
-                            {item.productName}
-                          </Typography>
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            className="menu-item-description"
-                            sx={{
-                              marginTop: "5px",
-                              padding: "10px 10px 10px 0px",
-                            }}
-                          >
-                            {item.description}
-                          </Typography>
-                          {item.productType === "Combo" &&
-                            item.comboItems &&
-                            item.comboItems.length > 0 && (
-                              <Box
-                                sx={{
-                                  marginTop: "5px",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                }}
-                              >
-                                <Typography
-                                  variant="body2"
-                                  sx={{ color: "#8a5a2a", fontWeight: "bold" }}
+                        <CardContent
+                          sx={{
+                            flexGrow: 1,
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "space-between",
+                            padding: "16px",
+                          }}
+                          className="menu-item-content"
+                        >
+                          <Box>
+                            <Typography
+                              variant="h6"
+                              className="menu-item-name"
+                              sx={{
+                                color: "#8a5a2a",
+                                minHeight: "32px",
+                                fontSize: "1.25rem",
+                              }}
+                            >
+                              {item.productName}
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              className="menu-item-description"
+                              sx={{
+                                minHeight: "60px",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                display: "-webkit-box",
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: "vertical",
+                                marginTop: "8px",
+                              }}
+                            >
+                              {item.description}
+                            </Typography>
+                            {item.productType === "Combo" &&
+                              item.comboItems &&
+                              item.comboItems.length > 0 && (
+                                <Box
+                                  sx={{
+                                    marginTop: "8px",
+                                    minHeight: "60px",
+                                    overflow: "hidden",
+                                  }}
                                 >
-                                  Bao gồm:
-                                </Typography>
-                                {item.comboItems.map((comboItem) => (
                                   <Typography
-                                    key={comboItem.comboItemId}
                                     variant="body2"
-                                    sx={{ color: "#8a5a2a" }}
+                                    sx={{ color: "#8a5a2a", fontWeight: "bold" }}
                                   >
-                                    - {comboItem.quantity} {comboItem.productName}
+                                    Bao gồm:
                                   </Typography>
-                                ))}
-                              </Box>
-                            )}
+                                  {item.comboItems.map((comboItem) => (
+                                    <Typography
+                                      key={comboItem.comboItemId}
+                                      variant="body2"
+                                      sx={{ color: "#8a5a2a" }}
+                                    >
+                                      - {comboItem.quantity} {comboItem.productName}
+                                    </Typography>
+                                  ))}
+                                </Box>
+                              )}
+                          </Box>
                           <Box
                             sx={{
                               display: "flex",
-                              flexDirection: "row",
                               justifyContent: "space-between",
                               alignItems: "center",
-                              marginTop: "5px",
+                              marginTop: "auto",
                             }}
                           >
                             <Typography
                               variant="h6"
                               color="text.primary"
                               className="menu-item-price"
-                              sx={{ marginTop: "5px", color: "#8a5a2a" }}
+                              sx={{ color: "#8a5a2a", fontSize: "1.25rem" }}
                             >
                               {price.toLocaleString("vi-VN")} VNĐ
                             </Typography>
@@ -596,6 +604,14 @@ export default function HomePage() {
                               <button
                                 onClick={() => handleOpenModal(item)}
                                 className="menu-item-add-button"
+                                style={{
+                                  padding: "8px 16px",
+                                  backgroundColor: "#8a5a2a",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "8px",
+                                  cursor: "pointer",
+                                }}
                               >
                                 Thêm
                               </button>
@@ -607,12 +623,38 @@ export default function HomePage() {
                   );
                 })}
               </Grid>
-              {itemTotalPages > 1 && (
+              {selectedCategory === "Combo" && totalComboPages > 1 && (
                 <Box sx={{ display: "flex", justifyContent: "center", mt: 5 }}>
                   <Pagination
-                    count={itemTotalPages}
-                    page={itemCurrentPage}
-                    onChange={handleItemPageChange}
+                    count={totalComboPages}
+                    page={comboCurrentPage}
+                    onChange={handleComboPageChange}
+                    color="primary"
+                    sx={{
+                      "& .MuiPaginationItem-root": {
+                        color: "#8a5a2a",
+                      },
+                    }}
+                  />
+                </Box>
+              )}
+              {selectedCategory !== "Combo" && materPagination.totalPages > 1 && (
+                <Box sx={{ display: "flex", justifyContent: "center", mt: 5 }}>
+                  <Pagination
+                    count={materPagination.totalPages}
+                    page={materPagination.currentPage}
+                    onChange={(event, newPage) =>
+                      dispatch(
+                        listItemApi({
+                          CategoryId: categories.find(
+                            (cat) => cat.categoryName === selectedCategory
+                          )?.categoryId,
+                          Page: newPage,
+                          PageSize: materPagination.pageSize,
+                          ProductType: selectedCategory === "Topping" ? "Extra" : "MaterProduct",
+                        })
+                      )
+                    }
                     color="primary"
                     sx={{
                       "& .MuiPaginationItem-root": {
@@ -738,54 +780,30 @@ export default function HomePage() {
                           >
                             {item.productName}
                             {item.sizeId && item.sizeId !== "Parent" && ` (${item.sizeId})`}
-                            {item.toppings && item.toppings.length > 0 && (
-                              <Box sx={{ fontSize: "14px", color: "#666" }}>
-                                {item.toppings.map((topping, index) => (
-                                  <span key={topping.toppingId}>
-                                    {index > 0 ? ", " : ""}
-                                    {topping.toppingName}
-                                  </span>
-                                ))}
-                              </Box>
-                            )}
                           </span>
                         </Box>
                       </Box>
-                      <Box
-                        className="order-detail-actions"
-                        sx={{ display: "flex", alignItems: "center" }}
-                      >
+                      <Box sx={{ display: "flex", alignItems: "center" }}>
                         <IconButton
-                          size="small"
-                          onClick={(e) => {
-                            const newQuantity = Math.max(0, item.quantity - 1);
-                            if (newQuantity !== item.quantity) {
-                              handleUpdateQuantity(item, newQuantity, e);
-                            }
-                          }}
+                          onClick={(e) =>
+                            handleUpdateQuantity(item, item.quantity - 1, e)
+                          }
+                          sx={{ color: "#8a5a2a" }}
                         >
                           <RemoveIcon />
                         </IconButton>
-                        <Typography className="order-detail-quantity">
-                          {item.quantity}
-                        </Typography>
+                        <Typography>{item.quantity}</Typography>
                         <IconButton
-                          size="small"
-                          onClick={(e) => {
-                            const newQuantity = item.quantity + 1;
-                            handleUpdateQuantity(item, newQuantity, e);
-                          }}
+                          onClick={(e) =>
+                            handleUpdateQuantity(item, item.quantity + 1, e)
+                          }
+                          sx={{ color: "#8a5a2a" }}
                         >
                           <AddIcon />
                         </IconButton>
-                        <Typography className="order-detail-price">
-                          {(item.subPrice || 0).toLocaleString("vi-VN")} VNĐ
-                        </Typography>
                         <IconButton
-                          size="small"
-                          onClick={(e) => {
-                            handleUpdateQuantity(item, 0, e);
-                          }}
+                          onClick={(e) => handleUpdateQuantity(item, 0, e)}
+                          sx={{ color: "#8a5a2a" }}
                         >
                           <DeleteIcon />
                         </IconButton>
@@ -793,28 +811,34 @@ export default function HomePage() {
                     </Box>
                   ))}
                 </Box>
-                <Box className="order-actions">
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    mt: 2,
+                  }}
+                >
                   <Button
-                    className="order-detail-button"
+                    variant="outlined"
                     onClick={handleClearCart}
                     sx={{
-                      backgroundColor: "#b0855b",
-                      color: "white",
-                      "&:hover": {
-                        backgroundColor: "#8d6b48",
-                      },
+                      color: "#8a5a2a",
+                      borderColor: "#8a5a2a",
+                      "&:hover": { borderColor: "#8a5a2a", backgroundColor: "#f0e6d9" },
                     }}
                   >
-                    Xóa đơn
+                    Xóa đơn hàng
                   </Button>
                   <Button
                     variant="contained"
-                    className="order-checkout-button"
-                    fullWidth
                     onClick={handleOpenCheckoutModal}
-                    disabled={!cart || cart.length === 0}
+                    sx={{
+                      backgroundColor: "#8a5a2a",
+                      "&:hover": { backgroundColor: "#70482f" },
+                    }}
+                    disabled={cart.length === 0}
                   >
-                    THANH TOÁN
+                    Thanh toán
                   </Button>
                 </Box>
               </>
@@ -830,15 +854,18 @@ export default function HomePage() {
         customization={customization}
         setCustomization={setCustomization}
         onAddToOrder={handleAddToOrder}
+        toppings={extras}
       />
+
       <ModalCheckout
         open={openCheckout}
         onClose={handleCloseCheckoutModal}
-        order={cart || []}
+        cart={cart}
+        subtotal={subtotal}
         total={total}
+        offers={offers}
+        onCreateOrder={handleCreateOrder}
       />
-
-   
     </Box>
   );
 }

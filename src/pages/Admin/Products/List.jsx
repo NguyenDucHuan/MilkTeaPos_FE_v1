@@ -14,28 +14,23 @@ import {
   TextField,
   MenuItem,
   Avatar,
-  Grid,
   Pagination,
+  Grid,
 } from "@mui/material";
 import {
   Edit as EditIcon,
   Add as AddIcon,
 } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  listItemApi,
-  setPage,
-} from "../../../store/slices/itemSlice";
+import { listItemApi, resetPage } from "../../../store/slices/itemSlice";
 import { getallCategory } from "../../../store/slices/categorySlice";
+import { debounce } from "lodash";
 import ProductModal from "./ProductModal";
 
 export default function ProductList() {
   const dispatch = useDispatch();
   const {
-    items,
-    currentPage,
-    pageSize,
-    totalPages,
+    materProducts: { items: masterProducts, pagination },
     isLoading,
     error,
   } = useSelector((state) => state.item);
@@ -51,6 +46,8 @@ export default function ProductList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [hasLoadedCategories, setHasLoadedCategories] = useState(false);
 
+  const PAGE_SIZE = 10;
+
   const stableCategory = useMemo(() => category, [category]);
 
   const filteredCategories = useMemo(
@@ -59,18 +56,6 @@ export default function ProductList() {
     [stableCategory]
   );
 
-  // Filter items to show only MasterProduct
-  const masterProducts = useMemo(
-    () => items.filter((product) => product.productType === "MaterProduct"),
-    [items]
-  );
-
-  // Reset currentPage to 1 when the component mounts
-  useEffect(() => {
-    dispatch(setPage(1));
-  }, [dispatch]);
-
-  // Load categories only once when component mounts
   useEffect(() => {
     if (!hasLoadedCategories && !categoryLoading) {
       dispatch(getallCategory());
@@ -78,25 +63,60 @@ export default function ProductList() {
     }
   }, [dispatch, hasLoadedCategories, categoryLoading]);
 
-  // Fetch products when dependencies change
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((value) => {
+        console.log("Dispatching search with term:", value);
+        dispatch(resetPage("MaterProduct"));
+        dispatch(
+          listItemApi({
+            CategoryId: selectedCategoryId,
+            Search: value.trim() || null,
+            Page: 1,
+            PageSize: PAGE_SIZE,
+            ProductType: "MaterProduct",
+          })
+        );
+      }, 500),
+    [dispatch, selectedCategoryId]
+  );
+
   useEffect(() => {
+    console.log("Fetching products with params:", {
+      CategoryId: selectedCategoryId,
+      Search: searchTerm.trim() || null,
+      Page: pagination.currentPage,
+      PageSize: PAGE_SIZE,
+      ProductType: "MaterProduct",
+    });
     dispatch(
       listItemApi({
         CategoryId: selectedCategoryId,
         Search: searchTerm.trim() || null,
-        Page: currentPage,
-        PageSize: pageSize,
+        Page: pagination.currentPage,
+        PageSize: PAGE_SIZE,
+        ProductType: "MaterProduct",
       })
     );
-  }, [dispatch, currentPage, pageSize, selectedCategoryId, searchTerm]);
+  }, [dispatch, pagination.currentPage, selectedCategoryId]);
+
+  useEffect(() => {
+    debouncedSearch(searchTerm);
+    return () => debouncedSearch.cancel();
+  }, [searchTerm, debouncedSearch]);
+
+  useEffect(() => {
+    console.log("Pagination state:", pagination);
+    console.log("Master products:", masterProducts);
+  }, [pagination, masterProducts]);
 
   const handleOpenModal = (product = null) => {
     if (categoryLoading) {
-      alert("Please wait for categories to load!");
+      alert("Vui lòng chờ danh mục tải xong!");
       return;
     }
     if (!filteredCategories.length) {
-      alert("No categories available to select!");
+      alert("Không có danh mục nào để chọn!");
       return;
     }
     setIsEditMode(!!product);
@@ -124,29 +144,53 @@ export default function ProductList() {
       listItemApi({
         CategoryId: selectedCategoryId,
         Search: searchTerm.trim() || null,
-        Page: currentPage,
-        PageSize: pageSize,
+        Page: pagination.currentPage,
+        PageSize: PAGE_SIZE,
+        ProductType: "MaterProduct",
       })
     );
   };
 
   const handlePageChange = (event, newPage) => {
-    dispatch(setPage(newPage));
+    console.log("Changing to page:", newPage);
+    dispatch(
+      listItemApi({
+        CategoryId: selectedCategoryId,
+        Search: searchTerm.trim() || null,
+        Page: newPage,
+        PageSize: PAGE_SIZE,
+        ProductType: "MaterProduct",
+      })
+    );
   };
 
   const handleCategoryChange = (e) => {
     const value = e.target.value === "all" ? null : Number(e.target.value);
+    console.log("Changing category to:", value);
     setSelectedCategoryId(value);
-    dispatch(setPage(1));
+    dispatch(resetPage("MaterProduct"));
+    dispatch(
+      listItemApi({
+        CategoryId: value,
+        Search: searchTerm.trim() || null,
+        Page: 1,
+        PageSize: PAGE_SIZE,
+        ProductType: "MaterProduct",
+      })
+    );
   };
 
-  if (isLoading) return <Typography>Loading...</Typography>;
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  if (isLoading) return <Typography>Đang tải...</Typography>;
   if (error)
-    return <Typography color="error">Error: {error.message || error}</Typography>;
+    return <Typography color="error">Lỗi: {error}</Typography>;
   if (categoryError)
     return (
       <Typography color="error">
-        Error loading categories: {categoryError}
+        Lỗi khi tải danh mục: {categoryError}
       </Typography>
     );
 
@@ -158,18 +202,27 @@ export default function ProductList() {
             <TextField
               select
               fullWidth
-              label="Category"
+              label="Danh mục"
               value={selectedCategoryId ?? "all"}
               onChange={handleCategoryChange}
               disabled={categoryLoading || filteredCategories.length === 0}
             >
-              <MenuItem value="all">All Categories</MenuItem>
+              <MenuItem value="all">Tất cả danh mục</MenuItem>
               {filteredCategories.map((cat) => (
                 <MenuItem key={cat.categoryId} value={Number(cat.categoryId)}>
                   {cat.categoryName}
                 </MenuItem>
               ))}
             </TextField>
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              label="Tìm kiếm sản phẩm"
+              value={searchTerm}
+              onChange={handleSearchChange}
+              placeholder="Nhập tên sản phẩm..."
+            />
           </Grid>
           <Grid
             item
@@ -186,7 +239,7 @@ export default function ProductList() {
                 "&:hover": { backgroundColor: "#6B4E2C" },
               }}
             >
-              ADD PRODUCT
+              THÊM SẢN PHẨM
             </Button>
           </Grid>
         </Grid>
@@ -194,18 +247,18 @@ export default function ProductList() {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: "bold" }}>Image</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Product Name</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Category</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Details</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Actions</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Hình ảnh</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Tên sản phẩm</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Danh mục</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Chi tiết</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Hành động</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {masterProducts.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} align="center">
-                  No products found
+                  Không tìm thấy sản phẩm
                 </TableCell>
               </TableRow>
             ) : (
@@ -217,7 +270,7 @@ export default function ProductList() {
                         currency: "VND",
                       })
                     : product.variants.length > 0
-                    ? "View details"
+                    ? "Xem chi tiết"
                     : "N/A";
 
                 return (
@@ -259,19 +312,22 @@ export default function ProductList() {
             )}
           </TableBody>
         </Table>
-        {totalPages > 1 && (
+        {pagination.totalPages >= 1 && (
           <Box display="flex" justifyContent="center" mt={3}>
+            {/* <Typography variant="body2" sx={{ mr: 2 }}>
+              Tổng số trang: {pagination.totalPages}, Trang hiện tại: {pagination.currentPage}
+            </Typography> */}
             <Pagination
-              count={totalPages}
-              page={currentPage}
+              count={pagination.totalPages}
+              page={pagination.currentPage}
               onChange={handlePageChange}
               color="primary"
+              disabled={isLoading}
             />
           </Box>
         )}
       </Paper>
 
-      {/* Add/Edit Product Modal */}
       <ProductModal
         open={openModal}
         onClose={handleCloseModal}
@@ -282,7 +338,6 @@ export default function ProductList() {
         onSubmitSuccess={handleSubmitSuccess}
       />
 
-      {/* Variant Details Modal */}
       <Modal open={openVariantModal} onClose={handleCloseVariantModal}>
         <Box
           sx={{
@@ -300,17 +355,17 @@ export default function ProductList() {
           }}
         >
           <Typography variant="h6" fontWeight="bold" gutterBottom>
-            Variant Details: {selectedProduct?.productName}
+            Chi tiết biến thể: {selectedProduct?.productName}
           </Typography>
           {selectedProduct?.variants.length === 0 ? (
-            <Typography>No variants available for this product.</Typography>
+            <Typography>Không có biến thể nào cho sản phẩm này.</Typography>
           ) : (
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>Size</TableCell>
-                  <TableCell>Price (VND)</TableCell>
-                  <TableCell>Description</TableCell>
+                  <TableCell>Kích thước</TableCell>
+                  <TableCell>Giá (VND)</TableCell>
+                  <TableCell>Mô tả</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -341,7 +396,7 @@ export default function ProductList() {
                 "&:hover": { backgroundColor: "#6B4E2C" },
               }}
             >
-              Close
+              Đóng
             </Button>
           </Box>
         </Box>

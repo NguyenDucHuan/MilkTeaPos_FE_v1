@@ -10,38 +10,30 @@ import {
   TableBody,
   IconButton,
   Button,
-  Modal,
-  TextField,
-  Switch,
-  FormControlLabel,
-  Avatar,
   Pagination,
+  Avatar,
 } from "@mui/material";
 import {
-  Edit as EditIcon,
   Add as AddIcon,
-  Delete as DeleteIcon,
+  Edit as EditIcon,
 } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
 import {
   listItemApi,
   createExtraProduct,
-  setPage,
 } from "../../../store/slices/itemSlice";
 import { getallCategory } from "../../../store/slices/categorySlice";
-import FormTopping from "./FormTopping"; // Import the FormTopping component
+import FormTopping from "./FormTopping";
 
 export default function ToppingPage() {
   const dispatch = useDispatch();
-  const { items, totalItems, currentPage, pageSize, totalPages, isLoading, error } =
-    useSelector((state) => state.item);
-  const categoryState = useSelector((state) => state.category);
-  const category = categoryState?.category || [];
-  const categoryLoading = categoryState?.isLoading || false;
-  const categoryError = categoryState?.error || null;
+  const { extras: { items: toppings, pagination }, isLoading, error } = useSelector((state) => state.item);
+  const { category, isLoading: categoryLoading, error: categoryError } = useSelector((state) => state.category);
 
   const [openModal, setOpenModal] = useState(false);
   const [hasLoadedCategories, setHasLoadedCategories] = useState(false);
+
+  const PAGE_SIZE = 10;
 
   const stableCategory = useMemo(() => category, [category]);
   const toppingCategory = useMemo(
@@ -49,66 +41,57 @@ export default function ToppingPage() {
     [stableCategory]
   );
 
-  // Reset currentPage to 1 when the component mounts
-  useEffect(() => {
-    dispatch(setPage(1));
-  }, [dispatch]);
-
-  // Load categories only once when component mounts
   useEffect(() => {
     if (!hasLoadedCategories) {
-      console.log("Gọi getallCategory khi component mount");
       dispatch(getallCategory());
       setHasLoadedCategories(true);
     }
   }, [dispatch, hasLoadedCategories]);
 
-  // Fetch toppings when currentPage, pageSize, or toppingCategory changes
   useEffect(() => {
     if (toppingCategory) {
-      console.log(
-        "Fetching toppings - CategoryId:",
-        toppingCategory.categoryId,
-        "Page:",
-        currentPage,
-        "PageSize:",
-        pageSize
-      );
       dispatch(
         listItemApi({
           CategoryId: toppingCategory.categoryId,
-          Page: currentPage,
-          PageSize: pageSize,
+          Page: pagination.currentPage,
+          PageSize: PAGE_SIZE,
+          ProductType: "Extra",
         })
-      ).then((result) => {
-        if (result.meta.requestStatus === "fulfilled") {
-          console.log("Toppings fetched successfully:", result.payload);
-        } else {
-          console.error("Error fetching toppings:", result.error);
-        }
-      });
+      );
     }
-  }, [dispatch, currentPage, pageSize, toppingCategory]);
+  }, [dispatch, pagination.currentPage, toppingCategory]);
 
   const handleOpenModal = () => {
     if (categoryLoading) {
       alert("Vui lòng đợi danh mục được tải!");
       return;
     }
-    if (!toppingCategory) {
-   
-      // Still allow opening the modal, but warn the user
-    }
     setOpenModal(true);
   };
 
   const handleCloseModal = () => {
     setOpenModal(false);
+    if (toppingCategory) {
+      dispatch(
+        listItemApi({
+          CategoryId: toppingCategory.categoryId,
+          Page: pagination.currentPage,
+          PageSize: PAGE_SIZE,
+          ProductType: "Extra",
+        })
+      );
+    }
   };
 
   const handlePageChange = (event, newPage) => {
-    console.log("Navigating to page:", newPage);
-    dispatch(setPage(newPage));
+    dispatch(
+      listItemApi({
+        CategoryId: toppingCategory?.categoryId,
+        Page: newPage,
+        PageSize: PAGE_SIZE,
+        ProductType: "Extra",
+      })
+    );
   };
 
   const handleFormSubmit = async (e) => {
@@ -128,7 +111,6 @@ export default function ToppingPage() {
     formDataToSend.append("Description", formData.description.value || "");
     formDataToSend.append("Price", parseFloat(formData.price.value));
     formDataToSend.append("Status", formData.status.checked);
-    // Use toppingCategory.categoryId if available, otherwise handle the missing category case
     formDataToSend.append("CategoryId", toppingCategory?.categoryId || "");
     if (formData.image.files[0]) {
       formDataToSend.append("Image", formData.image.files[0]);
@@ -138,13 +120,6 @@ export default function ToppingPage() {
       const resultAction = await dispatch(createExtraProduct(formDataToSend));
       if (createExtraProduct.fulfilled.match(resultAction)) {
         alert("Thêm topping thành công!");
-        dispatch(
-          listItemApi({
-            CategoryId: toppingCategory?.categoryId || "",
-            Page: currentPage,
-            PageSize: pageSize,
-          })
-        );
         handleCloseModal();
       } else {
         throw new Error(
@@ -152,35 +127,21 @@ export default function ToppingPage() {
         );
       }
     } catch (error) {
-      console.error("Error creating topping:", error);
       alert(error.message || "Có lỗi xảy ra khi thêm topping!");
     }
   };
 
-  if (isLoading) return <Typography>Loading...</Typography>;
-  if (error)
-    return <Typography color="error">Error: {error.message || error}</Typography>;
-  if (categoryError)
-    return (
-      <Typography color="error">
-        Error loading categories: {categoryError}
-      </Typography>
-    );
+  if (isLoading) return <Typography>Đang tải...</Typography>;
+  if (error) return <Typography color="error">Lỗi: {error}</Typography>;
+  if (categoryError) return <Typography color="error">Lỗi khi tải danh mục: {categoryError}</Typography>;
 
-  // If no topping category exists, show a button to add a new topping
   if (!toppingCategory) {
     return (
       <Box sx={{ padding: 3 }}>
         <Typography variant="h5" fontWeight="bold" gutterBottom>
           Quản lý Topping
         </Typography>
-        <Box
-          display="flex"
-          flexDirection="column"
-          alignItems="center"
-          justifyContent="center"
-          sx={{ mt: 4 }}
-        >
+        <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" sx={{ mt: 4 }}>
           <Typography variant="h6" color="textSecondary" gutterBottom>
             Chưa có danh mục Topping!
           </Typography>
@@ -188,18 +149,11 @@ export default function ToppingPage() {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={handleOpenModal}
-            sx={{
-              backgroundColor: "#8B5E3C",
-              "&:hover": {
-                backgroundColor: "#6B4E2C",
-              },
-            }}
+            sx={{ backgroundColor: "#8B5E3C", "&:hover": { backgroundColor: "#6B4E2C" } }}
           >
             THÊM TOPPING
           </Button>
         </Box>
-
-        {/* FormTopping Modal */}
         <FormTopping
           open={openModal}
           handleClose={handleCloseModal}
@@ -216,23 +170,13 @@ export default function ToppingPage() {
         Quản lý Topping
       </Typography>
       <Paper sx={{ padding: 2 }}>
-        <Box
-          display="flex"
-          justifyContent="space-between"
-          alignItems="center"
-          mb={2}
-        >
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h6">Danh sách Topping</Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={handleOpenModal}
-            sx={{
-              backgroundColor: "#8B5E3C",
-              "&:hover": {
-                backgroundColor: "#6B4E2C",
-              },
-            }}
+            sx={{ backgroundColor: "#8B5E3C", "&:hover": { backgroundColor: "#6B4E2C" } }}
           >
             THÊM TOPPING
           </Button>
@@ -248,22 +192,18 @@ export default function ToppingPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {items.length === 0 ? (
+            {toppings.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} align="center">
                   Không có topping nào
                 </TableCell>
               </TableRow>
             ) : (
-              items.map((topping) => (
+              toppings.map((topping) => (
                 <TableRow key={topping.productId}>
                   <TableCell>
                     {topping.imageUrl ? (
-                      <Avatar
-                        src={topping.imageUrl}
-                        alt={topping.productName}
-                        sx={{ width: 50, height: 50 }}
-                      />
+                      <Avatar src={topping.imageUrl} alt={topping.productName} sx={{ width: 50, height: 50 }} />
                     ) : (
                       "N/A"
                     )}
@@ -272,10 +212,7 @@ export default function ToppingPage() {
                   <TableCell>{topping.description || "N/A"}</TableCell>
                   <TableCell>
                     {topping.price
-                      ? topping.price.toLocaleString("vi-VN", {
-                          style: "currency",
-                          currency: "VND",
-                        })
+                      ? topping.price.toLocaleString("vi-VN", { style: "currency", currency: "VND" })
                       : "N/A"}
                   </TableCell>
                   <TableCell>
@@ -288,22 +225,21 @@ export default function ToppingPage() {
             )}
           </TableBody>
         </Table>
-        {totalPages > 1 && (
+        {pagination.totalPages >= 1 && (
           <Box display="flex" justifyContent="center" mt={3}>
-            <Typography variant="body2" sx={{ mr: 2 }}>
-              Total Pages: {totalPages}, Current Page: {currentPage}
-            </Typography>
+            {/* <Typography variant="body2" sx={{ mr: 2 }}>
+              Tổng số trang: {pagination.totalPages}, Trang hiện tại: {pagination.currentPage}
+            </Typography> */}
             <Pagination
-              count={totalPages}
-              page={currentPage}
+              count={pagination.totalPages}
+              page={pagination.currentPage}
               onChange={handlePageChange}
               color="primary"
+              disabled={isLoading}
             />
           </Box>
         )}
       </Paper>
-
-      {/* FormTopping Modal */}
       <FormTopping
         open={openModal}
         handleClose={handleCloseModal}
