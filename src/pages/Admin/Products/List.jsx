@@ -215,15 +215,7 @@ export default function ProductList() {
               ))}
             </TextField>
           </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Tìm kiếm sản phẩm"
-              value={searchTerm}
-              onChange={handleSearchChange}
-              placeholder="Nhập tên sản phẩm..."
-            />
-          </Grid>
+
           <Grid
             item
             xs={12}
