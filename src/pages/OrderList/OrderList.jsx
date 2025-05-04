@@ -329,15 +329,15 @@ const OrderList = () => {
                     Danh sách sản phẩm
                   </Typography>
                   <TableContainer component={Paper}>
-                    <Table>
+                    <Table sx={{ minWidth: 900 }}>
                       <TableHead>
                         <TableRow>
                           <TableCell>Sản phẩm</TableCell>
                           <TableCell>Size</TableCell>
                           <TableCell>Toppings</TableCell>
-                          <TableCell align="right">Số lượng</TableCell>
-                          <TableCell align="right">Đơn giá</TableCell>
-                          <TableCell align="right">Thành tiền</TableCell>
+                          <TableCell align="right" sx={{ width: 100 }}>Số lượng</TableCell>
+                          <TableCell align="right" sx={{ width: 140 }}>Đơn giá</TableCell>
+                          <TableCell align="right" sx={{ width: 160 }}>Thành tiền</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -350,28 +350,59 @@ const OrderList = () => {
                                   topping => topping.masterId === item.orderItemId
                                 )
                               : [];
-                            
-                            // Tính tổng giá của sản phẩm và topping
+                            // Giá sản phẩm chính (chưa cộng topping)
                             const basePrice = item.price;
+                            // Tổng giá topping
                             const toppingsPrice = toppings.reduce(
                               (total, topping) => total + topping.price,
                               0
                             );
+                            // Tổng giá (sản phẩm + topping)
                             const totalPrice = basePrice + toppingsPrice;
-                            
+
                             return (
                               <TableRow key={item.orderItemId}>
-                                <TableCell>{item.product?.productName}</TableCell>
+                                <TableCell>
+                                  <div style={{ fontWeight: 600, color: '#8a5a2a', fontSize: 15 }}>
+                                    {item.product?.productName}
+                                    {item.product?.sizeId && (
+                                      <span style={{ color: '#70482f', fontWeight: 400, fontSize: 13 }}>
+                                        {' '}({item.product.sizeId})
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div style={{ color: '#b0855b', fontSize: 13, marginTop: 2 }}>
+                                    Giá: {formatCurrency(basePrice)}
+                                  </div>
+                                  {toppings.length > 0 && (
+                                    <div style={{ marginTop: 4, background: '#f9f5f1', borderRadius: 6, padding: '4px 8px' }}>
+                                      <span style={{ fontWeight: 500, color: '#b0855b', fontSize: 13 }}>Topping:</span>
+                                      <ul style={{ margin: 0, paddingLeft: 18 }}>
+                                        {toppings.map((topping, idx) => (
+                                          <li key={topping.orderItemId} style={{ fontSize: '13px', color: '#666', marginBottom: 2 }}>
+                                            {topping.product?.productName}
+                                            {topping.product?.sizeId && (
+                                              <span style={{ color: '#70482f', fontWeight: 400, fontSize: 12 }}>
+                                                {' '}({topping.product.sizeId})
+                                              </span>
+                                            )}
+                                            {' - '}{formatCurrency(topping.price)}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </TableCell>
                                 <TableCell>{item.product?.sizeId || 'Mặc định'}</TableCell>
                                 <TableCell>
-                                  {toppings.length > 0 ? (
-                                    toppings.map((topping, index) => (
-                                      <span key={topping.orderItemId}>
-                                        {index > 0 ? ', ' : ''}
-                                        {topping.product?.productName}
-                                      </span>
-                                    ))
-                                  ) : 'Không có'}
+                                  {toppings.length > 0
+                                    ? toppings.map((topping, index) => (
+                                        <span key={topping.orderItemId}>
+                                          {index > 0 ? ', ' : ''}
+                                          {topping.product?.productName}
+                                        </span>
+                                      ))
+                                    : 'Không có'}
                                 </TableCell>
                                 <TableCell align="right">{item.quantity}</TableCell>
                                 <TableCell align="right">

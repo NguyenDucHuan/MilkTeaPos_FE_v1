@@ -23,6 +23,8 @@ import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
+import ModalUpdateCart from "../../../components/Modal/ModalUpdateCart";
 import { getAllCategoriesForHomepage } from "../../../store/slices/categorySlice";
 import { listItemApi } from "../../../store/slices/itemSlice";
 import { useOutletContext } from "react-router-dom";
@@ -71,6 +73,8 @@ export default function HomePage() {
   });
   const [comboCurrentPage, setComboCurrentPage] = useState(1);
   const [pageSize] = useState(6);
+  const [openEditModal, setOpenEditModal] = useState(false);
+  const [editOrderItemId, setEditOrderItemId] = useState(null);
 
   useEffect(() => {
     dispatch(getAllCategoriesForHomepage());
@@ -417,6 +421,16 @@ export default function HomePage() {
   const totalComboPages = useMemo(() => {
     return Math.ceil(combos.length / pageSize);
   }, [combos, pageSize]);
+
+  const handleOpenEditModal = (orderItemId) => {
+    setEditOrderItemId(orderItemId);
+    setOpenEditModal(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setOpenEditModal(false);
+    setEditOrderItemId(null);
+  };
 
   return (
     <Box className="home-page" sx={{ display: "flex" }}>
@@ -891,6 +905,12 @@ export default function HomePage() {
                         >
                           <DeleteIcon />
                         </IconButton>
+                        <IconButton
+                          onClick={() => handleOpenEditModal(item.orderItemId)}
+                          sx={{ color: "#8a5a2a", ml: 1 }}
+                        >
+                          <EditIcon />
+                        </IconButton>
                       </Box>
                     </Box>
                   ))}
@@ -949,6 +969,12 @@ export default function HomePage() {
         total={total}
         offers={offers}
         onCreateOrder={handleCreateOrder}
+      />
+
+      <ModalUpdateCart
+        open={openEditModal}
+        onClose={handleCloseEditModal}
+        orderItemId={editOrderItemId}
       />
     </Box>
   );
