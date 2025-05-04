@@ -123,8 +123,7 @@ const Header = ({ setSelectedCategory, isLoading, error }) => {
           }))
         : [],
     },
-    { text: "Nhân viên", icon: GroupIcon, path: "/staff" },
-    { text: "Cài đặt", icon: SettingsIcon, path: "/settings" },
+    { text: "Order history", icon: GroupIcon, path: "/orders" },
   ];
 
   const userMenuItems = [

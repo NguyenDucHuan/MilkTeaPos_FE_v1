@@ -74,20 +74,20 @@ export default function AccountList() {
 
       <TableContainer component={Paper}>
         <Table>
-          <TableHead sx={{ backgroundColor: "#f4f1e9" }}>
+          <TableHead sx={{ backgroundColor: "#8B5E3C" }}>
             <TableRow>
-              <TableCell><b>No.</b></TableCell>
-              <TableCell><b>ID</b></TableCell>
-              <TableCell><b>Avatar</b></TableCell>
-              <TableCell><b>Full Name</b></TableCell>
-              <TableCell><b>Username</b></TableCell>
-              <TableCell><b>Email</b></TableCell>
-              <TableCell><b>Phone</b></TableCell>
-              <TableCell><b>Role</b></TableCell>
-              <TableCell><b>Created At</b></TableCell>
-              <TableCell><b>Updated At</b></TableCell>
-              <TableCell><b>Status</b></TableCell>
-              <TableCell><b>Action</b></TableCell>
+              <TableCell  sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}><b>No.</b></TableCell>
+              <TableCell  sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}><b>ID</b></TableCell>
+              <TableCell  sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}><b>Avatar</b></TableCell>
+              <TableCell  sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}><b>Full Name</b></TableCell>
+              <TableCell  sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}><b>Username</b></TableCell>
+              <TableCell  sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}><b>Email</b></TableCell>
+              <TableCell  sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}><b>Phone</b></TableCell>
+              <TableCell  sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}><b>Role</b></TableCell>
+              <TableCell  sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}><b>Created At</b></TableCell>
+              <TableCell  sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}><b>Updated At</b></TableCell>
+              <TableCell  sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}><b>Status</b></TableCell>
+              <TableCell  sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}><b>Action</b></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

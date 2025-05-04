@@ -201,22 +201,17 @@ const ProductModal = ({
   const onSubmit = async (data) => {
     const formDataToSend = new FormData();
     formDataToSend.append("productName", data.productName);
-    formDataToSend.append("categoryId", data.categoryId);
+    formDataToSend.append("CategoryId", data.categoryId.toString());
     formDataToSend.append("description", data.description || "");
     formDataToSend.append("status", data.status.toString());
 
     if (!isEditMode) {
       // Create product
       data.sizes.forEach((sizeObj, index) => {
+        const price = parseFloat(sizeObj.price) || 0;
         formDataToSend.append(`sizes[${index}][size]`, sizeObj.size);
-        formDataToSend.append(
-          `sizes[${index}][price]`,
-          sizeObj.price.toString()
-        );
-        formDataToSend.append(
-          `sizes[${index}][status]`,
-          sizeObj.status.toString()
-        );
+        formDataToSend.append(`sizes[${index}][price]`, price.toString());
+        formDataToSend.append(`sizes[${index}][status]`, sizeObj.status.toString());
       });
       if (imageFile) {
         formDataToSend.append("parentImage", imageFile);
@@ -228,26 +223,15 @@ const ProductModal = ({
         return;
       }
       formDataToSend.append("ProductId", editProductId.toString());
+      formDataToSend.append("CategoryId", data.categoryId.toString());
       data.sizes.forEach((sizeObj, index) => {
         if (sizeObj.productId) {
-          formDataToSend.append(
-            `Variants[${index}].ProductId`,
-            sizeObj.productId.toString()
-          );
+          formDataToSend.append(`Variants[${index}].ProductId`, sizeObj.productId.toString());
         }
         formDataToSend.append(`Variants[${index}].SizeId`, sizeObj.size);
-        formDataToSend.append(
-          `Variants[${index}].Prize`,
-          sizeObj.price.toString()
-        ); // Use Prize for update
-        formDataToSend.append(
-          `Variants[${index}].Status`,
-          sizeObj.status.toString()
-        );
-        formDataToSend.append(
-          `Variants[${index}].Description`,
-          data.description || ""
-        );
+        formDataToSend.append(`Variants[${index}].Prize`, sizeObj.price.toString());
+        formDataToSend.append(`Variants[${index}].Status`, sizeObj.status.toString());
+        formDataToSend.append(`Variants[${index}].Description`, data.description || "");
       });
       if (imageFile) {
         formDataToSend.append("parentImage", imageFile);
@@ -255,14 +239,9 @@ const ProductModal = ({
     }
 
     try {
-      console.log(
-        "formDataToSend before submit:",
-        Object.fromEntries(formDataToSend)
-      );
+      console.log("formDataToSend before submit:", Object.fromEntries(formDataToSend));
       if (!isEditMode) {
-        const createResponse = await dispatch(
-          createProduct(formDataToSend)
-        ).unwrap();
+        const createResponse = await dispatch(createProduct(formDataToSend)).unwrap();
         console.log("createProduct response:", createResponse);
         toast.success("Sản phẩm đã được tạo thành công!");
       } else {
@@ -274,10 +253,7 @@ const ProductModal = ({
           const imageFormData = new FormData();
           imageFormData.append("formFile", imageFile);
           const imageResponse = await dispatch(
-            updateImageProduct({
-              productId: editProductId,
-              formData: imageFormData,
-            })
+            updateImageProduct({ productId: editProductId, formData: imageFormData })
           ).unwrap();
           console.log("updateImageProduct response:", imageResponse);
         }
@@ -342,47 +318,77 @@ const ProductModal = ({
             name="categoryId"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                select
-                fullWidth
-                label="Danh mục"
-                margin="normal"
-                required
-                disabled={categoryLoading}
-                error={!!errors.categoryId}
-                helperText={errors.categoryId?.message}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 1,
-                    "&:hover fieldset": { borderColor: "#8B5E3C" },
-                    "&.Mui-focused fieldset": { borderColor: "#8B5E3C" },
-                  },
-                }}
-              >
-                {categoryLoading ? (
-                  <MenuItem value="" disabled>
-                    Đang tải danh mục...
-                  </MenuItem>
-                ) : categoryError ? (
-                  <MenuItem value="" disabled>
-                    Lỗi: {categoryError}
-                  </MenuItem>
-                ) : filteredCategories.length === 0 ? (
-                  <MenuItem value="" disabled>
-                    Không có danh mục
-                  </MenuItem>
+              <>
+                {isEditMode ? (
+                  // Hiển thị giá trị tĩnh khi ở chế độ chỉnh sửa
+                  <TextField
+                    value={
+                      product
+                        ? filteredCategories.find((cat) => cat.categoryId === Number(product.categoryId))?.categoryName ||
+                          "Không tìm thấy danh mục"
+                        : "N/A"
+                    }
+                    fullWidth
+                    label="Danh mục"
+                    margin="normal"
+                    disabled={true} // Vô hiệu hóa hoàn toàn khi edit
+                    InputProps={{
+                      readOnly: true, // Ngăn người dùng tương tác
+                    }}
+                    helperText="Danh mục không thể thay đổi khi cập nhật"
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 1,
+                        "&:hover fieldset": { borderColor: "#8B5E3C" },
+                        "&.Mui-focused fieldset": { borderColor: "#8B5E3C" },
+                      },
+                    }}
+                  />
                 ) : (
-                  filteredCategories.map((cat) => (
-                    <MenuItem
-                      key={cat.categoryId}
-                      value={Number(cat.categoryId)}
-                    >
-                      {cat.categoryName}
-                    </MenuItem>
-                  ))
+                  // Dropdown bình thường khi tạo mới
+                  <TextField
+                    {...field}
+                    select
+                    fullWidth
+                    label="Danh mục"
+                    margin="normal"
+                    required
+                    disabled={categoryLoading}
+                    error={!!errors.categoryId}
+                    helperText={errors.categoryId?.message}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 1,
+                        "&:hover fieldset": { borderColor: "#8B5E3C" },
+                        "&.Mui-focused fieldset": { borderColor: "#8B5E3C" },
+                      },
+                    }}
+                  >
+                    {categoryLoading ? (
+                      <MenuItem value="" disabled>
+                        Đang tải danh mục...
+                      </MenuItem>
+                    ) : categoryError ? (
+                      <MenuItem value="" disabled>
+                        Lỗi: {categoryError}
+                      </MenuItem>
+                    ) : filteredCategories.length === 0 ? (
+                      <MenuItem value="" disabled>
+                        Không có danh mục
+                      </MenuItem>
+                    ) : (
+                      filteredCategories.map((cat) => (
+                        <MenuItem
+                          key={cat.categoryId}
+                          value={Number(cat.categoryId)}
+                        >
+                          {cat.categoryName}
+                        </MenuItem>
+                      ))
+                    )}
+                  </TextField>
                 )}
-              </TextField>
+              </>
             )}
           />
           <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
@@ -430,6 +436,16 @@ const ProductModal = ({
                       type="number"
                       required
                       inputProps={{ min: 0 }}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        field.onChange(value);
+                        setFormData((prev) => {
+                          const newSizes = [...prev.sizes];
+                          newSizes[index] = { ...newSizes[index], price: value };
+                          return { ...prev, sizes: newSizes };
+                        });
+                      }}
+                      value={field.value || "0"}
                       error={!!errors.sizes?.[index]?.price}
                       helperText={errors.sizes?.[index]?.price?.message}
                       sx={{
@@ -459,10 +475,9 @@ const ProductModal = ({
                             "& .MuiSwitch-switchBase.Mui-checked": {
                               color: "#8B5E3C",
                             },
-                            "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
-                              {
-                                bgcolor: "#8B5E3C",
-                              },
+                            "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                              bgcolor: "#8B5E3C",
+                            },
                           }}
                         />
                       }
@@ -573,10 +588,9 @@ const ProductModal = ({
                       "& .MuiSwitch-switchBase.Mui-checked": {
                         color: "#8B5E3C",
                       },
-                      "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
-                        {
-                          bgcolor: "#8B5E3C",
-                        },
+                      "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                        bgcolor: "#8B5E3C",
+                      },
                     }}
                   />
                 }

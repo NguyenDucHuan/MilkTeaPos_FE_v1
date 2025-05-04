@@ -138,9 +138,7 @@ export default function ToppingPage() {
   if (!toppingCategory) {
     return (
       <Box sx={{ padding: 3 }}>
-        <Typography variant="h5" fontWeight="bold" gutterBottom>
-          Quản lý Topping
-        </Typography>
+  
         <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" sx={{ mt: 4 }}>
           <Typography variant="h6" color="textSecondary" gutterBottom>
             Chưa có danh mục Topping!
@@ -166,9 +164,7 @@ export default function ToppingPage() {
 
   return (
     <Box sx={{ padding: 3 }}>
-      <Typography variant="h5" fontWeight="bold" gutterBottom>
-        Quản lý Topping
-      </Typography>
+
       <Paper sx={{ padding: 2 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h6">Danh sách Topping</Typography>
@@ -182,13 +178,13 @@ export default function ToppingPage() {
           </Button>
         </Box>
         <Table>
-          <TableHead>
+          <TableHead sx={{ backgroundColor: "#8B5E3C" }}>
             <TableRow>
-              <TableCell>Hình ảnh</TableCell>
-              <TableCell>Tên Topping</TableCell>
-              <TableCell>Mô tả</TableCell>
-              <TableCell>Giá (VND)</TableCell>
-              <TableCell>Hành động</TableCell>
+              <TableCell sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}>Hình ảnh</TableCell>
+              <TableCell sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}>Tên Topping</TableCell>
+              <TableCell sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}>Mô tả</TableCell>
+              <TableCell sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}>Giá (VND)</TableCell>
+              <TableCell sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}>Hành động</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

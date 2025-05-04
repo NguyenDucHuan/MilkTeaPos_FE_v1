@@ -14,6 +14,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { listPaymentApi } from "../../store/slices/paymentSlice";
 import { useNavigate } from "react-router-dom";
 import fetcher from "../../apis/fetcher";
+import toast from "react-hot-toast";
 
 export default function ModalCheckout({ open, onClose, cart, total }) {
   const dispatch = useDispatch();
@@ -80,6 +81,7 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
       };
 
       const response = await fetcher.post("/order", orderData);
+      toast.success("Order created successfully!");
       console.log("Order created:", response.data);
 
       // Đóng modal
@@ -88,6 +90,7 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
       // Chuyển hướng đến trang danh sách đơn hàng
       navigate("/orders");
     } catch (error) {
+      toast.error("Failed to create order. Please try again.");
       console.error("Error creating order:", error);
       // Có thể thêm xử lý hiển thị lỗi ở đây
     } finally {

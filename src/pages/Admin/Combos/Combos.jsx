@@ -162,9 +162,7 @@ export default function Combos() {
 
   return (
     <Box sx={{ padding: 3, bgcolor: "#fffbf2", minHeight: "100vh" }}>
-      <Typography variant="h4" fontWeight="bold" color="#333" gutterBottom>
-        Quản lý Combo
-      </Typography>
+  
       <Paper sx={{ padding: 3, borderRadius: 2, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Typography variant="h6" color="#555">
@@ -187,12 +185,12 @@ export default function Combos() {
         </Box>
         <Table>
           <TableHead>
-            <TableRow>
-              <TableCell sx={{ fontWeight: "bold", color: "#333" }}>Tên combo</TableCell>
-              <TableCell sx={{ fontWeight: "bold", color: "#333" }}>Mô tả</TableCell>
-              <TableCell sx={{ fontWeight: "bold", color: "#333" }}>Giá (VND)</TableCell>
-              <TableCell sx={{ fontWeight: "bold", color: "#333" }}>Trạng thái</TableCell>
-              <TableCell sx={{ fontWeight: "bold", color: "#333" }}>Hành động</TableCell>
+            <TableRow sx={{ bgcolor: "#8B5E3C" }}>
+              <TableCell sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}>Tên combo</TableCell>
+              <TableCell sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}>Mô tả</TableCell>
+              <TableCell sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}>Giá (VND)</TableCell>
+              <TableCell sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}>Trạng thái</TableCell>
+              <TableCell sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}>Hành động</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

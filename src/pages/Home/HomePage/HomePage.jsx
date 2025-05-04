@@ -131,9 +131,6 @@ export default function HomePage() {
   };
 
   const handleOpenModal = async (item) => {
-    console.log("Item being processed:", item);
-    console.log("Product Type:", item.productType);
-
     if (item.productType?.toLowerCase() === "extra") {
       console.log("Processing as topping");
       try {

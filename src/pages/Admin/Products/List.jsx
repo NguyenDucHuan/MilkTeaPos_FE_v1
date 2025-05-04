@@ -198,6 +198,7 @@ export default function ProductList() {
     <Box sx={{ padding: 3 }}>
       <Paper sx={{ padding: 2 }}>
         <Grid container spacing={2} alignItems="center" mb={2}>
+          
           <Grid item xs={12} sm={4}>
             <TextField
               select
@@ -237,13 +238,13 @@ export default function ProductList() {
         </Grid>
 
         <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ fontWeight: "bold" }}>Hình ảnh</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Tên sản phẩm</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Danh mục</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Chi tiết</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Hành động</TableCell>
+          <TableHead sx={{ backgroundColor: "#8B5E3C" }}>
+            <TableRow >
+              <TableCell sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}>Hình ảnh</TableCell>
+              <TableCell sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}>Tên sản phẩm</TableCell>
+              <TableCell sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}>Danh mục</TableCell>
+              <TableCell sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}>Chi tiết</TableCell>
+              <TableCell sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}>Hành động</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

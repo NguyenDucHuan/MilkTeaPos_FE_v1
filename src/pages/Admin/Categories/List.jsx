@@ -23,7 +23,9 @@ import CategoryForm from "./CategoryForm";
 
 export default function CategoryList() {
   const dispatch = useDispatch();
-  const { category, isLoading, pagination } = useSelector((state) => state.category);
+  const { category, isLoading, pagination } = useSelector(
+    (state) => state.category
+  );
   const [openModal, setOpenModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [page, setPage] = useState(1);
@@ -33,7 +35,7 @@ export default function CategoryList() {
   }, [dispatch, page]);
 
   useEffect(() => {
-    console.log('CategoryList - category array:', category);
+    console.log("CategoryList - category array:", category);
   }, [category]);
 
   // const handleToggleStatus = async (category) => {
@@ -42,7 +44,7 @@ export default function CategoryList() {
   // };
 
   const handleOpenModal = (category = null) => {
-    console.log('Opening modal with category:', category);
+    console.log("Opening modal with category:", category);
     setSelectedCategory(category);
     setOpenModal(true);
   };
@@ -58,10 +60,6 @@ export default function CategoryList() {
 
   return (
     <Box sx={{ padding: 3 }}>
-      <Typography variant="h5" fontWeight="bold" gutterBottom>
-        Danh sách danh mục
-      </Typography>
-
       <Paper sx={{ padding: 2 }}>
         <Box
           display="flex"
@@ -69,7 +67,6 @@ export default function CategoryList() {
           alignItems="center"
           mb={2}
         >
-          <Typography variant="h6">Danh mục</Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -81,12 +78,27 @@ export default function CategoryList() {
         </Box>
 
         <Table>
-          <TableHead>
+          <TableHead
+            className="table-header"
+            sx={{ backgroundColor: "#8B5E3C" }}
+          >
             <TableRow>
-              <TableCell>Image</TableCell>
-              <TableCell>Tên danh mục</TableCell>
+              <TableCell
+                sx={{ color: "white", fontWeight: "600", fontSize: "15px" }}
+              >
+                Image
+              </TableCell>
+              <TableCell
+                sx={{ color: "white", fontWeight: "600", fontSize: "15px" }}
+              >
+                Tên danh mục
+              </TableCell>
               {/* <TableCell>Trạng thái</TableCell> */}
-              <TableCell>Hành động</TableCell>
+              <TableCell
+                sx={{ color: "white", fontWeight: "600", fontSize: "15px" }}
+              >
+                Hành động
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

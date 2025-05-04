@@ -33,81 +33,23 @@ ChartJS.register(
   Legend
 );
 
-// Dữ liệu và tùy chọn cho biểu đồ Sales by Category (Pie Chart)
-const salesData = {
-  labels: ["Classic", "Special", "Fruit", "Combo"],
-  datasets: [
-    {
-      label: "Sales by Category",
-      data: [35, 25, 20, 20],
-      backgroundColor: ["#ac8e6f", "#c4a484", "#e6d5b8", "#f5e8c7"],
-      borderWidth: 1,
-    },
-  ],
-};
-const salesOptions = {
-  responsive: true,
-  plugins: {
-    legend: {
-      position: "bottom",
-    },
-    title: {
-      display: true,
-      text: "Sales by Category",
-    },
-  },
-};
-
-// Dữ liệu và tùy chọn cho biểu đồ Top Selling Products (Horizontal Bar Chart)
-const topProductsData = {
-  labels: [
-    "Classic Milk-Tea",
-    "Taro Milk-Tea",
-    "Brown Sugar Milk-Tea",
-    "Matcha Milk-Tea",
-    "Couple",
-  ],
-  datasets: [
-    {
-      label: "Top Selling Products",
-      data: [120, 90, 80, 70, 60],
-      backgroundColor: "#ac8e6f",
-    },
-  ],
-};
-const topProductsOptions = {
-  indexAxis: "y",
-  responsive: true,
-  plugins: {
-    legend: {
-      display: false,
-    },
-    title: {
-      display: true,
-      text: "Top Selling Products",
-    },
-  },
-  scales: {
-    x: {
-      beginAtZero: true,
-      max: 120,
-    },
-  },
-};
-
 export default function DashboardAdmin() {
   const dispatch = useDispatch();
-  const { statistic, isLoading, error } = useSelector((state) => state.statistic);
+  const { statistic, isLoading, error } = useSelector(
+    (state) => state.statistic
+  );
 
   // Trạng thái cho chế độ hiển thị (Daily, Monthly, Yearly)
   const [revenueMode, setRevenueMode] = useState("Daily");
   const [ordersMode, setOrdersMode] = useState("Daily");
-  const [selectedMonth, setSelectedMonth] = useState(4); // Mặc định tháng 4
-  const [selectedYear, setSelectedYear] = useState(2025); // Mặc định năm 2025
+  const [selectedMonth, setSelectedMonth] = useState(5); 
+  const [selectedYear, setSelectedYear] = useState(2025); 
 
   // Cập nhật dữ liệu biểu đồ từ API
-  const revenueLabels = statistic?.revenueChart?.map((item) => item.label) || [];
-  const revenueValues = statistic?.revenueChart?.map((item) => item.value) || [];
+  const revenueLabels =
+    statistic?.revenueChart?.map((item) => item.label) || [];
+  const revenueValues =
+    statistic?.revenueChart?.map((item) => item.value) || [];
   const ordersLabels = statistic?.orderChart?.map((item) => item.label) || [];
   const ordersValues = statistic?.orderChart?.map((item) => item.value) || [];
 
@@ -136,21 +78,21 @@ export default function DashboardAdmin() {
       },
       tooltip: {
         callbacks: {
-          label: function(context) {
-            return `${context.parsed.y.toLocaleString('vi-VN')} VNĐ`;
-          }
-        }
-      }
+          label: function (context) {
+            return `${context.parsed.y.toLocaleString("vi-VN")} VNĐ`;
+          },
+        },
+      },
     },
     scales: {
       y: {
         beginAtZero: true,
         max: Math.max(...revenueValues, 1000),
         ticks: {
-          callback: function(value) {
-            return value.toLocaleString('vi-VN') + ' VNĐ';
-          }
-        }
+          callback: function (value) {
+            return value.toLocaleString("vi-VN") + " VNĐ";
+          },
+        },
       },
     },
   };
@@ -190,7 +132,9 @@ export default function DashboardAdmin() {
     if (revenueMode === "Daily" || ordersMode === "Daily") {
       dispatch(getStatisticByDateApi());
     } else if (revenueMode === "Monthly" || ordersMode === "Monthly") {
-      dispatch(getStatisticByMonthApi({ month: selectedMonth, year: selectedYear }));
+      dispatch(
+        getStatisticByMonthApi({ month: selectedMonth, year: selectedYear })
+      );
     } else if (revenueMode === "Yearly" || ordersMode === "Yearly") {
       dispatch(getStatisticByYearApi({ year: selectedYear }));
     }
@@ -217,41 +161,13 @@ export default function DashboardAdmin() {
   return (
     <Box className="dashboard-admin">
       {/* Phần thẻ thông tin */}
-      <Box className="dashboard-admin__cards">
-        <Grid container spacing={2}>
-          <Grid item size={4}>
-            <Box className="dashboard-admin__card">
-              <Box sx={{ marginTop: "20px" }}>
-                <Typography className="dashboard__title">Total Revenue</Typography>
-                <Typography className="dashboard__number">
-                  {statistic?.totalRevenue?.toLocaleString('vi-VN')} VNĐ
-                </Typography>
-              </Box>
-            </Box>
-          </Grid>
-          <Grid item size={4}>
-            <Box className="dashboard-admin__card">
-              <Box sx={{ marginTop: "20px" }}>
-                <Typography className="dashboard__title">Total Orders</Typography>
-                <Typography className="dashboard__number">
-                  {statistic?.totalOrder || 0}
-                </Typography>
-              </Box>
-            </Box>
-          </Grid>
-          <Grid item size={4}>
-            <Box className="dashboard-admin__card">
-              <Box sx={{ marginTop: "20px" }}>
-                <Typography className="dashboard__title">Popular Category</Typography>
-                <Typography className="dashboard__number">Classic</Typography>
-              </Box>
-            </Box>
-          </Grid>
-        </Grid>
-      </Box>
+
 
       {/* Phần điều khiển tháng và năm */}
-      {(revenueMode === "Monthly" || ordersMode === "Monthly" || revenueMode === "Yearly" || ordersMode === "Yearly") && (
+      {(revenueMode === "Monthly" ||
+        ordersMode === "Monthly" ||
+        revenueMode === "Yearly" ||
+        ordersMode === "Yearly") && (
         <Box sx={{ mb: 2, display: "flex", gap: 2 }}>
           {revenueMode === "Monthly" || ordersMode === "Monthly" ? (
             <select value={selectedMonth} onChange={handleMonthChange}>
@@ -272,30 +188,71 @@ export default function DashboardAdmin() {
         </Box>
       )}
 
+<Box className="dashboard-admin__cards">
+        <Grid container spacing={2}>
+          <Grid item size={6}>
+            <Box className="dashboard-admin__card">
+              <Box sx={{ marginTop: "20px" }}>
+                <Typography className="dashboard__title">
+                  Total Revenue
+                </Typography>
+                <Typography className="dashboard__number">
+                  {statistic?.totalRevenue?.toLocaleString("vi-VN")} VNĐ
+                </Typography>
+              </Box>
+            </Box>
+          </Grid>
+          <Grid item size={6}>
+            <Box className="dashboard-admin__card">
+              <Box sx={{ marginTop: "20px" }}>
+                <Typography className="dashboard__title">
+                  Total Orders
+                </Typography>
+                <Typography className="dashboard__number">
+                  {statistic?.totalOrder || 0}
+                </Typography>
+              </Box>
+            </Box>
+          </Grid>
+  
+        </Grid>
+      </Box>
+
       {/* Phần biểu đồ */}
       <Box className="dashboard-admin__charts">
         <Grid container spacing={2}>
           {/* Revenue Chart */}
           <Grid item size={6}>
             <Box className="dashboard-admin__chart">
-              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+              <Box
+                sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}
+              >
                 <Typography variant="h6">Revenue</Typography>
                 <Box>
                   <button
-                    className={`chart-button ${revenueMode === "Daily" ? "active" : ""}`}
+                    className={`chart-button ${
+                      revenueMode === "Daily" ? "active" : ""
+                    }`}
                     onClick={() => handleRevenueModeChange("Daily")}
                   >
                     Daily
                   </button>
                   <button
-                    pedal to the metal
-                    className={`chart-button ${revenueMode === "Monthly" ? "active" : ""}`}
+                    pedal
+                    to
+                    the
+                    metal
+                    className={`chart-button ${
+                      revenueMode === "Monthly" ? "active" : ""
+                    }`}
                     onClick={() => handleRevenueModeChange("Monthly")}
                   >
                     Monthly
                   </button>
                   <button
-                    className={`chart-button ${revenueMode === "Yearly" ? "active" : ""}`}
+                    className={`chart-button ${
+                      revenueMode === "Yearly" ? "active" : ""
+                    }`}
                     onClick={() => handleRevenueModeChange("Yearly")}
                   >
                     Yearly
@@ -314,23 +271,31 @@ export default function DashboardAdmin() {
           {/* Orders Chart */}
           <Grid item size={6}>
             <Box className="dashboard-admin__chart">
-              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+              <Box
+                sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}
+              >
                 <Typography variant="h6">Orders</Typography>
                 <Box>
                   <button
-                    className={`chart-button ${ordersMode === "Daily" ? "active" : ""}`}
+                    className={`chart-button ${
+                      ordersMode === "Daily" ? "active" : ""
+                    }`}
                     onClick={() => handleOrdersModeChange("Daily")}
                   >
                     Daily
                   </button>
                   <button
-                    className={`chart-button ${ordersMode === "Monthly" ? "active" : ""}`}
+                    className={`chart-button ${
+                      ordersMode === "Monthly" ? "active" : ""
+                    }`}
                     onClick={() => handleOrdersModeChange("Monthly")}
                   >
                     Monthly
                   </button>
                   <button
-                    className={`chart-button ${ordersMode === "Yearly" ? "active" : ""}`}
+                    className={`chart-button ${
+                      ordersMode === "Yearly" ? "active" : ""
+                    }`}
                     onClick={() => handleOrdersModeChange("Yearly")}
                   >
                     Yearly
