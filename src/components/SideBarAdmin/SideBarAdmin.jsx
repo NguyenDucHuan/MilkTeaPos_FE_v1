@@ -22,8 +22,6 @@ const menuItems = [
   { text: "Products", icon: <ProductIcon />, path: "/admin/products" },
   { text: "Combos", icon: <WorkspacesIcon />, path: "/admin/combos" },
   { text: "Toppings", icon: <PosIcon />, path: "/admin/toppings" },
-  { text: "Payments", icon: <PaymentIcon />, path: "/admin/payments" },
-
 ];
 
 export default function AdminSidebar() {

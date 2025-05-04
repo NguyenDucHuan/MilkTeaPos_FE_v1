@@ -21,6 +21,12 @@ const pathToTitle = {
   "/admin/payments": "Payment Method Management",
   "/admin/payments/new": "Add Payment Method",
 
+  // Combos
+  "/admin/combos": "Combo Management",
+
+  // Toppings
+  "/admin/toppings": "Topping Management",
+
   "/admin/orders": "Order Management",
 };
 
