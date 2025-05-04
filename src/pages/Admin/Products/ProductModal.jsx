@@ -14,7 +14,11 @@ import {
 } from "@mui/material";
 import { Add as AddIcon, Delete as DeleteIcon } from "@mui/icons-material";
 import { useDispatch } from "react-redux";
-import { createProduct, updateProduct, updateImageProduct } from "../../../store/slices/itemSlice";
+import {
+  createProduct,
+  updateProduct,
+  updateImageProduct,
+} from "../../../store/slices/itemSlice";
 import toast from "react-hot-toast";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -81,7 +85,10 @@ const ProductModal = ({
     resolver: yupResolver(schema),
     defaultValues: {
       productName: "",
-      categoryId: filteredCategories.length > 0 ? Number(filteredCategories[0].categoryId) : null,
+      categoryId:
+        filteredCategories.length > 0
+          ? Number(filteredCategories[0].categoryId)
+          : null,
       description: "",
       sizes: [{ size: "Small", price: "0", status: true }],
       status: true,
@@ -135,7 +142,6 @@ const ProductModal = ({
   }, [isEditMode, product, filteredCategories, reset]);
 
   const handleAddSize = () => {
-    // Lấy kích thước tiếp theo chưa được sử dụng
     const usedSizes = formData.sizes.map((s) => s.size);
     const nextSize = AVAILABLE_SIZES.find((size) => !usedSizes.includes(size));
     if (!nextSize) {
@@ -155,7 +161,10 @@ const ProductModal = ({
       const newSizes = prev.sizes.filter((_, i) => i !== index);
       return {
         ...prev,
-        sizes: newSizes.length > 0 ? newSizes : [{ size: "Small", price: "0", status: true }],
+        sizes:
+          newSizes.length > 0
+            ? newSizes
+            : [{ size: "Small", price: "0", status: true }],
       };
     });
     setValue(
@@ -200,8 +209,14 @@ const ProductModal = ({
       // Create product
       data.sizes.forEach((sizeObj, index) => {
         formDataToSend.append(`sizes[${index}][size]`, sizeObj.size);
-        formDataToSend.append(`sizes[${index}][price]`, sizeObj.price.toString());
-        formDataToSend.append(`sizes[${index}][status]`, sizeObj.status.toString());
+        formDataToSend.append(
+          `sizes[${index}][price]`,
+          sizeObj.price.toString()
+        );
+        formDataToSend.append(
+          `sizes[${index}][status]`,
+          sizeObj.status.toString()
+        );
       });
       if (imageFile) {
         formDataToSend.append("parentImage", imageFile);
@@ -212,25 +227,42 @@ const ProductModal = ({
         toast.error("Không tìm thấy ProductId để cập nhật!");
         return;
       }
+      formDataToSend.append("ProductId", editProductId.toString());
       data.sizes.forEach((sizeObj, index) => {
         if (sizeObj.productId) {
-          formDataToSend.append(`Variants[${index}].ProductId`, sizeObj.productId.toString());
+          formDataToSend.append(
+            `Variants[${index}].ProductId`,
+            sizeObj.productId.toString()
+          );
         }
         formDataToSend.append(`Variants[${index}].SizeId`, sizeObj.size);
-        formDataToSend.append(`Variants[${index}].Price`, sizeObj.price.toString());
-        formDataToSend.append(`Variants[${index}].Status`, sizeObj.status.toString());
-        formDataToSend.append(`Variants[${index}].Description`, data.description || "");
+        formDataToSend.append(
+          `Variants[${index}].Prize`,
+          sizeObj.price.toString()
+        ); // Use Prize for update
+        formDataToSend.append(
+          `Variants[${index}].Status`,
+          sizeObj.status.toString()
+        );
+        formDataToSend.append(
+          `Variants[${index}].Description`,
+          data.description || ""
+        );
       });
-      formDataToSend.append("ProductId", editProductId);
       if (imageFile) {
         formDataToSend.append("parentImage", imageFile);
       }
     }
 
     try {
-      console.log("formDataToSend before submit:", Object.fromEntries(formDataToSend));
+      console.log(
+        "formDataToSend before submit:",
+        Object.fromEntries(formDataToSend)
+      );
       if (!isEditMode) {
-        const createResponse = await dispatch(createProduct(formDataToSend)).unwrap();
+        const createResponse = await dispatch(
+          createProduct(formDataToSend)
+        ).unwrap();
         console.log("createProduct response:", createResponse);
         toast.success("Sản phẩm đã được tạo thành công!");
       } else {
@@ -242,7 +274,10 @@ const ProductModal = ({
           const imageFormData = new FormData();
           imageFormData.append("formFile", imageFile);
           const imageResponse = await dispatch(
-            updateImageProduct({ productId: editProductId, formData: imageFormData })
+            updateImageProduct({
+              productId: editProductId,
+              formData: imageFormData,
+            })
           ).unwrap();
           console.log("updateImageProduct response:", imageResponse);
         }
@@ -256,7 +291,6 @@ const ProductModal = ({
     }
   };
 
-  // Lấy danh sách kích thước khả dụng
   const availableSizes = AVAILABLE_SIZES.filter(
     (size) => !formData.sizes.some((sizeObj) => sizeObj.size === size)
   );
@@ -270,6 +304,8 @@ const ProductModal = ({
           left: "50%",
           transform: "translate(-50%, -50%)",
           width: 500,
+          maxHeight: "80vh",
+          overflowY: "auto",
           bgcolor: "background.paper",
           boxShadow: 24,
           p: 4,
@@ -338,7 +374,10 @@ const ProductModal = ({
                   </MenuItem>
                 ) : (
                   filteredCategories.map((cat) => (
-                    <MenuItem key={cat.categoryId} value={Number(cat.categoryId)}>
+                    <MenuItem
+                      key={cat.categoryId}
+                      value={Number(cat.categoryId)}
+                    >
                       {cat.categoryName}
                     </MenuItem>
                   ))
@@ -420,9 +459,10 @@ const ProductModal = ({
                             "& .MuiSwitch-switchBase.Mui-checked": {
                               color: "#8B5E3C",
                             },
-                            "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-                              bgcolor: "#8B5E3C",
-                            },
+                            "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
+                              {
+                                bgcolor: "#8B5E3C",
+                              },
                           }}
                         />
                       }
@@ -533,9 +573,10 @@ const ProductModal = ({
                       "& .MuiSwitch-switchBase.Mui-checked": {
                         color: "#8B5E3C",
                       },
-                      "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-                        bgcolor: "#8B5E3C",
-                      },
+                      "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
+                        {
+                          bgcolor: "#8B5E3C",
+                        },
                     }}
                   />
                 }
