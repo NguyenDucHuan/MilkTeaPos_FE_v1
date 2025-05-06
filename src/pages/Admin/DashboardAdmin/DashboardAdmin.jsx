@@ -1,5 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { Box, Grid, Typography } from "@mui/material";
+import {
+  Box,
+  Grid,
+  Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Snackbar,
+  Alert,
+} from "@mui/material";
 import { Line, Bar, Pie } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -19,6 +32,8 @@ import {
   getStatisticByDateApi,
   getStatisticByMonthApi,
   getStatisticByYearApi,
+  getStatisticByWeekApi,
+  getBestSellerApi,
 } from "../../../store/slices/statisticSlice";
 
 ChartJS.register(
@@ -39,13 +54,65 @@ export default function DashboardAdmin() {
     (state) => state.statistic
   );
 
-  // Trạng thái cho chế độ hiển thị (Daily, Monthly, Yearly)
-  const [revenueMode, setRevenueMode] = useState("Daily");
-  const [ordersMode, setOrdersMode] = useState("Daily");
-  const [selectedMonth, setSelectedMonth] = useState(5); 
-  const [selectedYear, setSelectedYear] = useState(2025); 
+  // State for display mode and filters
+  const [displayMode, setDisplayMode] = useState("Daily");
+  const [selectedMonth, setSelectedMonth] = useState(5); // May
+  const [selectedYear, setSelectedYear] = useState(2025);
+  const [fromDate, setFromDate] = useState(() => {
+    const date = new Date(2025, 4, 1); // First day of May 2025
+    return date;
+  });
+  const [toDate, setToDate] = useState(() => {
+    const date = new Date(2025, 4, 7); // One week from May 1, 2025
+    return date;
+  });
+  const [toast, setToast] = useState({
+    open: false,
+    message: "",
+    severity: "error",
+  });
 
-  // Cập nhật dữ liệu biểu đồ từ API
+  // Current date for Daily mode and max date limit
+  const currentDate = new Date();
+  const minDate = new Date(2023, 0, 1); // Jan 1, 2023
+  const maxDate = currentDate;
+
+  // Helper function to format date for display
+  const formatDate = (date) => {
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
+  // Helper function to format date as YYYY-MM-DD for API and inputs
+  const formatDateForApi = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // Helper function to get date range
+  const getDateRange = (mode, month, year) => {
+    if (mode === "Daily") {
+      return `on ${formatDate(currentDate)}`;
+    } else if (mode === "Weekly") {
+      return `from ${formatDate(fromDate)} to ${formatDate(toDate)}`;
+    } else if (mode === "Monthly") {
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0); // Last day of the month
+      return `from ${formatDate(startDate)} to ${formatDate(endDate)}`;
+    } else if (mode === "Yearly") {
+      const startDate = new Date(year, 0, 1);
+      const endDate = new Date(year, 11, 31);
+      return `from ${formatDate(startDate)} to ${formatDate(endDate)}`;
+    }
+    return "";
+  };
+
+  // Chart data
   const revenueLabels =
     statistic?.revenueChart?.map((item) => item.label) || [];
   const revenueValues =
@@ -53,7 +120,7 @@ export default function DashboardAdmin() {
   const ordersLabels = statistic?.orderChart?.map((item) => item.label) || [];
   const ordersValues = statistic?.orderChart?.map((item) => item.value) || [];
 
-  // Dữ liệu và tùy chọn cho biểu đồ Revenue (Line Chart)
+  // Revenue Line Chart
   const revenueData = {
     labels: revenueLabels,
     datasets: [
@@ -69,12 +136,16 @@ export default function DashboardAdmin() {
   const revenueOptions = {
     responsive: true,
     plugins: {
-      legend: {
-        display: false,
-      },
-      title: {
+      legend: { display: false },
+      title: { display: true, text: "Revenue" },
+      subtitle: {
         display: true,
-        text: "Revenue",
+        text: `Revenue ${getDateRange(
+          displayMode,
+          selectedMonth,
+          selectedYear
+        )}`,
+        padding: { bottom: 10 },
       },
       tooltip: {
         callbacks: {
@@ -97,7 +168,7 @@ export default function DashboardAdmin() {
     },
   };
 
-  // Dữ liệu và tùy chọn cho biểu đồ Orders (Bar Chart)
+  // Orders Bar Chart
   const ordersData = {
     labels: ordersLabels,
     datasets: [
@@ -111,12 +182,16 @@ export default function DashboardAdmin() {
   const ordersOptions = {
     responsive: true,
     plugins: {
-      legend: {
-        display: false,
-      },
-      title: {
+      legend: { display: false },
+      title: { display: true, text: "Orders" },
+      subtitle: {
         display: true,
-        text: "Orders",
+        text: `Orders ${getDateRange(
+          displayMode,
+          selectedMonth,
+          selectedYear
+        )}`,
+        padding: { bottom: 10 },
       },
     },
     scales: {
@@ -127,49 +202,262 @@ export default function DashboardAdmin() {
     },
   };
 
-  // Gọi API khi thay đổi chế độ hoặc tháng/năm
+  // Best-Seller Pie Chart
+  const bestSellers = statistic?.bestSellers || [];
+  const bestSellerLabels = bestSellers.map(
+    (item) => item.product?.productName || "Unknown"
+  );
+  const bestSellerQuantities = bestSellers.map(
+    (item) => item.totalQuantitySold || 0
+  );
+
+  // Ensure non-negative values for the chart
+  const sanitizedQuantities = bestSellerQuantities.map((qty) =>
+    Math.max(0, qty)
+  );
+
+  const bestSellerData = {
+    labels: bestSellerLabels,
+    datasets: [
+      {
+        label: "Quantity Sold",
+        data: sanitizedQuantities,
+        backgroundColor: [
+          "#ac8e6f",
+          "#d4a373",
+          "#e6b98a",
+          "#f2d1a3",
+          "#fae8c8",
+        ],
+        borderColor: "#fff",
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const bestSellerOptions = {
+    responsive: true,
+    maintainAspectRatio: false, // Allow the chart to adjust to container size
+    plugins: {
+      legend: { position: "right" },
+      title: { display: true, text: "Top 5 Best-Selling Products by Quantity" },
+      subtitle: {
+        display: true,
+        text: `Sales ${getDateRange(displayMode, selectedMonth, selectedYear)}`,
+        padding: { bottom: 10 },
+      },
+      tooltip: {
+        callbacks: {
+          label: function (context) {
+            return `${context.parsed.toLocaleString()} units`;
+          },
+        },
+      },
+    },
+  };
+
+  // Fetch data based on mode
   useEffect(() => {
-    if (revenueMode === "Daily" || ordersMode === "Daily") {
-      dispatch(getStatisticByDateApi());
-    } else if (revenueMode === "Monthly" || ordersMode === "Monthly") {
-      dispatch(
-        getStatisticByMonthApi({ month: selectedMonth, year: selectedYear })
-      );
-    } else if (revenueMode === "Yearly" || ordersMode === "Yearly") {
-      dispatch(getStatisticByYearApi({ year: selectedYear }));
+    const params = { number: 5 };
+    if (displayMode === "Weekly") {
+      params.fromDate = formatDateForApi(fromDate);
+      params.toDate = formatDateForApi(toDate);
+    } else if (displayMode === "Monthly") {
+      params.month = selectedMonth;
+      params.year = selectedYear;
+    } else if (displayMode === "Yearly") {
+      params.year = selectedYear;
     }
-  }, [dispatch, revenueMode, ordersMode, selectedMonth, selectedYear]);
 
-  // Xử lý khi nhấn nút Daily, Monthly, Yearly
-  const handleRevenueModeChange = (mode) => {
-    setRevenueMode(mode);
+    console.log("Fetching best sellers with params:", params);
+
+    if (displayMode === "Daily") {
+      dispatch(getStatisticByDateApi());
+      dispatch(getBestSellerApi(params));
+    } else if (displayMode === "Weekly") {
+      dispatch(
+        getStatisticByWeekApi({
+          fromDate: params.fromDate,
+          toDate: params.toDate,
+        })
+      );
+      dispatch(getBestSellerApi(params));
+    } else if (displayMode === "Monthly") {
+      dispatch(
+        getStatisticByMonthApi({ month: params.month, year: params.year })
+      );
+      dispatch(getBestSellerApi(params));
+    } else if (displayMode === "Yearly") {
+      dispatch(getStatisticByYearApi({ year: params.year }));
+      dispatch(getBestSellerApi(params));
+    }
+  }, [dispatch, displayMode, selectedMonth, selectedYear, fromDate, toDate]);
+
+  // Debug: Log chart data
+  useEffect(() => {
+    console.log("Best Sellers for Chart:", {
+      labels: bestSellerLabels,
+      data: sanitizedQuantities,
+    });
+  }, [statistic?.bestSellers]);
+
+  // Handle mode change
+  const handleDisplayModeChange = (mode) => {
+    setDisplayMode(mode);
   };
 
-  const handleOrdersModeChange = (mode) => {
-    setOrdersMode(mode);
+  // Handle toast close
+  const handleToastClose = () => {
+    setToast({ ...toast, open: false });
   };
 
-  // Xử lý thay đổi tháng và năm (có thể thêm input để người dùng chọn)
   const handleMonthChange = (e) => {
-    setSelectedMonth(Number(e.target.value));
+    const newMonth = Number(e.target.value);
+    if (
+      selectedYear === currentDate.getFullYear() &&
+      newMonth > currentDate.getMonth() + 1
+    ) {
+      setToast({
+        open: true,
+        message: `Cannot select a month after ${formatDate(currentDate)}.`,
+        severity: "error",
+      });
+      return;
+    }
+    setSelectedMonth(newMonth);
   };
 
   const handleYearChange = (e) => {
-    setSelectedYear(Number(e.target.value));
+    const newYear = Number(e.target.value);
+    if (newYear > currentDate.getFullYear()) {
+      setToast({
+        open: true,
+        message: `Cannot select a year after ${currentDate.getFullYear()}.`,
+        severity: "error",
+      });
+      return;
+    }
+    if (
+      newYear === currentDate.getFullYear() &&
+      selectedMonth > currentDate.getMonth() + 1
+    ) {
+      setSelectedMonth(currentDate.getMonth() + 1);
+    }
+    setSelectedYear(newYear);
+  };
+
+  // Handle date changes
+  const handleFromDateChange = (e) => {
+    const newDate = new Date(e.target.value);
+    if (!newDate || isNaN(newDate)) {
+      setToast({
+        open: true,
+        message: "Invalid date selected.",
+        severity: "error",
+      });
+      return;
+    }
+    if (newDate > maxDate) {
+      setToast({
+        open: true,
+        message: `Cannot select a date after ${formatDate(maxDate)}.`,
+        severity: "error",
+      });
+      return;
+    }
+    if (newDate < minDate) {
+      setToast({
+        open: true,
+        message: `Cannot select a date before ${formatDate(minDate)}.`,
+        severity: "error",
+      });
+      return;
+    }
+    setFromDate(newDate);
+    if (toDate < newDate) {
+      setToDate(newDate);
+    }
+  };
+
+  const handleToDateChange = (e) => {
+    const newDate = new Date(e.target.value);
+    if (!newDate || isNaN(newDate)) {
+      setToast({
+        open: true,
+        message: "Invalid date selected.",
+        severity: "error",
+      });
+      return;
+    }
+    if (newDate > maxDate) {
+      setToast({
+        open: true,
+        message: `Cannot select a date after ${formatDate(maxDate)}.`,
+        severity: "error",
+      });
+      return;
+    }
+    if (newDate < fromDate) {
+      setToast({
+        open: true,
+        message: "To date cannot be before from date.",
+        severity: "error",
+      });
+      return;
+    }
+    const diffTime = newDate - fromDate;
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+    if (diffDays > 7) {
+      setToast({
+        open: true,
+        message: "Date range cannot exceed 7 days in Weekly mode.",
+        severity: "error",
+      });
+      return;
+    }
+    setToDate(newDate);
   };
 
   return (
     <Box className="dashboard-admin">
-      {/* Phần thẻ thông tin */}
-
-
-      {/* Phần điều khiển tháng và năm */}
-      {(revenueMode === "Monthly" ||
-        ordersMode === "Monthly" ||
-        revenueMode === "Yearly" ||
-        ordersMode === "Yearly") && (
-        <Box sx={{ mb: 2, display: "flex", gap: 2 }}>
-          {revenueMode === "Monthly" || ordersMode === "Monthly" ? (
+      {/* Filter Controls */}
+      <Box sx={{ mb: 3, display: "flex", alignItems: "center", gap: 2 }}>
+        <Box>
+          <button
+            className={`chart-button ${
+              displayMode === "Daily" ? "active" : ""
+            }`}
+            onClick={() => handleDisplayModeChange("Daily")}
+          >
+            Daily
+          </button>
+          <button
+            className={`chart-button ${
+              displayMode === "Weekly" ? "active" : ""
+            }`}
+            onClick={() => handleDisplayModeChange("Weekly")}
+          >
+            Weekly
+          </button>
+          <button
+            className={`chart-button ${
+              displayMode === "Monthly" ? "active" : ""
+            }`}
+            onClick={() => handleDisplayModeChange("Monthly")}
+          >
+            Monthly
+          </button>
+          <button
+            className={`chart-button ${
+              displayMode === "Yearly" ? "active" : ""
+            }`}
+            onClick={() => handleDisplayModeChange("Yearly")}
+          >
+            Yearly
+          </button>
+        </Box>
+        {displayMode === "Monthly" && (
+          <Box sx={{ display: "flex", gap: 2 }}>
             <select value={selectedMonth} onChange={handleMonthChange}>
               {[...Array(12)].map((_, i) => (
                 <option key={i + 1} value={i + 1}>
@@ -177,18 +465,56 @@ export default function DashboardAdmin() {
                 </option>
               ))}
             </select>
-          ) : null}
-          <select value={selectedYear} onChange={handleYearChange}>
-            {[2023, 2024, 2025].map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-        </Box>
-      )}
+            <select value={selectedYear} onChange={handleYearChange}>
+              {Array.from(
+                { length: currentDate.getFullYear() - 2022 },
+                (_, i) => 2023 + i
+              ).map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </Box>
+        )}
+        {displayMode === "Yearly" && (
+          <Box sx={{ display: "flex", gap: 2 }}>
+            <select value={selectedYear} onChange={handleYearChange}>
+              {Array.from(
+                { length: currentDate.getFullYear() - 2022 },
+                (_, i) => 2023 + i
+              ).map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </Box>
+        )}
+        {displayMode === "Weekly" && (
+          <Box sx={{ display: "flex", gap: 2 }}>
+            <input
+              type="date"
+              value={formatDateForApi(fromDate)}
+              onChange={handleFromDateChange}
+              min={formatDateForApi(minDate)}
+              max={formatDateForApi(maxDate)}
+              style={{ padding: "8px", fontSize: "14px" }}
+            />
+            <input
+              type="date"
+              value={formatDateForApi(toDate)}
+              onChange={handleToDateChange}
+              min={formatDateForApi(fromDate)}
+              max={formatDateForApi(maxDate)}
+              style={{ padding: "8px", fontSize: "14px" }}
+            />
+          </Box>
+        )}
+      </Box>
 
-<Box className="dashboard-admin__cards">
+      {/* Info Cards */}
+      <Box className="dashboard-admin__cards">
         <Grid container spacing={2}>
           <Grid item size={6}>
             <Box className="dashboard-admin__card">
@@ -214,123 +540,130 @@ export default function DashboardAdmin() {
               </Box>
             </Box>
           </Grid>
-  
         </Grid>
       </Box>
 
-      {/* Phần biểu đồ */}
+      {/* Charts and Best-Seller List */}
       <Box className="dashboard-admin__charts">
         <Grid container spacing={2}>
           {/* Revenue Chart */}
           <Grid item size={6}>
             <Box className="dashboard-admin__chart">
-              <Box
-                sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}
-              >
-                <Typography variant="h6">Revenue</Typography>
-                <Box>
-                  <button
-                    className={`chart-button ${
-                      revenueMode === "Daily" ? "active" : ""
-                    }`}
-                    onClick={() => handleRevenueModeChange("Daily")}
-                  >
-                    Daily
-                  </button>
-                  <button
-                    pedal
-                    to
-                    the
-                    metal
-                    className={`chart-button ${
-                      revenueMode === "Monthly" ? "active" : ""
-                    }`}
-                    onClick={() => handleRevenueModeChange("Monthly")}
-                  >
-                    Monthly
-                  </button>
-                  <button
-                    className={`chart-button ${
-                      revenueMode === "Yearly" ? "active" : ""
-                    }`}
-                    onClick={() => handleRevenueModeChange("Yearly")}
-                  >
-                    Yearly
-                  </button>
-                </Box>
-              </Box>
-              {isLoading ? (
-                <Typography>Loading...</Typography>
-              ) : error ? (
-                <Typography color="error">{error}</Typography>
-              ) : (
-                <Line data={revenueData} options={revenueOptions} />
-              )}
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Revenue
+              </Typography>
+              <>
+                {isLoading ? (
+                  <Typography>Loading...</Typography>
+                ) : error ? (
+                  <Typography color="error">{error}</Typography>
+                ) : (
+                  <Line data={revenueData} options={revenueOptions} />
+                )}
+              </>
             </Box>
           </Grid>
           {/* Orders Chart */}
           <Grid item size={6}>
             <Box className="dashboard-admin__chart">
-              <Box
-                sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}
-              >
-                <Typography variant="h6">Orders</Typography>
-                <Box>
-                  <button
-                    className={`chart-button ${
-                      ordersMode === "Daily" ? "active" : ""
-                    }`}
-                    onClick={() => handleOrdersModeChange("Daily")}
-                  >
-                    Daily
-                  </button>
-                  <button
-                    className={`chart-button ${
-                      ordersMode === "Monthly" ? "active" : ""
-                    }`}
-                    onClick={() => handleOrdersModeChange("Monthly")}
-                  >
-                    Monthly
-                  </button>
-                  <button
-                    className={`chart-button ${
-                      ordersMode === "Yearly" ? "active" : ""
-                    }`}
-                    onClick={() => handleOrdersModeChange("Yearly")}
-                  >
-                    Yearly
-                  </button>
-                </Box>
-              </Box>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Orders
+              </Typography>
+              <>
+                {isLoading ? (
+                  <Typography>Loading...</Typography>
+                ) : error ? (
+                  <Typography color="error">{error}</Typography>
+                ) : (
+                  <Bar data={ordersData} options={ordersOptions} />
+                )}
+              </>
+            </Box>
+          </Grid>
+          {/* Best-Seller Pie Chart */}
+          <Grid item size={6}>
+            <Box className="dashboard-admin__chart" sx={{ height: 400 }}>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Top 5 Best-Selling Products
+              </Typography>
               {isLoading ? (
                 <Typography>Loading...</Typography>
               ) : error ? (
                 <Typography color="error">{error}</Typography>
+              ) : bestSellerLabels.length === 0 ||
+                sanitizedQuantities.length === 0 ? (
+                <Typography>No best-selling products available</Typography>
               ) : (
-                <Bar data={ordersData} options={ordersOptions} />
+                <Pie data={bestSellerData} options={bestSellerOptions} />
               )}
             </Box>
           </Grid>
-          {/* Sales by Category Chart */}
-          {/* <Grid item size={6}>
+          {/* Best-Seller List */}
+          <Grid item size={6}>
             <Box className="dashboard-admin__chart">
               <Typography variant="h6" sx={{ mb: 2 }}>
-                Sales by Category
+                Top 5 Best-Selling Products List
               </Typography>
-              <Pie data={salesData} options={salesOptions} />
+              <>
+                {isLoading ? (
+                  <Typography>Loading...</Typography>
+                ) : error ? (
+                  <Typography color="error">{error}</Typography>
+                ) : (
+                  <TableContainer component={Paper}>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Rank</TableCell>
+                          <TableCell>Product Name</TableCell>
+                          <TableCell align="right">Quantity Sold</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {statistic?.bestSellers?.length > 0 ? (
+                          statistic.bestSellers.map((item, index) => (
+                            <TableRow key={item.product?.productId || index}>
+                              <TableCell>{index + 1}</TableCell>
+                              <TableCell>
+                                {item.product?.productName || "Unknown Product"}
+                              </TableCell>
+                              <TableCell align="right">
+                                {item.totalQuantitySold?.toLocaleString() || 0}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={3} align="center">
+                              No best-selling products available
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </>
             </Box>
-          </Grid> */}
-          {/* Top Selling Products Chart */}
-          {/* <Grid item size={6}>
-            <Box className="dashboard-admin__chart">
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Top Selling Products
-              </Typography>
-              <Bar data={topProductsData} options={topProductsOptions} />
-            </Box>
-          </Grid> */}
+          </Grid>
         </Grid>
       </Box>
+
+      {/* Toast Notification */}
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={6000}
+        onClose={handleToastClose}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          onClose={handleToastClose}
+          severity={toast.severity}
+          sx={{ width: "100%" }}
+        >
+          {toast.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
