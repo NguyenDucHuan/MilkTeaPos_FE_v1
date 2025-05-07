@@ -30,6 +30,7 @@ import {
   Menu as MenuIcon,
   Close as CloseIcon,
   ArrowDropDown as ArrowDropDownIcon,
+  AccountBalanceWallet as AccountBalanceWalletIcon,
 } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../../store/slices/authSlice";
@@ -123,7 +124,8 @@ const Header = ({ setSelectedCategory, isLoading, error }) => {
           }))
         : [],
     },
-    { text: "Order history", icon: GroupIcon, path: "/orders" },
+    { text: "Đơn Hàng", icon: GroupIcon, path: "/orders" },
+    { text: "Két Thu Ngân", icon: AccountBalanceWalletIcon, path: "/cash-register" },
   ];
 
   const userMenuItems = [

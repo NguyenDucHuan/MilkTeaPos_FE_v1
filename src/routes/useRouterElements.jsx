@@ -6,10 +6,11 @@ import HomePage from "../pages/Home/HomePage/HomePage";
 import StaffLayout from "../layouts/StaffLayout/StaffLayout";
 import AuthLayout from "../layouts/AuthLayout/AuthLayout";
 import AdminLayout from "../layouts/AdminLayout/AdminLayout";
-import OrderList from "../pages/orderlist/OrderList";
+import OrderList from "../pages/OrderList/OrderList";
 import DashboardAdmin from "../pages/Admin/DashboardAdmin/DashboardAdmin";
 import Profile from "../pages/Profile/Profile";
 import ProtectedRoute from "../components/ProtectedRoute";
+import CashierBank from "../pages/Cashier/CashierBank";
 
 import AccountList from "../pages/Admin/Accounts/List";
 import AccountForm from "../pages/Admin/Accounts/Form";
@@ -44,7 +45,7 @@ export default function useRouterElements() {
 
     // Home (Staff)
     {
-      path: PATH.HOME,
+      path: "/",
       element: (
         <ProtectedRoute>
           <StaffLayout />
@@ -52,7 +53,7 @@ export default function useRouterElements() {
       ),
       children: [
         {
-          index: true,
+          path: PATH.HOME,
           element: (
             <ProtectedRoute>
               <HomePage />
@@ -68,10 +69,10 @@ export default function useRouterElements() {
           ),
         },
         {
-          path: PATH.PROFILE,
+          path: "/cash-register",
           element: (
             <ProtectedRoute>
-              <Profile />
+              <CashierBank />
             </ProtectedRoute>
           ),
         },
