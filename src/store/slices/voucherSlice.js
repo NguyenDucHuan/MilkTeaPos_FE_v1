@@ -115,10 +115,19 @@ export const updateVoucher = createAsyncThunk(
   }
 );
 
+export const fetchVouchers = createAsyncThunk(
+  'voucher/fetchVouchers',
+  async () => {
+    const response = await fetcher.get('/vouchers');
+    return response.data;
+  }
+);
+
 const voucherSlice = createSlice({
   name: "voucher",
   initialState: {
     vouchers: [],
+    selectedVoucher: null,
     isLoading: false,
     error: null,
     pagination: {
@@ -128,7 +137,14 @@ const voucherSlice = createSlice({
       pageSize: 10,
     },
   },
-  reducers: {},
+  reducers: {
+    setSelectedVoucher: (state, action) => {
+      state.selectedVoucher = action.payload;
+    },
+    clearSelectedVoucher: (state) => {
+      state.selectedVoucher = null;
+    },
+  },
   extraReducers: (builder) => {
     builder.addCase(getAllVouchers.pending, (state) => {
       state.isLoading = true;
@@ -190,7 +206,20 @@ const voucherSlice = createSlice({
       state.isLoading = false;
       state.error = payload;
     });
+    builder.addCase(fetchVouchers.pending, (state) => {
+      state.isLoading = true;
+      state.error = null;
+    });
+    builder.addCase(fetchVouchers.fulfilled, (state, action) => {
+      state.isLoading = false;
+      state.vouchers = action.payload.items;
+    });
+    builder.addCase(fetchVouchers.rejected, (state, action) => {
+      state.isLoading = false;
+      state.error = action.error.message;
+    });
   },
 });
 
+export const { setSelectedVoucher, clearSelectedVoucher } = voucherSlice.actions;
 export default voucherSlice.reducer;
