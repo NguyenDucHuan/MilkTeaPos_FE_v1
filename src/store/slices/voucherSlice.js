@@ -1,15 +1,16 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import axios from "axios";
+import fetcher from "../../apis/fetcher";
 
 export const getAllVouchers = createAsyncThunk(
   "voucher/getAllVouchers",
-  async (_, { rejectWithValue }) => {
+  async ({ Page, PageSize }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(
-        "https://67dabbe235c87309f52dc7a7.mockapi.io/vouchers"
+      const response = await fetcher.get(
+        `/vouchers?Page=${Page}&PageSize=${PageSize}`
       );
       console.log("Fetched vouchers:", response.data);
-      return response.data;
+      return response.data.items;
     } catch (error) {
       console.error("Get vouchers error:", error.response || error.message);
       return rejectWithValue(error.response?.data || error.message);
@@ -22,9 +23,7 @@ export const deleteVouchers = createAsyncThunk(
   async (id, { rejectWithValue, dispatch }) => {
     try {
       console.log("Sending DELETE request for ID:", id);
-      const response = await axios.delete(
-        `https://67dabbe235c87309f52dc7a7.mockapi.io/vouchers/${id}`
-      );
+      const response = await axios.delete(`/vouchers?id=${id}`);
       console.log("DELETE response:", response.data);
       dispatch(getAllVouchers());
       return id;
@@ -43,10 +42,7 @@ export const createVoucher = createAsyncThunk(
   "voucher/createVoucher",
   async (data, { rejectWithValue, dispatch }) => {
     try {
-      const response = await axios.post(
-        "https://67dabbe235c87309f52dc7a7.mockapi.io/vouchers",
-        data
-      );
+      const response = await fetcher.post("/vouchers", data);
       console.log("Created voucher:", response.data);
       dispatch(getAllVouchers());
       return response.data;
@@ -61,10 +57,7 @@ export const updateVoucher = createAsyncThunk(
   "voucher/updateVoucher",
   async ({ id, data }, { rejectWithValue, dispatch }) => {
     try {
-      const response = await axios.put(
-        `https://67dabbe235c87309f52dc7a7.mockapi.io/vouchers/${id}`,
-        data
-      );
+      const response = await axios.put(`i/vouchers?id=${id}`, data);
       console.log("Updated voucher:", response.data);
       dispatch(getAllVouchers());
       return response.data;

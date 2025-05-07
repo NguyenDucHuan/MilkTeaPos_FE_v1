@@ -43,15 +43,15 @@ const CustomizationModal = ({
         // Fetch page 1
         const response1 = await fetcher.get("/products", {
           params: {
-            Page: 1
-          }
+            Page: 1,
+          },
         });
-        
+
         // Fetch page 2
         const response2 = await fetcher.get("/products", {
           params: {
-            Page: 2
-          }
+            Page: 2,
+          },
         });
 
         // Combine items from both pages
@@ -60,7 +60,7 @@ const CustomizationModal = ({
         const allItems = [...items1, ...items2];
 
         // Filter for Extra type products
-        setToppings(allItems.filter(item => item.productType === "Extra"));
+        setToppings(allItems.filter((item) => item.productType === "Extra"));
       } catch (error) {
         console.error("Error fetching toppings:", error);
       } finally {
@@ -68,18 +68,21 @@ const CustomizationModal = ({
       }
     };
 
-    if (open) {
+    if (open && item?.toppingAllowed) {
       fetchToppings();
     }
-  }, [open]);
+  }, [open, item?.toppingAllowed]);
 
   const handleCustomizationChange = (key, value) => {
     if (key === "size") {
       const selectedVariant = item?.variants?.find((v) => v.sizeId === value);
       setCustomization({ ...customization, size: value });
-    } else if (key === "toppings") {
-      const updatedToppings = customization.toppings.includes(value)
-        ? customization.toppings.filter((topping) => topping !== value)
+    } else if (key === "toppings" && item?.toppingAllowed) {
+      const isSelected = customization.toppings.some(
+        (t) => t.productId === value.productId
+      );
+      const updatedToppings = isSelected
+        ? customization.toppings.filter((t) => t.productId !== value.productId)
         : [...customization.toppings, value];
       setCustomization({ ...customization, toppings: updatedToppings });
     } else if (key === "quantity") {
@@ -93,28 +96,32 @@ const CustomizationModal = ({
   const calculateTotalPrice = () => {
     console.log("Calculating price for item:", item);
     console.log("Current customization:", customization);
-    
+
     // Nếu chọn size Parent, lấy giá của MasterProduct
     if (customization.size === "Parent") {
       const basePrice = Number(item?.price || 0);
-      const toppingsPrice = customization.toppings.reduce(
-        (total, topping) => total + (Number(topping.price) || 0),
-        0
-      );
+      const toppingsPrice = item?.toppingAllowed
+        ? customization.toppings.reduce(
+            (total, topping) => total + (Number(topping.price) || 0),
+            0
+          )
+        : 0;
       return (basePrice + toppingsPrice) * customization.quantity;
     }
-    
+
     // Nếu chọn size khác, lấy giá của SingleProduct tương ứng
     const selectedVariant = item?.variants?.find(
       (variant) => variant.sizeId === customization.size
     );
     const variantPrice = Number(selectedVariant?.price || 0);
-    
+
     // Tính giá toppings
-    const toppingsPrice = customization.toppings.reduce(
-      (total, topping) => total + (Number(topping.price) || 0),
-      0
-    );
+    const toppingsPrice = item?.toppingAllowed
+      ? customization.toppings.reduce(
+          (total, topping) => total + (Number(topping.price) || 0),
+          0
+        )
+      : 0;
 
     // Tổng giá = giá variant + giá toppings
     return (variantPrice + toppingsPrice) * customization.quantity;
@@ -134,13 +141,15 @@ const CustomizationModal = ({
 
       const productId = selectedVariant.productId;
       const basePrice = Number(selectedVariant.price || 0);
-      
+
       // Tính giá toppings
-      const toppingsPrice = customization.toppings.reduce(
-        (total, topping) => total + (Number(topping.price) || 0),
-        0
-      );
-      
+      const toppingsPrice = customizedItem.toppingAllowed
+        ? customization.toppings.reduce(
+            (total, topping) => total + (Number(topping.price) || 0),
+            0
+          )
+        : 0;
+
       // Tổng giá = giá sản phẩm + giá toppings
       const totalPrice = (basePrice + toppingsPrice) * customization.quantity;
 
@@ -148,7 +157,7 @@ const CustomizationModal = ({
         basePrice,
         toppingsPrice,
         quantity: customization.quantity,
-        totalPrice
+        totalPrice,
       });
 
       if (isNaN(totalPrice)) {
@@ -157,7 +166,9 @@ const CustomizationModal = ({
       }
 
       // Prepare toppingIds array
-      const toppingIds = customization.toppings.map(topping => topping.productId);
+      const toppingIds = customizedItem.toppingAllowed
+        ? customization.toppings.map((topping) => topping.productId)
+        : [];
 
       // Call the new API endpoint
       const response = await fetcher.post("/order-item/add-to-cart", {
@@ -165,7 +176,7 @@ const CustomizationModal = ({
         quantity: customization.quantity,
         toppingIds: toppingIds,
         sizeId: customization.size,
-        prize: totalPrice / customization.quantity
+        prize: totalPrice / customization.quantity,
       });
 
       if (response.data) {
@@ -181,11 +192,13 @@ const CustomizationModal = ({
               productId: productId,
               productName: customizedItem.productName,
               prize: totalPrice / customization.quantity,
-              imageUrl: customizedItem.imageUrl
+              imageUrl: customizedItem.imageUrl,
             },
-            toppings: customization.toppings,
+            toppings: customizedItem.toppingAllowed
+              ? customization.toppings
+              : [],
             sizeId: customization.size,
-            subPrice: totalPrice
+            subPrice: totalPrice,
           })
         );
 
@@ -204,7 +217,7 @@ const CustomizationModal = ({
       <Box className="customization-modal">
         <Box className="customization-modal__header">
           <Typography className="customization-modal__title">
-            {item?.name || "Item"}
+            {item?.productName || "Item"}
           </Typography>
           <IconButton onClick={onClose}>
             <CloseIcon />
@@ -220,7 +233,9 @@ const CustomizationModal = ({
               className="customization-modal__radio-group"
               row
               value={customization.size}
-              onChange={(e) => handleCustomizationChange("size", e.target.value)}
+              onChange={(e) =>
+                handleCustomizationChange("size", e.target.value)
+              }
             >
               {item?.options?.sizes?.length > 0 ? (
                 item.options.sizes.map((size) => (
@@ -228,7 +243,9 @@ const CustomizationModal = ({
                     key={size.label}
                     value={size.label}
                     control={<Radio className="customization-modal__radio" />}
-                    label={`${size.label} = ${size.priceModifier.toLocaleString('vi-VN')} VNĐ`}
+                    label={`${size.label} = ${size.priceModifier.toLocaleString(
+                      "vi-VN"
+                    )} VNĐ`}
                     className="customization-modal__label"
                   />
                 ))
@@ -238,132 +255,65 @@ const CustomizationModal = ({
             </RadioGroup>
           </Box>
 
-          <Box className="customization-modal__section">
-            <Typography className="customization-modal__section-title">
-              Sugar Level
-            </Typography>
-            <RadioGroup
-              className="customization-modal__radio-group"
-              row
-              value={customization.sugar}
-              onChange={(e) =>
-                handleCustomizationChange("sugar", e.target.value)
-              }
-            >
-              {item?.options?.sugarLevels?.length > 0 ? (
-                item.options.sugarLevels.map((level) => (
-                  <FormControlLabel
-                    key={level}
-                    value={level}
-                    control={<Radio className="customization-modal__radio" />}
-                    label={level}
-                    className="customization-modal__label"
-                  />
-                ))
-              ) : (
-                <Typography>Không có mức đường</Typography>
-              )}
-            </RadioGroup>
-          </Box>
-
-          <Box className="customization-modal__section">
-            <Typography className="customization-modal__section-title">
-              Ice Level
-            </Typography>
-            <RadioGroup
-              className="customization-modal__radio-group"
-              row
-              value={customization.ice}
-              onChange={(e) => handleCustomizationChange("ice", e.target.value)}
-            >
-              {item?.options?.iceLevels?.length > 0 ? (
-                item.options.iceLevels.map((level) => (
-                  <FormControlLabel
-                    key={level}
-                    value={level}
-                    control={<Radio className="customization-modal__radio" />}
-                    label={level}
-                    className="customization-modal__label"
-                  />
-                ))
-              ) : (
-                <Typography>Không có mức đá</Typography>
-              )}
-            </RadioGroup>
-          </Box>
-
-          <Box className="customization-modal__section">
-            <Typography className="customization-modal__section-title">
-              Toppings
-            </Typography>
-            <Box sx={{ mt: 2 }}>
-              {loading ? (
-                <Typography>Loading toppings...</Typography>
-              ) : (
-                <Box sx={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                  gap: 2,
-                  padding: '10px'
-                }}>
-                  {toppings.map((topping) => (
-                    <Chip
-                      key={topping.productId}
-                      label={`${topping.productName} (${topping.price.toLocaleString('vi-VN')} VNĐ)`}
-                      onClick={() => {
-                        const isSelected = customization.toppings.some(t => t.productId === topping.productId);
-                        if (isSelected) {
-                          setCustomization(prev => ({
-                            ...prev,
-                            toppings: prev.toppings.filter(t => t.productId !== topping.productId)
-                          }));
-                        } else {
-                          setCustomization(prev => ({
-                            ...prev,
-                            toppings: [...prev.toppings, topping]
-                          }));
-                        }
-                      }}
-                      color={customization.toppings.some(t => t.productId === topping.productId) ? "primary" : "default"}
-                      variant={customization.toppings.some(t => t.productId === topping.productId) ? "filled" : "outlined"}
-                      sx={{
-                        height: '40px',
-                        fontSize: '14px',
-                        '&:hover': {
-                          backgroundColor: '#f0e6d9',
-                        }
-                      }}
-                    />
-                  ))}
-                </Box>
-              )}
-            </Box>
-          </Box>
-
-          {/* <Box className="customization-modal__section">
-            <Typography className="customization-modal__section-title"> */}
-              {/* Quantity
-            </Typography>
-            <Box className="customization-modal__quantity">
-              <IconButton
-                onClick={() => handleCustomizationChange("quantity", -1)}
-              >
-                <RemoveIcon />
-              </IconButton>
-              <Typography className="customization-modal__quantity-text">
-                {customization.quantity}
+          {item?.toppingAllowed && (
+            <Box className="customization-modal__section">
+              <Typography className="customization-modal__section-title">
+                Toppings
               </Typography>
-              <IconButton
-                onClick={() => handleCustomizationChange("quantity", 1)}
-              >
-                <AddIcon />
-              </IconButton>
+              <Box sx={{ mt: 2 }}>
+                {loading ? (
+                  <Typography>Loading toppings...</Typography>
+                ) : (
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "repeat(auto-fill, minmax(200px, 1fr))",
+                      gap: 2,
+                      padding: "10px",
+                    }}
+                  >
+                    {toppings.map((topping) => (
+                      <Chip
+                        key={topping.productId}
+                        label={`${
+                          topping.productName
+                        } (${topping.price.toLocaleString("vi-VN")} VNĐ)`}
+                        onClick={() =>
+                          handleCustomizationChange("toppings", topping)
+                        }
+                        color={
+                          customization.toppings.some(
+                            (t) => t.productId === topping.productId
+                          )
+                            ? "primary"
+                            : "default"
+                        }
+                        variant={
+                          customization.toppings.some(
+                            (t) => t.productId === topping.productId
+                          )
+                            ? "filled"
+                            : "outlined"
+                        }
+                        sx={{
+                          height: "40px",
+                          fontSize: "14px",
+                          "&:hover": {
+                            backgroundColor: "#f0e6d9",
+                          },
+                        }}
+                      />
+                    ))}
+                  </Box>
+                )}
+              </Box>
             </Box>
-          </Box> */}
+          )}
 
           <Box className="customization-modal__actions">
             <Typography variant="h6" className="customization-modal__total">
-              Tổng cộng: {calculateTotalPrice().toLocaleString('vi-VN')} VNĐ
+              Tổng cộng: {calculateTotalPrice().toLocaleString("vi-VN")} VNĐ
             </Typography>
             <Button
               onClick={onClose}

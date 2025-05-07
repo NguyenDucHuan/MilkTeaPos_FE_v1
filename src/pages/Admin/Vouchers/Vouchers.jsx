@@ -28,6 +28,7 @@ import VoucherModal from "./VoucherModal";
 export default function Vouchers() {
   const dispatch = useDispatch();
   const { voucher, isLoading, error } = useSelector((state) => state.voucher);
+  console.log("alksdajsd", voucher);
 
   const [openConfirm, setOpenConfirm] = useState(false);
   const [selectedVoucherId, setSelectedVoucherId] = useState(null);
@@ -36,7 +37,7 @@ export default function Vouchers() {
   const [editVoucher, setEditVoucher] = useState(null);
 
   useEffect(() => {
-    dispatch(getAllVouchers());
+    dispatch(getAllVouchers({ Page: 1, PageSize: 10 }));
   }, [dispatch]);
 
   const handleOpenAddModal = () => {

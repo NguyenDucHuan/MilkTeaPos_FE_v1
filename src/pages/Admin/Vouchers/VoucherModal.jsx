@@ -27,7 +27,7 @@ const schema = yup.object().shape({
   DiscountType: yup
     .string()
     .required("Discount type is required")
-    .oneOf(["percentage", "fixed"], "Invalid discount type"),
+    .oneOf(["Percentage", "Amount"], "Invalid discount type"),
   ExpirationDate: yup
     .date()
     .required("Expiration date is required")
@@ -52,7 +52,7 @@ const VoucherModal = ({ open, onClose, initialData }) => {
     defaultValues: initialData || {
       VoucherCode: "",
       DiscountAmount: "",
-      DiscountType: "percentage",
+      DiscountType: "Percentage",
       ExpirationDate: "",
       MinimumOrderAmount: "",
       Status: true,
@@ -64,7 +64,7 @@ const VoucherModal = ({ open, onClose, initialData }) => {
       initialData || {
         VoucherCode: "",
         DiscountAmount: "",
-        DiscountType: "percentage",
+        DiscountType: "Percentage",
         ExpirationDate: "",
         MinimumOrderAmount: "",
         Status: true,
@@ -151,8 +151,8 @@ const VoucherModal = ({ open, onClose, initialData }) => {
                 variant="outlined"
                 InputLabelProps={{ style: { fontWeight: "500" } }}
               >
-                <MenuItem value="percentage">Percentage</MenuItem>
-                <MenuItem value="fixed">Fixed</MenuItem>
+                <MenuItem value="Percentage">Percentage</MenuItem>
+                <MenuItem value="Amount">Amount</MenuItem>
               </TextField>
             </Box>
             <Box sx={{ marginBottom: "16px" }}>
