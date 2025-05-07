@@ -9,76 +9,107 @@ import {
   MenuItem,
   Box,
 } from "@mui/material";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { useDispatch } from "react-redux";
-import {
-  createVoucher,
-  updateVoucher,
-} from "../../../store/slices/voucherSlice";
+import { useSelector } from "react-redux";
 
-const schema = yup.object().shape({
-  VoucherCode: yup.string().required("Voucher code is required"),
-  DiscountAmount: yup
-    .number()
-    .required("Discount amount is required")
-    .positive("Discount amount must be positive"),
-  DiscountType: yup
-    .string()
-    .required("Discount type is required")
-    .oneOf(["Percentage", "Amount"], "Invalid discount type"),
-  ExpirationDate: yup
-    .date()
-    .required("Expiration date is required")
-    .nullable()
-    .typeError("Invalid date format"),
-  MinimumOrderAmount: yup
-    .number()
-    .required("Minimum order amount is required")
-    .min(0, "Minimum order amount cannot be negative"),
-  Status: yup.boolean().required("Status is required"),
-});
+const createSchema = (isEdit) =>
+  yup.object().shape({
+    VoucherCode: isEdit
+      ? yup.string().notRequired()
+      : yup
+          .string()
+          .required("Mã voucher là bắt buộc")
+          .test(
+            "unique-voucher-code",
+            "Mã voucher đã tồn tại",
+            function (value) {
+              if (!value) return true;
+              const vouchers = this.options.context?.vouchers || [];
+              return !vouchers.some(
+                (v) => v.voucherCode.toLowerCase() === value.toLowerCase()
+              );
+            }
+          ),
+    DiscountAmount: yup
+      .number()
+      .required("Số tiền giảm là bắt buộc")
+      .positive("Số tiền giảm phải là số dương"),
+    DiscountType: yup
+      .string()
+      .required("Loại giảm giá là bắt buộc")
+      .oneOf(["Percentage", "Amount"], "Loại giảm giá không hợp lệ"),
+    ExpirationDate: yup
+      .date()
+      .required("Ngày hết hạn là bắt buộc")
+      .nullable()
+      .typeError("Định dạng ngày không hợp lệ")
+      .min(
+        new Date().toISOString().split("T")[0],
+        "Ngày hết hạn không được là quá khứ"
+      ),
+    MinimumOrderAmount: yup
+      .number()
+      .required("Đơn hàng tối thiểu là bắt buộc")
+      .min(0, "Đơn hàng tối thiểu không được âm"),
+  });
 
-const VoucherModal = ({ open, onClose, initialData }) => {
-  const dispatch = useDispatch();
+const VoucherModal = ({ open, onClose, onSubmit, initialData }) => {
+  const { vouchers } = useSelector((state) => state.voucher);
+  const isEdit = !!initialData;
+
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
+    control,
   } = useForm({
-    resolver: yupResolver(schema),
-    defaultValues: initialData || {
+    resolver: yupResolver(createSchema(isEdit)),
+    defaultValues: {
       VoucherCode: "",
       DiscountAmount: "",
       DiscountType: "Percentage",
       ExpirationDate: "",
       MinimumOrderAmount: "",
-      Status: true,
     },
+    context: { vouchers },
   });
+  const watchDiscountType = useWatch({ control, name: "DiscountType" });
 
   useEffect(() => {
-    reset(
-      initialData || {
+    if (initialData) {
+      reset({
+        VoucherCode: initialData.VoucherCode,
+        DiscountAmount: initialData.DiscountAmount,
+        DiscountType: initialData.DiscountType,
+        ExpirationDate: initialData.ExpirationDate,
+        MinimumOrderAmount: initialData.MinimumOrderAmount,
+      });
+    } else {
+      reset({
         VoucherCode: "",
         DiscountAmount: "",
         DiscountType: "Percentage",
         ExpirationDate: "",
         MinimumOrderAmount: "",
-        Status: true,
-      }
-    );
+      });
+    }
   }, [initialData, reset]);
 
-  const onSubmit = (data) => {
-    if (initialData?.id) {
-      dispatch(updateVoucher({ id: initialData.id, data }));
-    } else {
-      dispatch(createVoucher(data));
-    }
-    onClose();
+  const handleFormSubmit = (data) => {
+    const formattedData = {
+      ...data,
+      ExpirationDate:
+        new Date(data.ExpirationDate).toISOString().split("T")[0] +
+        "T00:00:00Z",
+      DiscountAmount:
+        data.DiscountType === "Percentage"
+          ? data.DiscountAmount / 100
+          : data.DiscountAmount,
+    };
+    onSubmit(formattedData);
   };
 
   return (
@@ -105,7 +136,7 @@ const VoucherModal = ({ open, onClose, initialData }) => {
           textAlign: "center",
         }}
       >
-        {initialData ? "Edit Voucher" : "Add Voucher"}
+        {initialData ? "Sửa Voucher" : "Thêm Voucher"}
       </DialogTitle>
       <Box sx={{ padding: "0 24px" }}>
         <DialogContent
@@ -116,26 +147,32 @@ const VoucherModal = ({ open, onClose, initialData }) => {
             padding: "24px 0",
           }}
         >
-          <form id="voucher-form" onSubmit={handleSubmit(onSubmit)}>
+          <form id="voucher-form" onSubmit={handleSubmit(handleFormSubmit)}>
             <Box sx={{ marginBottom: "16px" }}>
               <TextField
-                label="Voucher Code"
+                label="Mã Voucher"
                 fullWidth
                 {...register("VoucherCode")}
                 error={!!errors.VoucherCode}
                 helperText={errors.VoucherCode?.message}
                 variant="outlined"
                 InputLabelProps={{ style: { fontWeight: "500" } }}
+                disabled={isEdit}
               />
             </Box>
             <Box sx={{ marginBottom: "16px" }}>
               <TextField
-                label="Discount Amount"
+                label="Số tiền giảm"
                 type="number"
                 fullWidth
                 {...register("DiscountAmount")}
                 error={!!errors.DiscountAmount}
-                helperText={errors.DiscountAmount?.message}
+                helperText={
+                  errors.DiscountAmount?.message ||
+                  (watchDiscountType === "Percentage"
+                    ? "Nhập theo phần trăm (ví dụ: 12 cho 12%)"
+                    : "Nhập số tiền cố định")
+                }
                 variant="outlined"
                 InputLabelProps={{ style: { fontWeight: "500" } }}
               />
@@ -143,7 +180,7 @@ const VoucherModal = ({ open, onClose, initialData }) => {
             <Box sx={{ marginBottom: "16px" }}>
               <TextField
                 select
-                label="Discount Type"
+                label="Loại giảm giá"
                 fullWidth
                 {...register("DiscountType")}
                 error={!!errors.DiscountType}
@@ -151,13 +188,13 @@ const VoucherModal = ({ open, onClose, initialData }) => {
                 variant="outlined"
                 InputLabelProps={{ style: { fontWeight: "500" } }}
               >
-                <MenuItem value="Percentage">Percentage</MenuItem>
-                <MenuItem value="Amount">Amount</MenuItem>
+                <MenuItem value="Percentage">Phần trăm</MenuItem>
+                <MenuItem value="Amount">Số tiền</MenuItem>
               </TextField>
             </Box>
             <Box sx={{ marginBottom: "16px" }}>
               <TextField
-                label="Expiration Date"
+                label="Ngày hết hạn"
                 type="date"
                 fullWidth
                 InputLabelProps={{ shrink: true, style: { fontWeight: "500" } }}
@@ -169,7 +206,7 @@ const VoucherModal = ({ open, onClose, initialData }) => {
             </Box>
             <Box sx={{ marginBottom: "16px" }}>
               <TextField
-                label="Minimum Order Amount"
+                label="Đơn hàng tối thiểu"
                 type="number"
                 fullWidth
                 {...register("MinimumOrderAmount")}
@@ -178,21 +215,6 @@ const VoucherModal = ({ open, onClose, initialData }) => {
                 variant="outlined"
                 InputLabelProps={{ style: { fontWeight: "500" } }}
               />
-            </Box>
-            <Box sx={{ marginBottom: "16px" }}>
-              <TextField
-                select
-                label="Status"
-                fullWidth
-                {...register("Status")}
-                error={!!errors.Status}
-                helperText={errors.Status?.message}
-                variant="outlined"
-                InputLabelProps={{ style: { fontWeight: "500" } }}
-              >
-                <MenuItem value={true}>Active</MenuItem>
-                <MenuItem value={false}>Inactive</MenuItem>
-              </TextField>
             </Box>
           </form>
         </DialogContent>
@@ -217,7 +239,7 @@ const VoucherModal = ({ open, onClose, initialData }) => {
             },
           }}
         >
-          Huỷ
+          Hủy
         </Button>
         <Button
           variant="contained"
