@@ -350,35 +350,46 @@ const ProductModal = ({
     formDataToSend.append("status", data.status.toString());
     formDataToSend.append("toppingAllowed", data.toppingAllowed.toString());
 
-    // Gửi topping với key toppings
-    if (data.toppingAllowed && data.toppings && data.toppings.length > 0) {
-      const toppingIds = data.toppings
-        .map((topping) => {
-          const toppingItem = extras.items.find(
-            (item) => item.productName === topping.toppingName
-          );
-          return toppingItem
-            ? { toppingId: toppingItem.productId, quantity: topping.quantity }
-            : null;
-        })
-        .filter((item) => item !== null);
+    // Gửi topping với key toppings, kể cả khi rỗng
+    if (data.toppingAllowed) {
+      if (data.toppings && data.toppings.length > 0) {
+        const toppingIds = data.toppings
+          .map((topping) => {
+            const toppingItem = extras.items.find(
+              (item) => item.productName === topping.toppingName
+            );
+            return toppingItem
+              ? { toppingId: toppingItem.productId, quantity: topping.quantity }
+              : null;
+          })
+          .filter((item) => item !== null);
 
-      if (toppingIds.length === 0) {
-        console.warn("No valid topping IDs found for toppings:", data.toppings);
+        if (toppingIds.length === 0) {
+          console.warn(
+            "No valid topping IDs found for toppings:",
+            data.toppings
+          );
+          // Gửi mảng rỗng nếu không có topping hợp lệ
+          formDataToSend.append("toppings", JSON.stringify([]));
+        } else {
+          toppingIds.forEach((topping, index) => {
+            formDataToSend.append(
+              `toppings[${index}].toppingId`,
+              topping.toppingId.toString()
+            );
+            formDataToSend.append(
+              `toppings[${index}].quantity`,
+              topping.quantity.toString()
+            );
+            console.log(
+              `Sending toppings[${index}]: toppingId=${topping.toppingId}, quantity=${topping.quantity}`
+            );
+          });
+        }
       } else {
-        toppingIds.forEach((topping, index) => {
-          formDataToSend.append(
-            `toppings[${index}].toppingId`,
-            topping.toppingId.toString()
-          );
-          formDataToSend.append(
-            `toppings[${index}].quantity`,
-            topping.quantity.toString()
-          );
-          console.log(
-            `Sending toppings[${index}]: toppingId=${topping.toppingId}, quantity=${topping.quantity}`
-          );
-        });
+        // Gửi mảng toppings rỗng nếu không có topping được chọn
+        formDataToSend.append("toppings", JSON.stringify([]));
+        console.log("Sending empty toppings array: []");
       }
     }
 
@@ -438,12 +449,18 @@ const ProductModal = ({
       }
     }
 
+    // Log FormData để debug
+    for (let [key, value] of formDataToSend.entries()) {
+      console.log(`FormData: ${key} = ${value}`);
+    }
+
     try {
+      let response;
       if (!isEditMode) {
-        await dispatch(createProduct(formDataToSend)).unwrap();
+        response = await dispatch(createProduct(formDataToSend)).unwrap();
         toast.success("Sản phẩm đã được tạo thành công!");
       } else {
-        await dispatch(
+        response = await dispatch(
           updateProduct({ productId: editProductId, formData: formDataToSend })
         ).unwrap();
         if (imageFile) {
@@ -458,6 +475,7 @@ const ProductModal = ({
         }
         toast.success("Sản phẩm đã được cập nhật thành công!");
       }
+      console.log("API response:", response);
       onSubmitSuccess();
       onClose();
     } catch (error) {

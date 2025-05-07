@@ -72,17 +72,61 @@ export default function HomePage() {
     quantity: 1,
   });
   const [comboCurrentPage, setComboCurrentPage] = useState(1);
-  const [pageSize] = useState(6);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [editOrderItemId, setEditOrderItemId] = useState(null);
+
+  // Log dữ liệu để debug
+  useEffect(() => {
+    console.log("MaterProducts:", materProducts);
+    console.log("Combos:", combos);
+    console.log("Extras:", extras);
+    console.log("Categories:", categories);
+    console.log("SelectedCategory:", selectedCategory);
+  }, [materProducts, combos, extras, categories, selectedCategory]);
+
+  // Tải danh sách topping nếu chưa có
+  useEffect(() => {
+    if (extras.length === 0) {
+      dispatch(
+        listItemApi({
+          CategoryId: null, // Lấy tất cả topping, không giới hạn danh mục
+          Page: 1,
+          PageSize: 100, // Lấy đủ topping trong một lần gọi
+          ProductType: "Extra",
+        })
+      ).then((result) => {
+        if (result.meta.requestStatus === "fulfilled") {
+          console.log("Toppings fetched successfully:", result.payload);
+        } else {
+          console.error("Error fetching toppings:", result.error);
+        }
+      });
+    }
+  }, [dispatch, extras.length]);
 
   useEffect(() => {
     dispatch(getAllCategoriesForHomepage());
     dispatch(getCartApi());
   }, [dispatch]);
 
+  // Đặt selectedCategory mặc định nếu chưa có
   useEffect(() => {
-    if (selectedCategory && categories.length > 0) {
+    if (categories.length > 0 && !selectedCategory) {
+      setSelectedCategory(categories[0].categoryName);
+    }
+  }, [categories, selectedCategory, setSelectedCategory]);
+
+  // Đặt lại trang khi danh mục thay đổi
+  useEffect(() => {
+    setCurrentPage(1);
+    setComboCurrentPage(1);
+  }, [selectedCategory]);
+
+  // Gọi listItemApi khi selectedCategory hoặc currentPage thay đổi
+  useEffect(() => {
+    if (categories.length > 0 && selectedCategory) {
       const selectedCategoryObj = categories.find(
         (cat) => cat.categoryName === selectedCategory
       );
@@ -90,9 +134,14 @@ export default function HomePage() {
         dispatch(
           listItemApi({
             CategoryId: selectedCategoryObj.categoryId,
-            Page: materPagination.currentPage,
-            PageSize: materPagination.pageSize,
-            ProductType: selectedCategory === "Topping" ? "Extra" : selectedCategory === "Combo" ? "Combo" : "MaterProduct",
+            Page: currentPage,
+            PageSize: pageSize,
+            ProductType:
+              selectedCategory === "Topping"
+                ? "Extra"
+                : selectedCategory === "Combo"
+                ? "Combo"
+                : "MaterProduct",
           })
         ).then((result) => {
           if (result.meta.requestStatus === "fulfilled") {
@@ -105,7 +154,7 @@ export default function HomePage() {
         console.warn("Selected category not found:", selectedCategory);
       }
     }
-  }, [dispatch, selectedCategory, categories, materPagination.currentPage]);
+  }, [dispatch, selectedCategory, categories, currentPage, pageSize]);
 
   useEffect(() => {
     console.log("Cart updated:", cart);
@@ -131,6 +180,11 @@ export default function HomePage() {
   };
 
   const handleOpenModal = async (item) => {
+    if (!item) {
+      console.error("No item provided to open modal");
+      return;
+    }
+
     if (item.productType?.toLowerCase() === "extra") {
       console.log("Processing as topping");
       try {
@@ -244,6 +298,9 @@ export default function HomePage() {
           product: { ...customizedItem, productId, price },
           quantity: customizedItem.quantity,
           size: customizedItem.size,
+          toppings: customizedItem.toppingAllowed
+            ? customizedItem.toppings
+            : [],
         })
       );
 
@@ -253,6 +310,9 @@ export default function HomePage() {
           productId,
           quantity: customizedItem.quantity,
           price,
+          toppingIds: customizedItem.toppingAllowed
+            ? customizedItem.toppings.map((t) => t.toppingId)
+            : [],
         })
       ).unwrap();
 
@@ -349,22 +409,29 @@ export default function HomePage() {
   };
 
   const getFilteredItems = () => {
+    console.log("Filtering items for category:", selectedCategory);
     if (selectedCategory === "Combo") {
+      console.log("Returning combos:", combos);
       return combos;
     } else if (selectedCategory === "Topping") {
+      console.log("Returning extras:", extras);
       return extras;
     } else {
+      console.log("Returning materProducts:", materProducts);
       return materProducts;
     }
   };
 
   const handleCategoryClick = (category) => {
     setSelectedCategory(category);
-    setComboCurrentPage(1);
   };
 
   const handleComboPageChange = (event, newPage) => {
     setComboCurrentPage(newPage);
+  };
+
+  const handlePageChange = (event, newPage) => {
+    setCurrentPage(newPage);
   };
 
   const subtotal = calculateSubtotal();
@@ -381,6 +448,7 @@ export default function HomePage() {
           productId: item.productId,
           quantity: item.quantity,
           price: item.price || item.product?.price || 0,
+          toppingIds: item.toppings?.map((t) => t.toppingId) || [],
         })),
       };
 
@@ -395,9 +463,14 @@ export default function HomePage() {
           await dispatch(
             listItemApi({
               CategoryId: selectedCategoryObj.categoryId,
-              Page: materPagination.currentPage,
-              PageSize: materPagination.pageSize,
-              ProductType: selectedCategory === "Topping" ? "Extra" : selectedCategory === "Combo" ? "Combo" : "MaterProduct",
+              Page: currentPage,
+              PageSize: pageSize,
+              ProductType:
+                selectedCategory === "Topping"
+                  ? "Extra"
+                  : selectedCategory === "Combo"
+                  ? "Combo"
+                  : "MaterProduct",
             })
           );
         }
@@ -410,6 +483,7 @@ export default function HomePage() {
   };
 
   const paginatedCombos = useMemo(() => {
+    console.log("Paginating combos:", combos);
     const startIndex = (comboCurrentPage - 1) * pageSize;
     const endIndex = startIndex + pageSize;
     return combos.slice(startIndex, endIndex);
@@ -431,9 +505,20 @@ export default function HomePage() {
 
   return (
     <Box className="home-page" sx={{ display: "flex" }}>
-      <Grid item size={3} sx={{ borderRight: "1px solid #e0e0e0", height: "100vh", overflowY: "auto" }}>
+      <Grid
+        item
+        size={3}
+        sx={{
+          borderRight: "1px solid #e0e0e0",
+          height: "100vh",
+          overflowY: "auto",
+        }}
+      >
         <Box sx={{ p: 2 }}>
-          <Typography variant="h6" sx={{ color: "#8a5a2a", fontWeight: "bold", mb: 2 }}>
+          <Typography
+            variant="h6"
+            sx={{ color: "#8a5a2a", fontWeight: "bold", mb: 2 }}
+          >
             Danh mục
           </Typography>
           {categoryLoading ? (
@@ -494,7 +579,10 @@ export default function HomePage() {
           ) : getFilteredItems().length > 0 ? (
             <>
               <Grid container spacing={2} className="menu-items-grid">
-                {(selectedCategory === "Combo" ? paginatedCombos : getFilteredItems()).map((item) => {
+                {(selectedCategory === "Combo"
+                  ? paginatedCombos
+                  : getFilteredItems()
+                ).map((item) => {
                   const firstVariant = item.variants?.[0] || {};
                   const price =
                     firstVariant.price !== null &&
@@ -579,7 +667,10 @@ export default function HomePage() {
                                 >
                                   <Typography
                                     variant="body2"
-                                    sx={{ color: "#8a5a2a", fontWeight: "bold" }}
+                                    sx={{
+                                      color: "#8a5a2a",
+                                      fontWeight: "bold",
+                                    }}
                                   >
                                     Bao gồm:
                                   </Typography>
@@ -589,9 +680,55 @@ export default function HomePage() {
                                       variant="body2"
                                       sx={{ color: "#8a5a2a" }}
                                     >
-                                      - {comboItem.quantity} {comboItem.productName}
+                                      - {comboItem.quantity}{" "}
+                                      {comboItem.productName}
                                     </Typography>
                                   ))}
+                                </Box>
+                              )}
+                            {item.toppingAllowed &&
+                              item.toppings &&
+                              item.toppings.length > 0 && (
+                                <Box
+                                  sx={{
+                                    marginTop: "8px",
+                                    minHeight: "60px",
+                                    overflow: "hidden",
+                                  }}
+                                >
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      color: "#8a5a2a",
+                                      fontWeight: "bold",
+                                    }}
+                                  >
+                                    Topping đi kèm:
+                                  </Typography>
+                                  {item.toppings.map((topping) => {
+                                    const toppingDetails = extras.find(
+                                      (extra) =>
+                                        extra.productId === topping.toppingId
+                                    );
+                                    console.log(
+                                      `Topping ID: ${topping.toppingId}, Details:`,
+                                      toppingDetails,
+                                      "Extras:",
+                                      extras
+                                    );
+                                    return (
+                                      <Typography
+                                        key={topping.toppingId}
+                                        variant="body2"
+                                        sx={{ color: "#8a5a2a" }}
+                                      >
+                                        -{" "}
+                                        {toppingDetails?.productName ||
+                                          "Loading Topping..."}{" "}
+                                        ({topping.quantity} phần)
+                                      </Typography>
+                                    );
+                                  })}
                                 </Box>
                               )}
                           </Box>
@@ -649,39 +786,31 @@ export default function HomePage() {
                   />
                 </Box>
               )}
-              {selectedCategory !== "Combo" && materPagination.totalPages > 1 && (
-                <Box sx={{ display: "flex", justifyContent: "center", mt: 5 }}>
-                  <Pagination
-                    count={materPagination.totalPages}
-                    page={materPagination.currentPage}
-                    onChange={(event, newPage) =>
-                      dispatch(
-                        listItemApi({
-                          CategoryId: categories.find(
-                            (cat) => cat.categoryName === selectedCategory
-                          )?.categoryId,
-                          Page: newPage,
-                          PageSize: materPagination.pageSize,
-                          ProductType: selectedCategory === "Topping" ? "Extra" : "MaterProduct",
-                        })
-                      )
-                    }
-                    color="primary"
-                    sx={{
-                      "& .MuiPaginationItem-root": {
-                        color: "#8a5a2a",
-                      },
-                    }}
-                  />
-                </Box>
-              )}
+              {selectedCategory !== "Combo" &&
+                materPagination.totalPages > 1 && (
+                  <Box
+                    sx={{ display: "flex", justifyContent: "center", mt: 5 }}
+                  >
+                    <Pagination
+                      count={materPagination.totalPages}
+                      page={currentPage}
+                      onChange={handlePageChange}
+                      color="primary"
+                      sx={{
+                        "& .MuiPaginationItem-root": {
+                          color: "#8a5a2a",
+                        },
+                      }}
+                    />
+                  </Box>
+                )}
             </>
           ) : (
             <Typography
               variant="h6"
               sx={{ color: "#8a5a2a", fontWeight: "bold", mt: 2 }}
             >
-              Không có món nào trong danh mục này
+              Không có món nào trong danh mục này. Hãy thử danh mục khác!
             </Typography>
           )}
         </Grid>
@@ -740,7 +869,10 @@ export default function HomePage() {
                   <Box className="order-summary-item">
                     <Typography variant="body2">SỐ MÓN:</Typography>
                     <Typography variant="body2">
-                      {cart.reduce((sum, item) => sum + (item.quantity || 0), 0)}
+                      {cart.reduce(
+                        (sum, item) => sum + (item.quantity || 0),
+                        0
+                      )}
                     </Typography>
                   </Box>
                   <Box className="order-summary-item">
@@ -790,36 +922,40 @@ export default function HomePage() {
                             }}
                           >
                             {item.productName}
-                            {item.sizeId && item.sizeId !== "Parent" && ` (${item.sizeId})`}
+                            {item.sizeId &&
+                              item.sizeId !== "Parent" &&
+                              ` (${item.sizeId})`}
                           </span>
                           {item.toppings && item.toppings.length > 0 && (
-                            <Box sx={{ 
-                              ml: 6, 
-                              mt: 0.5,
-                              backgroundColor: '#f9f5f1',
-                              borderRadius: '8px',
-                              padding: '8px 12px',
-                              width: 'fit-content'
-                            }}>
+                            <Box
+                              sx={{
+                                ml: 6,
+                                mt: 0.5,
+                                backgroundColor: "#f9f5f1",
+                                borderRadius: "8px",
+                                padding: "8px 12px",
+                                width: "fit-content",
+                              }}
+                            >
                               <Typography
                                 variant="body2"
                                 sx={{
                                   color: "#8a5a2a",
                                   fontSize: "14px",
                                   fontWeight: "bold",
-                                  mb: 1
+                                  mb: 1,
                                 }}
                               >
-                                Topping bao gồm:
+                                Topping thêm bao gồm:
                               </Typography>
                               {item.toppings.map((topping, index) => (
-                                <Box 
-                                  key={topping.toppingId} 
-                                  sx={{ 
-                                    display: 'flex',
-                                    alignItems: 'center',
+                                <Box
+                                  key={topping.toppingId}
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
                                     ml: 1,
-                                    mb: 0.5
+                                    mb: 0.5,
                                   }}
                                 >
                                   <Typography
@@ -827,7 +963,7 @@ export default function HomePage() {
                                     sx={{
                                       color: "#666",
                                       fontSize: "14px",
-                                      minWidth: '20px'
+                                      minWidth: "20px",
                                     }}
                                   >
                                     {index + 1}.
@@ -837,7 +973,7 @@ export default function HomePage() {
                                     sx={{
                                       color: "#666",
                                       fontSize: "14px",
-                                      ml: 1
+                                      ml: 1,
                                     }}
                                   >
                                     {topping.toppingName}
@@ -848,7 +984,7 @@ export default function HomePage() {
                                       color: "#8a5a2a",
                                       fontSize: "14px",
                                       ml: 1,
-                                      fontWeight: "medium"
+                                      fontWeight: "medium",
                                     }}
                                   >
                                     ({topping.quantity || 1} phần)
@@ -859,10 +995,14 @@ export default function HomePage() {
                                       color: "#b0855b",
                                       fontSize: "14px",
                                       ml: 2,
-                                      fontWeight: "bold"
+                                      fontWeight: "bold",
                                     }}
                                   >
-                                    {topping.price ? `${Number(topping.price).toLocaleString('vi-VN')} VNĐ` : ''}
+                                    {topping.price
+                                      ? `${Number(topping.price).toLocaleString(
+                                          "vi-VN"
+                                        )} VNĐ`
+                                      : ""}
                                   </Typography>
                                 </Box>
                               ))}
@@ -872,9 +1012,17 @@ export default function HomePage() {
                         <Box sx={{ mt: 1 }}>
                           <Typography
                             variant="body2"
-                            sx={{ color: '#8a5a2a', fontWeight: 'bold', fontSize: '15px' }}
+                            sx={{
+                              color: "#8a5a2a",
+                              fontWeight: "bold",
+                              fontSize: "15px",
+                            }}
                           >
-                            Thành tiền: {(Number(item.subPrice) || calculateItemPrice(item)).toLocaleString('vi-VN')} VNĐ
+                            Thành tiền:{" "}
+                            {(
+                              Number(item.subPrice) || calculateItemPrice(item)
+                            ).toLocaleString("vi-VN")}{" "}
+                            VNĐ
                           </Typography>
                         </Box>
                       </Box>
@@ -925,7 +1073,10 @@ export default function HomePage() {
                     sx={{
                       color: "#8a5a2a",
                       borderColor: "#8a5a2a",
-                      "&:hover": { borderColor: "#8a5a2a", backgroundColor: "#f0e6d9" },
+                      "&:hover": {
+                        borderColor: "#8a5a2a",
+                        backgroundColor: "#f0e6d9",
+                      },
                     }}
                   >
                     Xóa đơn hàng
