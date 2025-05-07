@@ -116,10 +116,14 @@ export const updateVoucher = createAsyncThunk(
 );
 
 export const fetchVouchers = createAsyncThunk(
-  'voucher/fetchVouchers',
-  async () => {
-    const response = await fetcher.get('/vouchers');
-    return response.data;
+  "voucher/fetchVouchers",
+  async ({ page = 1, size = 10, status = true } = {}) => {
+    try {
+      const response = await fetcher.get(`/vouchers?page=${page}&size=${size}&status=${status}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
   }
 );
 
@@ -131,10 +135,10 @@ const voucherSlice = createSlice({
     isLoading: false,
     error: null,
     pagination: {
+      page: 1,
+      size: 10,
       total: 0,
-      totalPages: 1,
-      currentPage: 1,
-      pageSize: 10,
+      totalPages: 0
     },
   },
   reducers: {
@@ -154,10 +158,10 @@ const voucherSlice = createSlice({
       state.isLoading = false;
       state.vouchers = payload.items;
       state.pagination = {
+        page: payload.currentPage,
+        size: payload.pageSize,
         total: payload.total,
         totalPages: payload.totalPages,
-        currentPage: payload.currentPage,
-        pageSize: payload.pageSize,
       };
     });
     builder.addCase(getAllVouchers.rejected, (state, { payload }) => {
@@ -213,6 +217,12 @@ const voucherSlice = createSlice({
     builder.addCase(fetchVouchers.fulfilled, (state, action) => {
       state.isLoading = false;
       state.vouchers = action.payload.items;
+      state.pagination = {
+        page: action.payload.page,
+        size: action.payload.size,
+        total: action.payload.total,
+        totalPages: action.payload.totalPages
+      };
     });
     builder.addCase(fetchVouchers.rejected, (state, action) => {
       state.isLoading = false;
