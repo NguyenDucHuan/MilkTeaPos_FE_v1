@@ -94,6 +94,17 @@ const OrderList = () => {
     setOrderDetails(null);
   };
 
+  const handleStatusChange = async (order, newStatus) => {
+    try {
+      // Here you would typically make an API call to update the order status
+      console.log(`Changing order ${order.orderId} status to ${newStatus}`);
+      // After successful API call, refresh the orders list
+      dispatch(fetchOrders());
+    } catch (error) {
+      console.error('Error updating order status:', error);
+    }
+  };
+
   const filteredOrders = orders?.items
     ? orders.items.filter((order) =>
         order.orderId.toString().includes(searchTerm.toLowerCase()) ||
@@ -120,13 +131,24 @@ const OrderList = () => {
     }).format(amount || 0);
   };
 
-  const OrderStatus = ({ status }) => {
+  const OrderStatus = ({ status, onStatusClick }) => {
     const statusInfo = statusColors[status] || statusColors.Pending;
     const StatusIcon = statusInfo.icon;
     return (
-      <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${statusInfo.color}`}>
+      <button
+        onClick={onStatusClick}
+        className={`flex items-center gap-2 px-3 py-1 rounded-full ${statusInfo.color} hover:opacity-80 transition-opacity`}
+      >
         <StatusIcon className="w-4 h-4" />
         <span className="text-sm font-medium">{statusInfo.label}</span>
+      </button>
+    );
+  };
+
+  const PaymentStatus = ({ isPaid }) => {
+    return (
+      <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${isPaid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+        <span className="text-sm font-medium">{isPaid ? 'Đã thanh toán' : 'Chưa thanh toán'}</span>
       </div>
     );
   };
@@ -201,6 +223,9 @@ const OrderList = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Trạng thái
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Thanh toán
+                  </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Chi tiết
                   </th>
@@ -209,7 +234,7 @@ const OrderList = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
                       Không có đơn hàng nào
                     </td>
                   </tr>
@@ -228,7 +253,13 @@ const OrderList = () => {
                           {formatCurrency(order.totalAmount)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <OrderStatus status={normalizeStatus(order.orderStatus)} />
+                          <OrderStatus 
+                            status={normalizeStatus(order.orderStatus)} 
+                            onStatusClick={() => handleStatusChange(order, order.orderStatus)}
+                          />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <PaymentStatus isPaid={order.isPaid} />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <IconButton
