@@ -15,7 +15,6 @@ fetcher.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-
     return config;
   },
   (error) => Promise.reject(error)
@@ -32,9 +31,7 @@ fetcher.interceptors.response.use(
       stack: error.stack,
     };
     console.error("Response error details:", errorDetails);
-    const errorMessage =
-      error.response?.data?.message || error.message || "Có lỗi xảy ra. Vui lòng thử lại.";
-    return Promise.reject(new Error(errorMessage));
+    return Promise.reject(error);
   }
 );
 

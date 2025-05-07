@@ -1,4 +1,3 @@
-// src/pages/admin/Vouchers.jsx
 import React, { useEffect, useState } from "react";
 import {
   Box,
@@ -14,6 +13,7 @@ import {
   TableHead,
   TableRow,
   Typography,
+  Pagination,
 } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -27,18 +27,24 @@ import VoucherModal from "./VoucherModal";
 
 export default function Vouchers() {
   const dispatch = useDispatch();
-  const { voucher, isLoading, error } = useSelector((state) => state.voucher);
-  console.log("alksdajsd", voucher);
+  const { vouchers, isLoading, error, pagination } = useSelector(
+    (state) => state.voucher
+  );
+  console.log("Danh sách voucher:", vouchers);
 
   const [openConfirm, setOpenConfirm] = useState(false);
   const [selectedVoucherId, setSelectedVoucherId] = useState(null);
-
   const [openModal, setOpenModal] = useState(false);
   const [editVoucher, setEditVoucher] = useState(null);
 
   useEffect(() => {
-    dispatch(getAllVouchers({ Page: 1, PageSize: 10 }));
-  }, [dispatch]);
+    dispatch(
+      getAllVouchers({
+        Page: pagination.currentPage,
+        PageSize: pagination.pageSize,
+      })
+    );
+  }, [dispatch, pagination.currentPage, pagination.pageSize]);
 
   const handleOpenAddModal = () => {
     setEditVoucher(null);
@@ -46,7 +52,19 @@ export default function Vouchers() {
   };
 
   const handleOpenEditModal = (voucher) => {
-    setEditVoucher(voucher);
+    setEditVoucher({
+      id: voucher.voucherId,
+      VoucherCode: voucher.voucherCode,
+      DiscountAmount:
+        voucher.discountType === "Percentage"
+          ? voucher.discountAmount * 100
+          : voucher.discountAmount,
+      DiscountType: voucher.discountType,
+      ExpirationDate: new Date(voucher.expirationDate)
+        .toISOString()
+        .split("T")[0],
+      MinimumOrderAmount: voucher.minimumOrderAmount,
+    });
     setOpenModal(true);
   };
 
@@ -66,10 +84,15 @@ export default function Vouchers() {
         await dispatch(createVoucher(formData)).unwrap();
         toast.success("Thêm voucher thành công!");
       }
-      dispatch(getAllVouchers());
+      dispatch(
+        getAllVouchers({
+          Page: pagination.currentPage,
+          PageSize: pagination.pageSize,
+        })
+      );
       handleCloseModal();
     } catch (err) {
-      toast.error("Thao tác thất bại!");
+      toast.error("Thao tác thất bại! " + (err.message || err.detail || ""));
     }
   };
 
@@ -87,11 +110,21 @@ export default function Vouchers() {
     try {
       await dispatch(deleteVouchers(selectedVoucherId)).unwrap();
       toast.success("Xoá voucher thành công!");
+      dispatch(
+        getAllVouchers({
+          Page: pagination.currentPage,
+          PageSize: pagination.pageSize,
+        })
+      );
     } catch {
       toast.error("Xoá voucher thất bại!");
     } finally {
       handleCloseConfirm();
     }
+  };
+
+  const handlePageChange = (event, newPage) => {
+    dispatch(getAllVouchers({ Page: newPage, PageSize: pagination.pageSize }));
   };
 
   if (isLoading) return <Typography sx={{ p: 2 }}>Loading...</Typography>;
@@ -110,77 +143,84 @@ export default function Vouchers() {
         </Button>
       </Box>
 
-      {!voucher || voucher.length === 0 ? (
-        <Typography>No vouchers available.</Typography>
+      {!vouchers || vouchers.length === 0 ? (
+        <Typography>Không có voucher nào.</Typography>
       ) : (
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Voucher Code</TableCell>
-              <TableCell>Discount Amount</TableCell>
-              <TableCell>Discount Type</TableCell>
-              <TableCell>Expiration Date</TableCell>
-              <TableCell>Min Order Amount</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Created At</TableCell>
-              <TableCell>Updated At</TableCell>
-              <TableCell>Voucher ID</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {voucher.map((item) => (
-              <TableRow key={item.VoucherId}>
-                <TableCell>{item.VoucherCode}</TableCell>
-                <TableCell>{item.DiscountAmount}</TableCell>
-                <TableCell>{item.DiscountType}</TableCell>
-                <TableCell>
-                  {new Date(item.ExpirationDate).toLocaleDateString()}
-                </TableCell>
-                <TableCell>{item.MinimumOrderAmount}</TableCell>
-                <TableCell>{item.Status ? "Active" : "Inactive"}</TableCell>
-                <TableCell>
-                  {new Date(item.Created_at).toLocaleString()}
-                </TableCell>
-                <TableCell>
-                  {new Date(item.Updated_at).toLocaleString()}
-                </TableCell>
-                <TableCell>{item.VoucherId}</TableCell>
-                <TableCell>
-                  <Button
-                    variant="contained"
-                    color="warning"
-                    sx={{ mr: 1 }}
-                    onClick={() => handleOpenEditModal(item)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="contained"
-                    color="error"
-                    onClick={() => handleOpenConfirm(item.id)}
-                  >
-                    Delete
-                  </Button>
-                </TableCell>
+        <>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Mã Voucher</TableCell>
+                <TableCell>Số tiền giảm</TableCell>
+                <TableCell>Loại giảm giá</TableCell>
+                <TableCell>Ngày hết hạn</TableCell>
+                <TableCell>Đơn hàng tối thiểu</TableCell>
+                <TableCell>Trạng thái</TableCell>
+                <TableCell>Hành động</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {vouchers.map((item) => (
+                <TableRow key={item.voucherId}>
+                  <TableCell>{item.voucherCode}</TableCell>
+                  <TableCell>
+                    {item.discountType === "Percentage"
+                      ? `${(item.discountAmount * 100).toFixed(0)}%`
+                      : item.discountAmount}
+                  </TableCell>
+                  <TableCell>{item.discountType}</TableCell>
+                  <TableCell>
+                    {new Date(item.expirationDate).toLocaleDateString("vi-VN")}
+                  </TableCell>
+                  <TableCell>{item.minimumOrderAmount}</TableCell>
+                  <TableCell>
+                    {item.status ? "Hoạt động" : "Ngưng hoạt động"}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="contained"
+                      color="warning"
+                      sx={{ mr: 1 }}
+                      onClick={() => handleOpenEditModal(item)}
+                    >
+                      Sửa
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="error"
+                      onClick={() => handleOpenConfirm(item.voucherId)}
+                    >
+                      Xóa
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+            <Pagination
+              count={pagination.totalPages}
+              page={pagination.currentPage}
+              onChange={handlePageChange}
+              color="primary"
+              sx={{ "& .MuiPagination-ul": { justifyContent: "center" } }}
+            />
+          </Box>
+        </>
       )}
 
-      {/* Modal xác nhận xoá */}
+      {/* Modal xác nhận xóa */}
       <Dialog open={openConfirm} onClose={handleCloseConfirm}>
-        <DialogTitle>Xác nhận xoá</DialogTitle>
+        <DialogTitle>Xác nhận xóa</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Bạn có chắc chắn muốn xoá voucher này không?
+            Bạn có chắc chắn muốn xóa voucher này không?
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseConfirm}>Huỷ</Button>
+          <Button onClick={handleCloseConfirm}>Hủy</Button>
           <Button color="error" onClick={handleConfirmDelete}>
-            Xoá
+            Xóa
           </Button>
         </DialogActions>
       </Dialog>
