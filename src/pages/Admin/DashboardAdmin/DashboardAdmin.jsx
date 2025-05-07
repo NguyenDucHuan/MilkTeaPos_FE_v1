@@ -54,30 +54,40 @@ export default function DashboardAdmin() {
     (state) => state.statistic
   );
 
-  // State for display mode and filters
+  // Lấy ngày hiện tại để khởi tạo state
+  const currentDate = new Date();
+
+  // State cho display mode và filters
   const [displayMode, setDisplayMode] = useState("Daily");
-  const [selectedMonth, setSelectedMonth] = useState(5); // May
-  const [selectedYear, setSelectedYear] = useState(2025);
+  const [selectedMonth, setSelectedMonth] = useState(
+    currentDate.getMonth() + 1
+  );
+  // Lấy năm hiện tại
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+
+  // From day today
   const [fromDate, setFromDate] = useState(() => {
-    const date = new Date(2025, 4, 1); // First day of May 2025
+    const date = new Date(currentDate);
+    date.setDate(currentDate.getDate() - currentDate.getDay());
     return date;
   });
   const [toDate, setToDate] = useState(() => {
-    const date = new Date(2025, 4, 7); // One week from May 1, 2025
+    const date = new Date(currentDate);
+    date.setDate(currentDate.getDate() - currentDate.getDay() + 6);
     return date;
   });
+
   const [toast, setToast] = useState({
     open: false,
     message: "",
     severity: "error",
   });
 
-  // Current date for Daily mode and max date limit
-  const currentDate = new Date();
-  const minDate = new Date(2023, 0, 1); // Jan 1, 2023
+  // Giới hạn ngày tối thiểu và tối đa
+  const minDate = new Date(2023, 0, 1); // 1/1/2023
   const maxDate = currentDate;
 
-  // Helper function to format date for display
+  // Hàm định dạng ngày để hiển thị
   const formatDate = (date) => {
     return date.toLocaleDateString("en-GB", {
       day: "2-digit",
@@ -86,7 +96,7 @@ export default function DashboardAdmin() {
     });
   };
 
-  // Helper function to format date as YYYY-MM-DD for API and inputs
+  // Hàm định dạng ngày cho API
   const formatDateForApi = (date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -94,7 +104,7 @@ export default function DashboardAdmin() {
     return `${year}-${month}-${day}`;
   };
 
-  // Helper function to get date range
+  // Hàm lấy khoảng thời gian để hiển thị trong biểu đồ
   const getDateRange = (mode, month, year) => {
     if (mode === "Daily") {
       return `on ${formatDate(currentDate)}`;
@@ -102,7 +112,7 @@ export default function DashboardAdmin() {
       return `from ${formatDate(fromDate)} to ${formatDate(toDate)}`;
     } else if (mode === "Monthly") {
       const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0); // Last day of the month
+      const endDate = new Date(year, month, 0); // Ngày cuối tháng
       return `from ${formatDate(startDate)} to ${formatDate(endDate)}`;
     } else if (mode === "Yearly") {
       const startDate = new Date(year, 0, 1);
@@ -112,7 +122,7 @@ export default function DashboardAdmin() {
     return "";
   };
 
-  // Chart data
+  // Dữ liệu cho biểu đồ
   const revenueLabels =
     statistic?.revenueChart?.map((item) => item.label) || [];
   const revenueValues =
@@ -120,7 +130,7 @@ export default function DashboardAdmin() {
   const ordersLabels = statistic?.orderChart?.map((item) => item.label) || [];
   const ordersValues = statistic?.orderChart?.map((item) => item.value) || [];
 
-  // Revenue Line Chart
+  // Dữ liệu và tùy chọn cho biểu đồ doanh thu (Line Chart)
   const revenueData = {
     labels: revenueLabels,
     datasets: [
@@ -168,7 +178,7 @@ export default function DashboardAdmin() {
     },
   };
 
-  // Orders Bar Chart
+  // Dữ liệu và tùy chọn cho biểu đồ đơn hàng (Bar Chart)
   const ordersData = {
     labels: ordersLabels,
     datasets: [
@@ -202,7 +212,7 @@ export default function DashboardAdmin() {
     },
   };
 
-  // Best-Seller Pie Chart
+  // Dữ liệu và tùy chọn cho biểu đồ sản phẩm bán chạy (Pie Chart)
   const bestSellers = statistic?.bestSellers || [];
   const bestSellerLabels = bestSellers.map(
     (item) => item.product?.productName || "Unknown"
@@ -211,7 +221,6 @@ export default function DashboardAdmin() {
     (item) => item.totalQuantitySold || 0
   );
 
-  // Ensure non-negative values for the chart
   const sanitizedQuantities = bestSellerQuantities.map((qty) =>
     Math.max(0, qty)
   );
@@ -237,7 +246,7 @@ export default function DashboardAdmin() {
 
   const bestSellerOptions = {
     responsive: true,
-    maintainAspectRatio: false, // Allow the chart to adjust to container size
+    maintainAspectRatio: false,
     plugins: {
       legend: { position: "right" },
       title: { display: true, text: "Top 5 Best-Selling Products by Quantity" },
@@ -256,7 +265,7 @@ export default function DashboardAdmin() {
     },
   };
 
-  // Fetch data based on mode
+  // Gọi API dựa trên chế độ hiển thị
   useEffect(() => {
     const params = { number: 5 };
     if (displayMode === "Weekly") {
@@ -293,7 +302,7 @@ export default function DashboardAdmin() {
     }
   }, [dispatch, displayMode, selectedMonth, selectedYear, fromDate, toDate]);
 
-  // Debug: Log chart data
+  // Debug: Log dữ liệu biểu đồ
   useEffect(() => {
     console.log("Best Sellers for Chart:", {
       labels: bestSellerLabels,
@@ -301,16 +310,17 @@ export default function DashboardAdmin() {
     });
   }, [statistic?.bestSellers]);
 
-  // Handle mode change
+  // Xử lý thay đổi chế độ hiển thị
   const handleDisplayModeChange = (mode) => {
     setDisplayMode(mode);
   };
 
-  // Handle toast close
+  // Xử lý đóng thông báo
   const handleToastClose = () => {
     setToast({ ...toast, open: false });
   };
 
+  // Xử lý thay đổi tháng
   const handleMonthChange = (e) => {
     const newMonth = Number(e.target.value);
     if (
@@ -327,6 +337,7 @@ export default function DashboardAdmin() {
     setSelectedMonth(newMonth);
   };
 
+  // Xử lý thay đổi năm
   const handleYearChange = (e) => {
     const newYear = Number(e.target.value);
     if (newYear > currentDate.getFullYear()) {
@@ -346,7 +357,7 @@ export default function DashboardAdmin() {
     setSelectedYear(newYear);
   };
 
-  // Handle date changes
+  // Xử lý thay đổi ngày bắt đầu
   const handleFromDateChange = (e) => {
     const newDate = new Date(e.target.value);
     if (!newDate || isNaN(newDate)) {
@@ -379,6 +390,7 @@ export default function DashboardAdmin() {
     }
   };
 
+  // Xử lý thay đổi ngày kết thúc
   const handleToDateChange = (e) => {
     const newDate = new Date(e.target.value);
     if (!newDate || isNaN(newDate)) {

@@ -12,7 +12,7 @@ import "./SidebarAdmin.css"; // import CSS riêng
 
 import { Inventory2 as ProductIcon } from "@mui/icons-material";
 import { Payment as PaymentIcon } from "@mui/icons-material";
-import WorkspacesIcon from '@mui/icons-material/Workspaces';
+import WorkspacesIcon from "@mui/icons-material/Workspaces";
 
 const menuItems = [
   { text: "Dashboard", icon: <DashboardIcon />, path: "/admin" },
@@ -22,6 +22,7 @@ const menuItems = [
   { text: "Products", icon: <ProductIcon />, path: "/admin/products" },
   { text: "Combos", icon: <WorkspacesIcon />, path: "/admin/combos" },
   { text: "Toppings", icon: <PosIcon />, path: "/admin/toppings" },
+  { text: "Vourcher", icon: <PosIcon />, path: "/admin/vourchers" },
 ];
 
 export default function AdminSidebar() {
@@ -41,7 +42,9 @@ export default function AdminSidebar() {
               location.pathname === item.path ? "active" : ""
             }`}
           >
-            <ListItemIcon className="admin-sidebar__icon">{item.icon}</ListItemIcon>
+            <ListItemIcon className="admin-sidebar__icon">
+              {item.icon}
+            </ListItemIcon>
             <ListItemText primary={item.text} />
           </ListItem>
         ))}

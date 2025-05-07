@@ -17,10 +17,7 @@ import {
   Pagination,
   Grid,
 } from "@mui/material";
-import {
-  Edit as EditIcon,
-  Add as AddIcon,
-} from "@mui/icons-material";
+import { Edit as EditIcon, Add as AddIcon } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
 import { listItemApi, resetPage } from "../../../store/slices/itemSlice";
 import { getallCategory } from "../../../store/slices/categorySlice";
@@ -31,11 +28,15 @@ export default function ProductList() {
   const dispatch = useDispatch();
   const {
     materProducts: { items: masterProducts, pagination },
+    extras,
     isLoading,
     error,
   } = useSelector((state) => state.item);
-  const { category, isLoading: categoryLoading, error: categoryError } =
-    useSelector((state) => state.category);
+  const {
+    category,
+    isLoading: categoryLoading,
+    error: categoryError,
+  } = useSelector((state) => state.category);
 
   const [openModal, setOpenModal] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -184,9 +185,22 @@ export default function ProductList() {
     setSearchTerm(e.target.value);
   };
 
+  // Hàm ánh xạ toppingId sang tên topping
+  const getToppingName = (topping) => {
+    if (typeof topping === "string") {
+      return topping;
+    }
+    if (typeof topping === "object" && topping.toppingId) {
+      const toppingItem = extras.items.find(
+        (item) => item.productId === topping.toppingId
+      );
+      return toppingItem ? toppingItem.productName : "Topping không xác định";
+    }
+    return "Topping không xác định";
+  };
+
   if (isLoading) return <Typography>Đang tải...</Typography>;
-  if (error)
-    return <Typography color="error">Lỗi: {error}</Typography>;
+  if (error) return <Typography color="error">Lỗi: {error}</Typography>;
   if (categoryError)
     return (
       <Typography color="error">
@@ -198,7 +212,6 @@ export default function ProductList() {
     <Box sx={{ padding: 3 }}>
       <Paper sx={{ padding: 2 }}>
         <Grid container spacing={2} alignItems="center" mb={2}>
-          
           <Grid item xs={12} sm={4}>
             <TextField
               select
@@ -239,12 +252,32 @@ export default function ProductList() {
 
         <Table>
           <TableHead sx={{ backgroundColor: "#8B5E3C" }}>
-            <TableRow >
-              <TableCell sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}>Hình ảnh</TableCell>
-              <TableCell sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}>Tên sản phẩm</TableCell>
-              <TableCell sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}>Danh mục</TableCell>
-              <TableCell sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}>Chi tiết</TableCell>
-              <TableCell sx={{ fontWeight: "bold", color:"white", fontSize:"15px" }}>Hành động</TableCell>
+            <TableRow>
+              <TableCell
+                sx={{ fontWeight: "bold", color: "white", fontSize: "15px" }}
+              >
+                Hình ảnh
+              </TableCell>
+              <TableCell
+                sx={{ fontWeight: "bold", color: "white", fontSize: "15px" }}
+              >
+                Tên sản phẩm
+              </TableCell>
+              <TableCell
+                sx={{ fontWeight: "bold", color: "white", fontSize: "15px" }}
+              >
+                Danh mục
+              </TableCell>
+              <TableCell
+                sx={{ fontWeight: "bold", color: "white", fontSize: "15px" }}
+              >
+                Chi tiết
+              </TableCell>
+              <TableCell
+                sx={{ fontWeight: "bold", color: "white", fontSize: "15px" }}
+              >
+                Hành động
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -307,9 +340,6 @@ export default function ProductList() {
         </Table>
         {pagination.totalPages >= 1 && (
           <Box display="flex" justifyContent="center" mt={3}>
-            {/* <Typography variant="body2" sx={{ mr: 2 }}>
-              Tổng số trang: {pagination.totalPages}, Trang hiện tại: {pagination.currentPage}
-            </Typography> */}
             <Pagination
               count={pagination.totalPages}
               page={pagination.currentPage}
@@ -350,6 +380,11 @@ export default function ProductList() {
           <Typography variant="h6" fontWeight="bold" gutterBottom>
             Chi tiết biến thể: {selectedProduct?.productName}
           </Typography>
+
+          {/* Hiển thị biến thể */}
+          <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
+            Biến thể
+          </Typography>
           {selectedProduct?.variants.length === 0 ? (
             <Typography>Không có biến thể nào cho sản phẩm này.</Typography>
           ) : (
@@ -379,6 +414,38 @@ export default function ProductList() {
               </TableBody>
             </Table>
           )}
+
+          {/* Hiển thị topping */}
+          <Typography variant="subtitle1" gutterBottom sx={{ mt: 3 }}>
+            Topping
+          </Typography>
+          {selectedProduct?.toppingAllowed === false ? (
+            <Typography>Topping không được phép cho sản phẩm này.</Typography>
+          ) : selectedProduct?.toppings?.length === 0 ? (
+            <Typography>Không có topping nào cho sản phẩm này.</Typography>
+          ) : (
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Tên Topping</TableCell>
+                  <TableCell>Số lượng</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {selectedProduct?.toppings.map((topping, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{getToppingName(topping)}</TableCell>
+                    <TableCell>
+                      {typeof topping === "object" && topping.quantity
+                        ? topping.quantity
+                        : "N/A"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+
           <Box mt={3} display="flex" justifyContent="flex-end">
             <Button
               variant="outlined"
