@@ -76,6 +76,14 @@ export default function useRouterElements() {
             </ProtectedRoute>
           ),
         },
+        {
+          path: PATH.PROFILE,
+          element: (
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          ),
+        },
       ],
     },
 
