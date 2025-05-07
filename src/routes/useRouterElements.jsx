@@ -22,7 +22,7 @@ import PaymentForm from "../pages/Admin/PaymentMethods/Form";
 import OrderListAdmin from "../pages/Admin/Orders/List";
 import Combos from "../pages/Admin/Combos/Combos";
 import ToppingPage from "../pages/Admin/Topping/TopingPage";
-
+import Vouchers from "../pages/Admin/Vouchers/Vouchers";
 
 export default function useRouterElements() {
   const routeElements = useRoutes([
@@ -78,16 +78,13 @@ export default function useRouterElements() {
       ],
     },
 
-
     // Admin
     {
       path: PATH.ADMIN,
       element: (
-  
         <ProtectedRoute requiredRole="Manager">
           <AdminLayout />
         </ProtectedRoute>
-  
       ),
       children: [
         {
@@ -138,6 +135,10 @@ export default function useRouterElements() {
         {
           path: "toppings",
           element: <ToppingPage />,
+        },
+        {
+          path: "vourchers",
+          element: <Vouchers />,
         },
         {
           path: PATH.PAYMENTS,

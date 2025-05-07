@@ -28,6 +28,9 @@ const pathToTitle = {
   "/admin/toppings": "Topping Management",
 
   "/admin/orders": "Order Management",
+
+  // Vourcher
+  "/admin/vourchers": "Vourcher Management",
 };
 
 const getPageTitle = (pathname) => {

@@ -11,13 +11,20 @@ import {
   FormControlLabel,
   Avatar,
   MenuItem,
+  Chip,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
 } from "@mui/material";
 import { Add as AddIcon, Delete as DeleteIcon } from "@mui/icons-material";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import {
   createProduct,
   updateProduct,
   updateImageProduct,
+  listItemApi,
 } from "../../../store/slices/itemSlice";
 import toast from "react-hot-toast";
 import { useForm, Controller } from "react-hook-form";
@@ -50,6 +57,23 @@ const schema = yup.object().shape({
     )
     .min(1, "Phải có ít nhất một kích thước"),
   status: yup.boolean(),
+  toppingAllowed: yup
+    .boolean()
+    .required("Trường ToppingAllowed là bắt buộc")
+    .oneOf([true, false], "Trường ToppingAllowed phải là true hoặc false"),
+  toppings: yup
+    .array()
+    .of(
+      yup.object().shape({
+        toppingName: yup.string().required("Tên topping không được để trống"),
+        quantity: yup
+          .number()
+          .typeError("Số lượng phải là một số")
+          .required("Số lượng không được để trống")
+          .min(1, "Số lượng phải lớn hơn hoặc bằng 1"),
+      })
+    )
+    .nullable(),
 });
 
 const ProductModal = ({
@@ -63,24 +87,32 @@ const ProductModal = ({
   categoryError,
 }) => {
   const dispatch = useDispatch();
+  const {
+    extras,
+    isLoading: extrasLoading,
+    error: extrasError,
+  } = useSelector((state) => state.item);
   const [formData, setFormData] = useState({
     productName: "",
     categoryId: null,
     description: "",
     sizes: [{ size: "Small", price: "0", status: true }],
     status: true,
+    toppingAllowed: true,
+    toppings: [],
   });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [editProductId, setEditProductId] = useState(null);
+  const [toppingsLoaded, setToppingsLoaded] = useState(false);
 
-  // React Hook Form setup
   const {
     control,
     handleSubmit,
     formState: { errors },
     setValue,
     reset,
+    watch,
   } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
@@ -92,54 +124,102 @@ const ProductModal = ({
       description: "",
       sizes: [{ size: "Small", price: "0", status: true }],
       status: true,
+      toppingAllowed: true,
+      toppings: [],
     },
   });
 
-  // Initialize form data when modal opens
+  const toppingAllowed = watch("toppingAllowed");
+
+  // Chỉ gọi API lấy toppings khi chưa tải và component mount
   useEffect(() => {
-    if (isEditMode && product) {
-      setEditProductId(product.productId);
-      const sizes =
-        product.variants?.length > 0
-          ? product.variants.map((variant) => ({
-              productId: variant.productId,
-              size: variant.sizeId || "Small",
-              price:
-                variant.price !== null && variant.price !== undefined
-                  ? variant.price.toString()
-                  : "0",
-              status: variant.status !== undefined ? variant.status : true,
-            }))
-          : [{ size: "Small", price: "0", status: true }];
-      const newFormData = {
-        productName: product.productName || "",
-        categoryId: Number(product.categoryId) || null,
-        description: product.description || "",
-        sizes,
-        status: product.status !== undefined ? product.status : true,
-      };
-      setFormData(newFormData);
-      setImagePreview(product.imageUrl || null);
-      setImageFile(null);
-      reset(newFormData);
-    } else {
-      setEditProductId(null);
-      const newFormData = {
-        productName: "",
-        categoryId:
-          filteredCategories.length > 0
-            ? Number(filteredCategories[0].categoryId)
-            : null,
-        description: "",
-        sizes: [{ size: "Small", price: "0", status: true }],
-        status: true,
-      };
-      setFormData(newFormData);
-      setImageFile(null);
-      setImagePreview(null);
-      reset(newFormData);
+    if (!toppingsLoaded && !extrasLoading && extras.items.length === 0) {
+      dispatch(
+        listItemApi({
+          ProductType: "Extra",
+          Page: 1,
+          PageSize: 100,
+        })
+      ).then(() => setToppingsLoaded(true));
     }
-  }, [isEditMode, product, filteredCategories, reset]);
+  }, [dispatch, toppingsLoaded, extrasLoading, extras.items.length]);
+
+  // Khởi tạo form data khi modal mở
+  useEffect(() => {
+    if (open) {
+      if (isEditMode && product) {
+        setEditProductId(product.productId);
+        const sizes =
+          product.variants?.length > 0
+            ? product.variants.map((variant) => ({
+                productId: variant.productId,
+                size: variant.sizeId || "Small",
+                price:
+                  variant.price !== null && variant.price !== undefined
+                    ? variant.price.toString()
+                    : "0",
+                status: variant.status !== undefined ? variant.status : true,
+              }))
+            : [{ size: "Small", price: "0", status: true }];
+
+        // Ánh xạ product.toppings sang danh sách { toppingName, quantity }
+        let toppingList = [];
+        if (product.toppings && product.toppings.length > 0) {
+          toppingList = product.toppings
+            .map((topping) => {
+              if (typeof topping === "object" && topping.toppingId) {
+                const toppingItem = extras.items.find(
+                  (item) => item.productId === topping.toppingId
+                );
+                return toppingItem
+                  ? {
+                      toppingName: toppingItem.productName,
+                      quantity: topping.quantity || 1,
+                    }
+                  : null;
+              }
+              return { toppingName: topping, quantity: 1 };
+            })
+            .filter((item) => item);
+        }
+
+        const newFormData = {
+          productName: product.productName || "",
+          categoryId: Number(product.categoryId) || null,
+          description: product.description || "",
+          sizes,
+          status: product.status !== undefined ? product.status : true,
+          toppingAllowed:
+            product.toppingAllowed !== undefined
+              ? product.toppingAllowed
+              : true,
+          toppings: toppingList,
+        };
+        setFormData(newFormData);
+        setImagePreview(product.imageUrl || null);
+        setImageFile(null);
+        reset(newFormData);
+      } else {
+        setEditProductId(null);
+        const newFormData = {
+          productName: "",
+          categoryId:
+            filteredCategories.length > 0
+              ? Number(filteredCategories[0].categoryId)
+              : null,
+          description: "",
+          sizes: [{ size: "Small", price: "0", status: true }],
+          status: true,
+          toppingAllowed: true,
+          toppings: [],
+        };
+        setFormData(newFormData);
+        setImageFile(null);
+        setImagePreview(null);
+        reset(newFormData);
+      }
+    }
+  }, [open, isEditMode, product, filteredCategories, reset, extras.items]);
 
   const handleAddSize = () => {
     const usedSizes = formData.sizes.map((s) => s.size);
@@ -198,78 +278,202 @@ const ProductModal = ({
     setValue("status", !formData.status);
   };
 
+  const handleToggleToppingAllowed = () => {
+    setFormData((prev) => ({
+      ...prev,
+      toppingAllowed: !prev.toppingAllowed,
+      toppings: !prev.toppingAllowed ? prev.toppings : [],
+    }));
+    setValue("toppingAllowed", !formData.toppingAllowed);
+    setValue("toppings", !formData.toppingAllowed ? formData.toppings : []);
+  };
+
+  const handleToppingChange = (event) => {
+    const selectedToppings = event.target.value;
+    const newToppings =
+      typeof selectedToppings === "string"
+        ? [selectedToppings]
+        : selectedToppings;
+
+    // Tạo danh sách mới, giữ lại số lượng cũ nếu topping đã tồn tại
+    const updatedToppings = newToppings.map((toppingName) => {
+      const existingTopping = formData.toppings.find(
+        (t) => t.toppingName === toppingName
+      );
+      return {
+        toppingName,
+        quantity: existingTopping ? existingTopping.quantity : 1,
+      };
+    });
+
+    setFormData((prev) => ({
+      ...prev,
+      toppings: updatedToppings,
+    }));
+    setValue("toppings", updatedToppings);
+  };
+
+  const handleQuantityChange = (toppingName, quantity) => {
+    const parsedQuantity = parseInt(quantity, 10);
+    if (isNaN(parsedQuantity) || parsedQuantity < 1) return;
+
+    const updatedToppings = formData.toppings.map((topping) =>
+      topping.toppingName === toppingName
+        ? { ...topping, quantity: parsedQuantity }
+        : topping
+    );
+
+    setFormData((prev) => ({
+      ...prev,
+      toppings: updatedToppings,
+    }));
+    setValue("toppings", updatedToppings);
+  };
+
+  const handleRemoveTopping = (toppingName) => {
+    const updatedToppings = formData.toppings.filter(
+      (topping) => topping.toppingName !== toppingName
+    );
+    setFormData((prev) => ({
+      ...prev,
+      toppings: updatedToppings,
+    }));
+    setValue("toppings", updatedToppings);
+  };
+
   const onSubmit = async (data) => {
+    console.log("Form data before sending:", data);
     const formDataToSend = new FormData();
     formDataToSend.append("productName", data.productName);
     formDataToSend.append("CategoryId", data.categoryId.toString());
     formDataToSend.append("description", data.description || "");
     formDataToSend.append("status", data.status.toString());
+    formDataToSend.append("toppingAllowed", data.toppingAllowed.toString());
+
+    // Gửi topping với key toppings
+    if (data.toppingAllowed && data.toppings && data.toppings.length > 0) {
+      const toppingIds = data.toppings
+        .map((topping) => {
+          const toppingItem = extras.items.find(
+            (item) => item.productName === topping.toppingName
+          );
+          return toppingItem
+            ? { toppingId: toppingItem.productId, quantity: topping.quantity }
+            : null;
+        })
+        .filter((item) => item !== null);
+
+      if (toppingIds.length === 0) {
+        console.warn("No valid topping IDs found for toppings:", data.toppings);
+      } else {
+        toppingIds.forEach((topping, index) => {
+          formDataToSend.append(
+            `toppings[${index}].toppingId`,
+            topping.toppingId.toString()
+          );
+          formDataToSend.append(
+            `toppings[${index}].quantity`,
+            topping.quantity.toString()
+          );
+          console.log(
+            `Sending toppings[${index}]: toppingId=${topping.toppingId}, quantity=${topping.quantity}`
+          );
+        });
+      }
+    }
 
     if (!isEditMode) {
-      // Create product
-      data.sizes.forEach((sizeObj, index) => {
-        const price = parseFloat(sizeObj.price) || 0;
-        formDataToSend.append(`sizes[${index}][size]`, sizeObj.size);
-        formDataToSend.append(`sizes[${index}][price]`, price.toString());
-        formDataToSend.append(`sizes[${index}][status]`, sizeObj.status.toString());
-      });
+      if (data.sizes && data.sizes.length > 0) {
+        data.sizes.forEach((sizeObj, index) => {
+          const price = parseFloat(sizeObj.price) || 0;
+          formDataToSend.append(`sizes[${index}].size`, sizeObj.size);
+          formDataToSend.append(`sizes[${index}].price`, price.toString());
+          formDataToSend.append(
+            `sizes[${index}].status`,
+            sizeObj.status.toString()
+          );
+        });
+      } else {
+        toast.error("Phải có ít nhất một kích thước!");
+        return;
+      }
       if (imageFile) {
         formDataToSend.append("parentImage", imageFile);
       }
     } else {
-      // Update product
       if (!editProductId) {
         toast.error("Không tìm thấy ProductId để cập nhật!");
         return;
       }
       formDataToSend.append("ProductId", editProductId.toString());
       formDataToSend.append("CategoryId", data.categoryId.toString());
-      data.sizes.forEach((sizeObj, index) => {
-        if (sizeObj.productId) {
-          formDataToSend.append(`Variants[${index}].ProductId`, sizeObj.productId.toString());
-        }
-        formDataToSend.append(`Variants[${index}].SizeId`, sizeObj.size);
-        formDataToSend.append(`Variants[${index}].Prize`, sizeObj.price.toString());
-        formDataToSend.append(`Variants[${index}].Status`, sizeObj.status.toString());
-        formDataToSend.append(`Variants[${index}].Description`, data.description || "");
-      });
+      if (data.sizes && data.sizes.length > 0) {
+        data.sizes.forEach((sizeObj, index) => {
+          if (sizeObj.productId) {
+            formDataToSend.append(
+              `Variants[${index}].ProductId`,
+              sizeObj.productId.toString()
+            );
+          }
+          formDataToSend.append(`Variants[${index}].SizeId`, sizeObj.size);
+          formDataToSend.append(
+            `Variants[${index}].Prize`,
+            sizeObj.price.toString()
+          );
+          formDataToSend.append(
+            `Variants[${index}].Status`,
+            sizeObj.status.toString()
+          );
+          formDataToSend.append(
+            `Variants[${index}].Description`,
+            data.description || ""
+          );
+        });
+      } else {
+        toast.error("Phải có ít nhất một kích thước!");
+        return;
+      }
       if (imageFile) {
         formDataToSend.append("parentImage", imageFile);
       }
     }
 
     try {
-      console.log("formDataToSend before submit:", Object.fromEntries(formDataToSend));
       if (!isEditMode) {
-        const createResponse = await dispatch(createProduct(formDataToSend)).unwrap();
-        console.log("createProduct response:", createResponse);
+        await dispatch(createProduct(formDataToSend)).unwrap();
         toast.success("Sản phẩm đã được tạo thành công!");
       } else {
-        const updateResponse = await dispatch(
+        await dispatch(
           updateProduct({ productId: editProductId, formData: formDataToSend })
         ).unwrap();
-        console.log("updateProduct response:", updateResponse);
         if (imageFile) {
           const imageFormData = new FormData();
           imageFormData.append("formFile", imageFile);
-          const imageResponse = await dispatch(
-            updateImageProduct({ productId: editProductId, formData: imageFormData })
+          await dispatch(
+            updateImageProduct({
+              productId: editProductId,
+              formData: imageFormData,
+            })
           ).unwrap();
-          console.log("updateImageProduct response:", imageResponse);
         }
         toast.success("Sản phẩm đã được cập nhật thành công!");
       }
       onSubmitSuccess();
       onClose();
     } catch (error) {
-      console.error("Submit error:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi xử lý sản phẩm!");
+      console.error("Error submitting product:", error);
+      const errorMessage =
+        error.data || error.message || "Có lỗi xảy ra khi xử lý sản phẩm!";
+      toast.error(errorMessage);
     }
   };
 
   const availableSizes = AVAILABLE_SIZES.filter(
     (size) => !formData.sizes.some((sizeObj) => sizeObj.size === size)
   );
+
+  const availableToppings =
+    extras?.items?.map((item) => item.productName) || [];
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -320,20 +524,21 @@ const ProductModal = ({
             render={({ field }) => (
               <>
                 {isEditMode ? (
-                  // Hiển thị giá trị tĩnh khi ở chế độ chỉnh sửa
                   <TextField
                     value={
                       product
-                        ? filteredCategories.find((cat) => cat.categoryId === Number(product.categoryId))?.categoryName ||
-                          "Không tìm thấy danh mục"
+                        ? filteredCategories.find(
+                            (cat) =>
+                              cat.categoryId === Number(product.categoryId)
+                          )?.categoryName || "Không tìm thấy danh mục"
                         : "N/A"
                     }
                     fullWidth
                     label="Danh mục"
                     margin="normal"
-                    disabled={true} // Vô hiệu hóa hoàn toàn khi edit
+                    disabled={true}
                     InputProps={{
-                      readOnly: true, // Ngăn người dùng tương tác
+                      readOnly: true,
                     }}
                     helperText="Danh mục không thể thay đổi khi cập nhật"
                     sx={{
@@ -345,7 +550,6 @@ const ProductModal = ({
                     }}
                   />
                 ) : (
-                  // Dropdown bình thường khi tạo mới
                   <TextField
                     {...field}
                     select
@@ -441,7 +645,10 @@ const ProductModal = ({
                         field.onChange(value);
                         setFormData((prev) => {
                           const newSizes = [...prev.sizes];
-                          newSizes[index] = { ...newSizes[index], price: value };
+                          newSizes[index] = {
+                            ...newSizes[index],
+                            price: value,
+                          };
                           return { ...prev, sizes: newSizes };
                         });
                       }}
@@ -475,9 +682,10 @@ const ProductModal = ({
                             "& .MuiSwitch-switchBase.Mui-checked": {
                               color: "#8B5E3C",
                             },
-                            "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-                              bgcolor: "#8B5E3C",
-                            },
+                            "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
+                              {
+                                bgcolor: "#8B5E3C",
+                              },
                           }}
                         />
                       }
@@ -571,6 +779,159 @@ const ProductModal = ({
             )}
           />
           <Controller
+            name="toppingAllowed"
+            control={control}
+            render={({ field }) => (
+              <FormControlLabel
+                control={
+                  <Switch
+                    {...field}
+                    checked={field.value}
+                    onChange={(e) => {
+                      field.onChange(e.target.checked);
+                      handleToggleToppingAllowed();
+                    }}
+                    color="primary"
+                    sx={{
+                      "& .MuiSwitch-switchBase.Mui-checked": {
+                        color: "#8B5E3C",
+                      },
+                      "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
+                        {
+                          bgcolor: "#8B5E3C",
+                        },
+                    }}
+                  />
+                }
+                label="Cho phép Toppings"
+                sx={{ mt: 2 }}
+              />
+            )}
+          />
+          {toppingAllowed && (
+            <>
+              <Controller
+                name="toppings"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    select
+                    fullWidth
+                    label="Chọn Toppings"
+                    margin="normal"
+                    multiple
+                    value={field.value.map((t) => t.toppingName) || []}
+                    onChange={(e) => {
+                      field.onChange(
+                        e.target.value.map((name) => ({
+                          toppingName: name,
+                          quantity:
+                            field.value.find((t) => t.toppingName === name)
+                              ?.quantity || 1,
+                        }))
+                      );
+                      handleToppingChange(e);
+                    }}
+                    error={!!errors.toppings}
+                    helperText={errors.toppings?.message}
+                    disabled={extrasLoading || !toppingAllowed}
+                    SelectProps={{
+                      multiple: true,
+                      renderValue: (selected) => (
+                        <Box
+                          sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}
+                        >
+                          {selected.map((value) => (
+                            <Chip key={value} label={value} />
+                          ))}
+                        </Box>
+                      ),
+                    }}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 1,
+                        "&:hover fieldset": { borderColor: "#8B5E3C" },
+                        "&.Mui-focused fieldset": { borderColor: "#8B5E3C" },
+                      },
+                    }}
+                  >
+                    {extrasLoading ? (
+                      <MenuItem value="" disabled>
+                        Đang tải toppings...
+                      </MenuItem>
+                    ) : extrasError ? (
+                      <MenuItem value="" disabled>
+                        Lỗi: {extrasError}
+                      </MenuItem>
+                    ) : availableToppings.length === 0 ? (
+                      <MenuItem value="" disabled>
+                        Không có topping nào
+                      </MenuItem>
+                    ) : (
+                      availableToppings.map((toppingName) => (
+                        <MenuItem key={toppingName} value={toppingName}>
+                          {toppingName}
+                        </MenuItem>
+                      ))
+                    )}
+                  </TextField>
+                )}
+              />
+              {formData.toppings.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Topping đã chọn
+                  </Typography>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Tên Topping</TableCell>
+                        <TableCell>Số lượng</TableCell>
+                        <TableCell>Hành động</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {formData.toppings.map((topping, index) => (
+                        <TableRow key={topping.toppingName}>
+                          <TableCell>{topping.toppingName}</TableCell>
+                          <TableCell>
+                            <TextField
+                              type="number"
+                              value={topping.quantity}
+                              onChange={(e) =>
+                                handleQuantityChange(
+                                  topping.toppingName,
+                                  e.target.value
+                                )
+                              }
+                              inputProps={{ min: 1 }}
+                              size="small"
+                              sx={{ width: 80 }}
+                              error={!!errors.toppings?.[index]?.quantity}
+                              helperText={
+                                errors.toppings?.[index]?.quantity?.message
+                              }
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <IconButton
+                              onClick={() =>
+                                handleRemoveTopping(topping.toppingName)
+                              }
+                              sx={{ color: "#8B5E3C" }}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Box>
+              )}
+            </>
+          )}
+          <Controller
             name="status"
             control={control}
             render={({ field }) => (
@@ -588,9 +949,10 @@ const ProductModal = ({
                       "& .MuiSwitch-switchBase.Mui-checked": {
                         color: "#8B5E3C",
                       },
-                      "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-                        bgcolor: "#8B5E3C",
-                      },
+                      "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
+                        {
+                          bgcolor: "#8B5E3C",
+                        },
                     }}
                   />
                 }
