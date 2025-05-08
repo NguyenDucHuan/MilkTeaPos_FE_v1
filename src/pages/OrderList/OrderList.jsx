@@ -16,6 +16,10 @@ import {
   TableHead,
   TableRow,
   Paper,
+  Select,
+  MenuItem,
+  FormControl,
+  Button,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -29,6 +33,10 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchOrders } from '../../store/slices/orderSlice';
 import fetcher from '../../apis/fetcher';
+import { toast } from 'react-hot-toast';
+import PaymentMethodModal from './PaymentMethodModal';
+import DetailModal from './DetailModal';
+import axios from 'axios';
 
 const statusColors = {
   Pending: {
@@ -36,10 +44,11 @@ const statusColors = {
     icon: PendingIcon,
     label: 'Đang xử lý',
   },
-  Processing: {
-    color: 'bg-blue-100 text-blue-800',
-    icon: ShippingIcon,
-    label: 'Đang giao',
+
+  Success: {
+    color: 'bg-green-100 text-green-800',
+    icon: CheckCircleIcon,
+    label: 'Thành công',
   },
   Completed: {
     color: 'bg-green-100 text-green-800',
@@ -62,6 +71,11 @@ const OrderList = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderDetails, setOrderDetails] = useState(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedOrderForPayment, setSelectedOrderForPayment] = useState(null);
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
+  const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(false);
 
   useEffect(() => {
     dispatch(fetchOrders());
@@ -94,15 +108,43 @@ const OrderList = () => {
     setOrderDetails(null);
   };
 
-  const handleStatusChange = async (order, newStatus) => {
+  const handleStatusChange = async (orderId, newStatus) => {
     try {
-      // Here you would typically make an API call to update the order status
-      console.log(`Changing order ${order.orderId} status to ${newStatus}`);
-      // After successful API call, refresh the orders list
+      await axios.get(`https://localhost:7186/api/order/order-status/${orderId}`, {
+        status: newStatus
+      });
+      
+      // Cập nhật lại danh sách đơn hàng
       dispatch(fetchOrders());
+      toast.success('Cập nhật trạng thái thành công');
     } catch (error) {
       console.error('Error updating order status:', error);
+      toast.error('Không thể cập nhật trạng thái đơn hàng');
     }
+  };
+
+  const fetchPaymentMethods = async () => {
+    try {
+      setIsLoadingPaymentMethods(true);
+      const response = await fetcher.get('/payment-methods');
+      setPaymentMethods(response.data);
+    } catch (error) {
+      console.error('Error fetching payment methods:', error);
+      toast.error('Không thể tải danh sách phương thức thanh toán');
+    } finally {
+      setIsLoadingPaymentMethods(false);
+    }
+  };
+
+  const handlePaymentStatusClick = async (order) => {
+    if (order.paymentStatus === 'Unpaid') {
+      setSelectedOrderForPayment(order);
+      setShowPaymentModal(true);
+    }
+  };
+
+  const handlePaymentSuccess = () => {
+    dispatch(fetchOrders());
   };
 
   const filteredOrders = orders?.items
@@ -131,12 +173,12 @@ const OrderList = () => {
     }).format(amount || 0);
   };
 
-  const OrderStatus = ({ status, onStatusClick }) => {
+  const OrderStatus = ({ status, onStatusChange }) => {
     const statusInfo = statusColors[status] || statusColors.Pending;
     const StatusIcon = statusInfo.icon;
     return (
       <button
-        onClick={onStatusClick}
+        onClick={() => onStatusChange(status)}
         className={`flex items-center gap-2 px-3 py-1 rounded-full ${statusInfo.color} hover:opacity-80 transition-opacity`}
       >
         <StatusIcon className="w-4 h-4" />
@@ -145,9 +187,13 @@ const OrderList = () => {
     );
   };
 
-  const PaymentStatus = ({ isPaid }) => {
+  const PaymentStatus = ({ paymentStatus, order }) => {
+    const isPaid = paymentStatus === 'Paid';
     return (
-      <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${isPaid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+      <div 
+        onClick={() => handlePaymentStatusClick(order)}
+        className={`flex items-center gap-2 px-3 py-1 rounded-full ${isPaid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800 cursor-pointer hover:opacity-80'}`}
+      >
         <span className="text-sm font-medium">{isPaid ? 'Đã thanh toán' : 'Chưa thanh toán'}</span>
       </div>
     );
@@ -156,8 +202,9 @@ const OrderList = () => {
   const normalizeStatus = (status) => {
     console.log('orderStatus value:', status); // Log để kiểm tra giá trị thực tế
     if (!status) return 'Pending';
+    if (status === 'Success') return 'Success';
     if ([
-      'Success', 'Successed', 'Successfull', 'Done', 'Completed'
+      'Successed', 'Successfull', 'Done', 'Completed'
     ].includes(status)) return 'Completed';
     if (status === 'Cancel' || status === 'Cancelled') return 'Cancelled';
     if (status === 'Processing') return 'Processing';
@@ -254,12 +301,12 @@ const OrderList = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <OrderStatus 
-                            status={normalizeStatus(order.orderStatus)} 
-                            onStatusClick={() => handleStatusChange(order, order.orderStatus)}
+                            status={normalizeStatus(order.orderStatus || order.status || order.orderstatusupdates?.[0]?.orderStatus)} 
+                            onStatusChange={(newStatus) => handleStatusChange(order.orderId, newStatus)}
                           />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <PaymentStatus isPaid={order.isPaid} />
+                          <PaymentStatus paymentStatus={order.paymentStatus} order={order} />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <IconButton
@@ -304,162 +351,24 @@ const OrderList = () => {
           </div>
 
           {/* Order Details Modal */}
-          <Modal
+          <DetailModal
             open={!!selectedOrder}
             onClose={handleCloseDetails}
-            aria-labelledby="order-details-modal"
-          >
-            <Box
-              sx={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: '80%',
-                maxWidth: '800px',
-                bgcolor: 'background.paper',
-                boxShadow: 24,
-                p: 4,
-                borderRadius: 2,
-                maxHeight: '90vh',
-                overflow: 'auto',
-              }}
-            >
-              {isLoadingDetails ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                  <CircularProgress />
-                </Box>
-              ) : orderDetails ? (
-                <>
-                  <Typography variant="h6" component="h2" gutterBottom>
-                    Chi tiết đơn hàng #{orderDetails.orderId}
-                  </Typography>
-                  
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" gutterBottom>
-                      Thông tin đơn hàng
-                    </Typography>
-                    <Typography variant="body2">
-                      Ngày đặt: {formatDate(orderDetails.createAt)}
-                    </Typography>
-                    <Typography variant="body2">
-                      Tổng tiền: {formatCurrency(orderDetails.totalAmount)}
-                    </Typography>
-                    <Typography variant="body2">
-                      Trạng thái: <OrderStatus status={normalizeStatus(orderDetails.orderStatus || orderDetails.status || orderDetails.orderstatusupdates?.[0]?.orderStatus)} />
-                    </Typography>
-                    <Typography variant="body2">
-                      Phương thức thanh toán: {orderDetails.paymentMethod?.methodName}
-                    </Typography>
-                    <Typography variant="body2">
-                      Ghi chú: {orderDetails.note || 'Không có'}
-                    </Typography>
-                  </Box>
+            orderDetails={orderDetails}
+            isLoadingDetails={isLoadingDetails}
+            selectedOrder={selectedOrder}
+          />
 
-                  <Typography variant="subtitle1" gutterBottom>
-                    Danh sách sản phẩm
-                  </Typography>
-                  <TableContainer component={Paper}>
-                    <Table sx={{ minWidth: 900 }}>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Sản phẩm</TableCell>
-                          <TableCell>Size</TableCell>
-                          <TableCell>Toppings</TableCell>
-                          <TableCell align="right" sx={{ width: 100 }}>Số lượng</TableCell>
-                          <TableCell align="right" sx={{ width: 140 }}>Đơn giá</TableCell>
-                          <TableCell align="right" sx={{ width: 160 }}>Thành tiền</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {orderDetails.orderitems
-                          ?.filter(item => !item.masterId)
-                          .map((item) => {
-                            // Tìm các topping liên quan nếu là sản phẩm chính
-                            const toppings = item.product?.productType !== 'Extra' 
-                              ? orderDetails.orderitems.filter(
-                                  topping => topping.masterId === item.orderItemId
-                                )
-                              : [];
-                            // Giá sản phẩm chính (chưa cộng topping)
-                            const basePrice = item.price;
-                            // Tổng giá topping
-                            const toppingsPrice = toppings.reduce(
-                              (total, topping) => total + topping.price,
-                              0
-                            );
-                            // Tổng giá (sản phẩm + topping)
-                            const totalPrice = basePrice + toppingsPrice;
-
-                            return (
-                              <TableRow key={item.orderItemId}>
-                                <TableCell>
-                                  <div style={{ fontWeight: 600, color: '#8a5a2a', fontSize: 15 }}>
-                                    {item.product?.productName}
-                                    {item.product?.sizeId && (
-                                      <span style={{ color: '#70482f', fontWeight: 400, fontSize: 13 }}>
-                                        {' '}({item.product.sizeId})
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div style={{ color: '#b0855b', fontSize: 13, marginTop: 2 }}>
-                                    Giá: {formatCurrency(basePrice)}
-                                  </div>
-                                  {toppings.length > 0 && (
-                                    <div style={{ marginTop: 4, background: '#f9f5f1', borderRadius: 6, padding: '4px 8px' }}>
-                                      <span style={{ fontWeight: 500, color: '#b0855b', fontSize: 13 }}>Topping:</span>
-                                      <ul style={{ margin: 0, paddingLeft: 18 }}>
-                                        {toppings.map((topping, idx) => (
-                                          <li key={topping.orderItemId} style={{ fontSize: '13px', color: '#666', marginBottom: 2 }}>
-                                            {topping.product?.productName}
-                                            {topping.product?.sizeId && (
-                                              <span style={{ color: '#70482f', fontWeight: 400, fontSize: 12 }}>
-                                                {' '}({topping.product.sizeId})
-                                              </span>
-                                            )}
-                                            {' - '}{formatCurrency(topping.price)}
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  )}
-                                </TableCell>
-                                <TableCell>{item.product?.sizeId || 'Mặc định'}</TableCell>
-                                <TableCell>
-                                  {toppings.length > 0
-                                    ? toppings.map((topping, index) => (
-                                        <span key={topping.orderItemId}>
-                                          {index > 0 ? ', ' : ''}
-                                          {topping.product?.productName}
-                                        </span>
-                                      ))
-                                    : 'Không có'}
-                                </TableCell>
-                                <TableCell align="right">{item.quantity}</TableCell>
-                                <TableCell align="right">
-                                  {formatCurrency(totalPrice)}
-                                </TableCell>
-                                <TableCell align="right">
-                                  {formatCurrency(totalPrice * item.quantity)}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-
-                  <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
-                    <IconButton onClick={handleCloseDetails}>
-                      <CloseIcon />
-                    </IconButton>
-                  </Box>
-                </>
-              ) : (
-                <Typography>Không tìm thấy thông tin chi tiết đơn hàng</Typography>
-              )}
-            </Box>
-          </Modal>
+          {/* Payment Method Modal */}
+          <PaymentMethodModal
+            open={showPaymentModal}
+            onClose={() => {
+              setShowPaymentModal(false);
+              setSelectedOrderForPayment(null);
+            }}
+            selectedOrder={selectedOrderForPayment}
+            onPaymentSuccess={handlePaymentSuccess}
+          />
         </div>
       </Container>
     </div>
