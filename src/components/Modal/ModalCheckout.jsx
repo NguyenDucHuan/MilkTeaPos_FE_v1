@@ -14,17 +14,30 @@ import { useEffect, useState } from "react";
 import "./ModalCheckout.css";
 import { useDispatch, useSelector } from "react-redux";
 import { listPaymentApi } from "../../store/slices/paymentSlice";
-import { fetchVouchers, setSelectedVoucher, clearSelectedVoucher } from "../../store/slices/voucherSlice";
+import {
+  getVouchers,
+  setSelectedVoucher,
+  clearSelectedVoucher,
+} from "../../store/slices/voucherSlice";
 import { useNavigate } from "react-router-dom";
 import fetcher from "../../apis/fetcher";
 import toast from "react-hot-toast";
-import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 
 export default function ModalCheckout({ open, onClose, cart, total }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { payment, isLoading: paymentLoading, error: paymentError } = useSelector((state) => state.payment);
-  const { vouchers, selectedVoucher, isLoading: voucherLoading } = useSelector((state) => state.voucher);
+  const {
+    payment,
+    isLoading: paymentLoading,
+    error: paymentError,
+  } = useSelector((state) => state.payment);
+  const {
+    vouchers,
+    selectedVoucher,
+    isLoading: voucherLoading,
+    error: voucherError,
+  } = useSelector((state) => state.voucher);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [voucherCode, setVoucherCode] = useState("");
@@ -32,9 +45,18 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
   useEffect(() => {
     if (open) {
       dispatch(listPaymentApi());
-      dispatch(fetchVouchers({ status: true }));
+      dispatch(getVouchers());
     }
   }, [dispatch, open]);
+
+  useEffect(() => {
+    if (voucherError) {
+      toast.error(
+        voucherError.message ||
+          "Không thể tải danh sách voucher. Vui lòng thử lại."
+      );
+    }
+  }, [voucherError]);
 
   const handleChange = (event) => {
     setPaymentMethod(event.target.value);
@@ -42,21 +64,32 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
 
   const handleVoucherSelect = (voucher) => {
     if (total < voucher.minimumOrderAmount) {
-      toast.error(`Đơn hàng tối thiểu ${voucher.minimumOrderAmount.toLocaleString('vi-VN')} VNĐ`);
+      toast.error(
+        `Đơn hàng tối thiểu ${voucher.minimumOrderAmount.toLocaleString(
+          "vi-VN"
+        )} VNĐ`
+      );
       return;
     }
 
-    // Kiểm tra nếu voucher giảm giá cố định và số tiền giảm lớn hơn tổng tiền
     if (voucher.discountType === "Amount" && voucher.discountAmount > total) {
       toast(
-        `Voucher ${voucher.voucherCode} có giá trị ${voucher.discountAmount.toLocaleString('vi-VN')} VNĐ vượt quá tổng tiền đơn hàng (${total.toLocaleString('vi-VN')} VNĐ). Sẽ được áp dụng giảm tối đa ${total.toLocaleString('vi-VN')} VNĐ`,
+        `Voucher ${
+          voucher.voucherCode
+        } có giá trị ${voucher.discountAmount.toLocaleString(
+          "vi-VN"
+        )} VNĐ vượt quá tổng tiền đơn hàng (${total.toLocaleString(
+          "vi-VN"
+        )} VNĐ). Sẽ được áp dụng giảm tối đa ${total.toLocaleString(
+          "vi-VN"
+        )} VNĐ`,
         {
           duration: 5000,
-          icon: '⚠️',
+          icon: "⚠️",
           style: {
-            background: '#fff3e0',
-            color: '#e65100',
-            border: '1px solid #e65100',
+            background: "#fff3e0",
+            color: "#e65100",
+            border: "1px solid #e65100",
           },
         }
       );
@@ -109,7 +142,6 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
   };
 
   const calculateItemPrice = (item) => {
-    // Nếu là size Parent, lấy giá từ MasterProduct
     if (item.sizeId === "Parent") {
       const basePrice = Number(item.product?.price || 0);
       const toppingsPrice = (item.toppings || []).reduce(
@@ -119,7 +151,6 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
       return (basePrice + toppingsPrice) * item.quantity;
     }
 
-    // Nếu là size khác, lấy giá từ SingleProduct
     const variantPrice = Number(item.price || 0);
     const toppingsPrice = (item.toppings || []).reduce(
       (total, topping) => total + (Number(topping.price) || 0),
@@ -130,7 +161,7 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
 
   const calculateSubtotal = (cart) => {
     if (!cart || !Array.isArray(cart)) return 0;
-    
+
     return cart.reduce((total, item) => {
       return total + (Number(item.subPrice) || 0);
     }, 0);
@@ -160,10 +191,7 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
       toast.success("Order created successfully!");
       console.log("Order created:", response.data);
 
-      // Đóng modal
       onClose();
-      
-      // Chuyển hướng đến trang danh sách đơn hàng
       navigate("/orders");
     } catch (error) {
       toast.error("Failed to create order. Please try again.");
@@ -184,42 +212,53 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
           bgcolor: "white",
           p: 0,
           borderRadius: "10px",
-          width: "500px",
+          width: { xs: "90%", sm: "500px" },
           maxHeight: "90vh",
           display: "flex",
           flexDirection: "column",
           boxShadow: 24,
+          overflowY: "auto",
+          "&::-webkit-scrollbar": {
+            width: "6px",
+          },
+          "&::-webkit-scrollbar-track": {
+            background: "#f1f1f1",
+            borderRadius: "3px",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            background: "#8a5a2a",
+            borderRadius: "3px",
+          },
         }}
       >
-        {/* Header */}
-        <Box className="modal-checkout__header">
+        <Box className="modal-checkout__header" sx={{ p: 2 }}>
           <Typography variant="h6" component="h2">
             Complete Order
           </Typography>
         </Box>
 
-        {/* Body */}
-        <Box 
+        <Box
           className="modal-checkout__body"
           sx={{
             flex: 1,
-            overflow: "hidden",
+            px: 2,
+            pb: 2,
             display: "flex",
-            flexDirection: "column"
+            flexDirection: "column",
+            gap: 2,
           }}
         >
-          {/* Voucher Section */}
-          <Box sx={{ mb: 2 }}>
+          <Box>
             <Typography variant="body1" className="modal-checkout__body-title">
               Voucher
             </Typography>
-            <Box sx={{ display: 'flex', gap: 1 }}>
+            <Box sx={{ display: "flex", gap: 1 }}>
               <TextField
                 fullWidth
                 placeholder="Nhập mã voucher"
                 value={voucherCode}
                 onChange={(e) => setVoucherCode(e.target.value)}
-                disabled={!!selectedVoucher}
+                disabled={!!selectedVoucher || voucherLoading || voucherError}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -232,212 +271,298 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
                 <Button
                   variant="contained"
                   onClick={handleVoucherApply}
-                  disabled={voucherLoading}
-                  sx={{ bgcolor: '#895a2a', '&:hover': { bgcolor: '#6b4423' } }}
+                  disabled={voucherLoading || voucherError}
+                  sx={{ bgcolor: "#895a2a", "&:hover": { bgcolor: "#6b4423" } }}
                 >
-                  {voucherLoading ? <CircularProgress size={24} /> : 'Áp dụng'}
+                  {voucherLoading ? <CircularProgress size={24} /> : "Áp dụng"}
                 </Button>
               ) : (
                 <Button
                   variant="outlined"
                   onClick={handleVoucherRemove}
-                  sx={{ color: '#895a2a', borderColor: '#895a2a', '&:hover': { borderColor: '#6b4423' } }}
+                  sx={{
+                    color: "#895a2a",
+                    borderColor: "#895a2a",
+                    "&:hover": { borderColor: "#6b4423" },
+                  }}
                 >
                   Xóa
                 </Button>
               )}
             </Box>
+            {voucherError && (
+              <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                Lỗi:{" "}
+                {voucherError.message ||
+                  "Không thể tải voucher. Vui lòng thử lại."}
+              </Typography>
+            )}
             {selectedVoucher && (
-              <Box sx={{ mt: 1, p: 1, bgcolor: '#f9f5f1', borderRadius: 1 }}>
+              <Box sx={{ mt: 1, p: 1, bgcolor: "#f9f5f1", borderRadius: 1 }}>
                 <Typography variant="body2">
-                  Đã áp dụng: {selectedVoucher.voucherCode} - 
-                  {selectedVoucher.discountType === "Percentage" 
+                  Đã áp dụng: {selectedVoucher.voucherCode} -
+                  {selectedVoucher.discountType === "Percentage"
                     ? `Giảm ${selectedVoucher.discountAmount * 100}%`
-                    : `Giảm ${selectedVoucher.discountAmount.toLocaleString('vi-VN')} VNĐ`}
+                    : `Giảm ${selectedVoucher.discountAmount.toLocaleString(
+                        "vi-VN"
+                      )} VNĐ`}
                 </Typography>
-                {selectedVoucher.discountType === "Amount" && selectedVoucher.discountAmount > total && (
-                  <Box sx={{ mt: 1, p: 1, bgcolor: '#fff3e0', borderRadius: 1 }}>
-                    <Typography variant="caption" sx={{ color: '#e65100', display: 'block' }}>
-                      ⚠️ Lưu ý: Voucher có giá trị vượt quá tổng tiền đơn hàng
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: '#e65100', display: 'block', mt: 0.5 }}>
-                      - Giá trị voucher: {selectedVoucher.discountAmount.toLocaleString('vi-VN')} VNĐ
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: '#e65100', display: 'block' }}>
-                      - Tổng tiền đơn hàng: {total.toLocaleString('vi-VN')} VNĐ
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: '#e65100', display: 'block', mt: 0.5, fontWeight: 'bold' }}>
-                      → Sẽ được áp dụng giảm tối đa: {total.toLocaleString('vi-VN')} VNĐ
-                    </Typography>
-                  </Box>
-                )}
+                {selectedVoucher.discountType === "Amount" &&
+                  selectedVoucher.discountAmount > total && (
+                    <Box
+                      sx={{ mt: 1, p: 1, bgcolor: "#fff3e0", borderRadius: 1 }}
+                    >
+                      <Typography
+                        variant="caption"
+                        sx={{ color: "#e65100", display: "block" }}
+                      >
+                        ⚠️ Lưu ý: Voucher có giá trị vượt quá tổng tiền đơn hàng
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{ color: "#e65100", display: "block", mt: 0.5 }}
+                      >
+                        - Giá trị voucher:{" "}
+                        {selectedVoucher.discountAmount.toLocaleString("vi-VN")}{" "}
+                        VNĐ
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{ color: "#e65100", display: "block" }}
+                      >
+                        - Tổng tiền đơn hàng: {total.toLocaleString("vi-VN")}{" "}
+                        VNĐ
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: "#e65100",
+                          display: "block",
+                          mt: 0.5,
+                          fontWeight: "bold",
+                        }}
+                      >
+                        → Sẽ được áp dụng giảm tối đa:{" "}
+                        {total.toLocaleString("vi-VN")} VNĐ
+                      </Typography>
+                    </Box>
+                  )}
               </Box>
             )}
 
-            {/* Vouchers List */}
             <Box sx={{ mt: 2 }}>
-              <Typography variant="body2" sx={{ color: '#666', mb: 1 }}>
+              <Typography variant="body2" sx={{ color: "#666", mb: 1 }}>
                 Voucher có sẵn:
               </Typography>
-              <Box sx={{ 
-                maxHeight: '150px', 
-                overflowY: 'auto',
-                '&::-webkit-scrollbar': {
-                  width: '6px',
-                },
-                '&::-webkit-scrollbar-track': {
-                  background: '#f1f1f1',
-                  borderRadius: '3px',
-                },
-                '&::-webkit-scrollbar-thumb': {
-                  background: '#8a5a2a',
-                  borderRadius: '3px',
-                },
-              }}>
-                {vouchers.map((voucher) => (
-                  <Box
-                    key={voucher.voucherId}
-                    sx={{
-                      p: 1.5,
-                      mb: 1,
-                      border: '1px solid #e0e0e0',
-                      borderRadius: '8px',
-                      backgroundColor: selectedVoucher?.voucherId === voucher.voucherId ? '#f0e6da' : '#f9f5f1',
-                      cursor: 'pointer',
-                      '&:hover': {
-                        backgroundColor: '#f0e6da',
-                      },
-                    }}
-                    onClick={() => handleVoucherSelect(voucher)}
-                  >
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#8a5a2a' }}>
-                        {voucher.voucherCode}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: '#666' }}>
-                        {voucher.discountType === "Percentage" 
-                          ? `Giảm ${voucher.discountAmount * 100}%`
-                          : `Giảm ${voucher.discountAmount.toLocaleString('vi-VN')} VNĐ`}
-                      </Typography>
-                    </Box>
-                    <Typography variant="caption" sx={{ color: '#666', display: 'block', mt: 0.5 }}>
-                      Đơn hàng tối thiểu: {voucher.minimumOrderAmount.toLocaleString('vi-VN')} VNĐ
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: '#666', display: 'block' }}>
-                      Hết hạn: {new Date(voucher.expirationDate).toLocaleDateString('vi-VN')}
-                    </Typography>
+              <Box
+                sx={{
+                  maxHeight: "150px",
+                  overflowY: "auto",
+                  "&::-webkit-scrollbar": {
+                    width: "6px",
+                  },
+                  "&::-webkit-scrollbar-track": {
+                    background: "#f1f1f1",
+                    borderRadius: "3px",
+                  },
+                  "&::-webkit-scrollbar-thumb": {
+                    background: "#8a5a2a",
+                    borderRadius: "3px",
+                  },
+                }}
+              >
+                {voucherLoading ? (
+                  <Box sx={{ textAlign: "center", py: 2 }}>
+                    <CircularProgress size={24} />
                   </Box>
-                ))}
-                {vouchers.length === 0 && (
-                  <Typography variant="body2" sx={{ color: '#666', textAlign: 'center', py: 2 }}>
+                ) : voucherError ? (
+                  <Typography
+                    variant="body2"
+                    sx={{ color: "#666", textAlign: "center", py: 2 }}
+                  >
+                    Không thể tải voucher
+                  </Typography>
+                ) : !Array.isArray(vouchers) ? (
+                  <Typography
+                    variant="body2"
+                    sx={{ color: "#666", textAlign: "center", py: 2 }}
+                  >
+                    Dữ liệu voucher không hợp lệ
+                  </Typography>
+                ) : vouchers.length === 0 ? (
+                  <Typography
+                    variant="body2"
+                    sx={{ color: "#666", textAlign: "center", py: 2 }}
+                  >
                     Không có voucher nào
                   </Typography>
+                ) : (
+                  vouchers.map((voucher) => (
+                    <Box
+                      key={voucher.voucherId}
+                      sx={{
+                        p: 1.5,
+                        mb: 1,
+                        border: "1px solid #e0e0e0",
+                        borderRadius: "8px",
+                        backgroundColor:
+                          selectedVoucher?.voucherId === voucher.voucherId
+                            ? "#f0e6da"
+                            : "#f9f5f1",
+                        cursor: "pointer",
+                        "&:hover": {
+                          backgroundColor: "#f0e6da",
+                        },
+                      }}
+                      onClick={() => handleVoucherSelect(voucher)}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Typography
+                          variant="body2"
+                          sx={{ fontWeight: "bold", color: "#8a5a2a" }}
+                        >
+                          {voucher.voucherCode}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: "#666" }}>
+                          {voucher.discountType === "Percentage"
+                            ? `Giảm ${voucher.discountAmount * 100}%`
+                            : `Giảm ${voucher.discountAmount.toLocaleString(
+                                "vi-VN"
+                              )} VNĐ`}
+                        </Typography>
+                      </Box>
+                      <Typography
+                        variant="caption"
+                        sx={{ color: "#666", display: "block", mt: 0.5 }}
+                      >
+                        Đơn hàng tối thiểu:{" "}
+                        {voucher.minimumOrderAmount.toLocaleString("vi-VN")} VNĐ
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{ color: "#666", display: "block" }}
+                      >
+                        Hết hạn:{" "}
+                        {new Date(voucher.expirationDate).toLocaleDateString(
+                          "vi-VN"
+                        )}
+                      </Typography>
+                    </Box>
+                  ))
                 )}
               </Box>
             </Box>
           </Box>
 
-          {/* Payment Method Section */}
-          <Typography variant="body1" className="modal-checkout__body-title">
-            Payment Method
-          </Typography>
-          <FormControl fullWidth>
-            <Select
-              labelId="payment-method-label"
-              value={paymentMethod}
-              onChange={handleChange}
-              disabled={paymentLoading || !!paymentError || isProcessing}
-            >
-              {paymentLoading ? (
-                <MenuItem value="" disabled>
-                  <CircularProgress size={24} />
-                </MenuItem>
-              ) : paymentError ? (
-                <MenuItem value="" disabled>
-                  Error: {paymentError}
-                </MenuItem>
-              ) : payment && payment.length > 0 ? (
-                payment.map((method) => (
-                  <MenuItem
-                    key={method.paymentMethodId}
-                    value={method.paymentMethodId}
-                  >
-                    {method.methodName}
+          <Box>
+            <Typography variant="body1" className="modal-checkout__body-title">
+              Payment Method
+            </Typography>
+            <FormControl fullWidth>
+              <Select
+                labelId="payment-method-label"
+                value={paymentMethod}
+                onChange={handleChange}
+                disabled={paymentLoading || !!paymentError || isProcessing}
+              >
+                {paymentLoading ? (
+                  <MenuItem value="" disabled>
+                    <CircularProgress size={24} />
                   </MenuItem>
-                ))
-              ) : (
-                <MenuItem value="" disabled>
-                  No payment methods available
-                </MenuItem>
-              )}
-            </Select>
-          </FormControl>
+                ) : paymentError ? (
+                  <MenuItem value="" disabled>
+                    Error: {paymentError}
+                  </MenuItem>
+                ) : payment && payment.length > 0 ? (
+                  payment.map((method) => (
+                    <MenuItem
+                      key={method.paymentMethodId}
+                      value={method.paymentMethodId}
+                    >
+                      {method.methodName}
+                    </MenuItem>
+                  ))
+                ) : (
+                  <MenuItem value="" disabled>
+                    No payment methods available
+                  </MenuItem>
+                )}
+              </Select>
+            </FormControl>
+          </Box>
 
-          {/* Order Summary Section */}
-          <Box 
-            className="modal-checkout__details" 
-            sx={{ 
-              mt: 2,
+          <Box
+            className="modal-checkout__details"
+            sx={{
               flex: 1,
-              overflow: "hidden",
               display: "flex",
-              flexDirection: "column"
+              flexDirection: "column",
             }}
           >
-            <Typography variant="body1" className="modal-checkout__details-title">
+            <Typography
+              variant="body1"
+              className="modal-checkout__details-title"
+            >
               Order Summary
             </Typography>
-            <Box 
+            <Box
               className="modal-checkout__details-content"
               sx={{
                 flex: 1,
                 overflowY: "auto",
                 pr: 1,
+                maxHeight: "200px",
                 "&::-webkit-scrollbar": {
-                  width: "8px",
+                  width: "6px",
                 },
                 "&::-webkit-scrollbar-track": {
                   background: "#f1f1f1",
-                  borderRadius: "4px",
+                  borderRadius: "3px",
                 },
                 "&::-webkit-scrollbar-thumb": {
                   background: "#8a5a2a",
-                  borderRadius: "4px",
-                },
-                "&::-webkit-scrollbar-thumb:hover": {
-                  background: "#70482f",
+                  borderRadius: "3px",
                 },
               }}
             >
               {cart && Array.isArray(cart) && cart.length > 0 ? (
                 cart.map((item) => (
-                  <Box 
-                    key={item.orderItemId} 
+                  <Box
+                    key={item.orderItemId}
                     className="modal-checkout__details-item"
                     sx={{
-                      backgroundColor: '#f9f5f1',
-                      borderRadius: '8px',
-                      padding: '12px',
+                      backgroundColor: "#f9f5f1",
+                      borderRadius: "8px",
+                      padding: "12px",
                       mb: 2,
-                      width: '100%',
-                      display: 'flex',
-                      flexDirection: 'row',
-                      alignItems: 'flex-start',
-                      justifyContent: 'space-between'
+                      width: "100%",
+                      display: "flex",
+                      flexDirection: "row",
+                      alignItems: "flex-start",
+                      justifyContent: "space-between",
                     }}
                   >
                     <Box sx={{ flex: 1 }}>
-                      <Typography 
-                        variant="body1" 
-                        sx={{ 
-                          color: '#8a5a2a',
-                          fontWeight: 'bold',
-                          fontSize: '16px'
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          color: "#8a5a2a",
+                          fontWeight: "bold",
+                          fontSize: "16px",
                         }}
                       >
                         {item.quantity}x {item.productName}
                         {item.sizeId && item.sizeId !== "Parent" && (
-                          <span style={{ color: "#666", fontWeight: "normal" }}> (Size: {item.sizeId})</span>
+                          <span style={{ color: "#666", fontWeight: "normal" }}>
+                            {" "}
+                            (Size: {item.sizeId})
+                          </span>
                         )}
                       </Typography>
                       {item.toppings && item.toppings.length > 0 && (
@@ -448,19 +573,21 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
                               color: "#8a5a2a",
                               fontSize: "14px",
                               fontWeight: "medium",
-                              mb: 0.5
+                              mb: 0.5,
                             }}
                           >
-                            {item.productType === 'Combo' ? 'Sản phẩm bao gồm:' : 'Topping bao gồm:'}
+                            {item.productType === "Combo"
+                              ? "Sản phẩm bao gồm:"
+                              : "Topping bao gồm:"}
                           </Typography>
                           {item.toppings.map((topping, index) => (
-                            <Box 
+                            <Box
                               key={topping.toppingId}
-                              sx={{ 
-                                display: 'flex',
-                                alignItems: 'center',
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
                                 ml: 1,
-                                mb: 0.5
+                                mb: 0.5,
                               }}
                             >
                               <Typography
@@ -468,7 +595,7 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
                                 sx={{
                                   color: "#666",
                                   fontSize: "14px",
-                                  minWidth: '20px'
+                                  minWidth: "20px",
                                 }}
                               >
                                 {index + 1}.
@@ -478,7 +605,7 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
                                 sx={{
                                   color: "#666",
                                   fontSize: "14px",
-                                  ml: 1
+                                  ml: 1,
                                 }}
                               >
                                 {topping.toppingName}
@@ -489,7 +616,7 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
                                   color: "#8a5a2a",
                                   fontSize: "14px",
                                   ml: 1,
-                                  fontWeight: "medium"
+                                  fontWeight: "medium",
                                 }}
                               >
                                 ({topping.quantity || 1} phần)
@@ -499,24 +626,27 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
                         </Box>
                       )}
                     </Box>
-                    <Box sx={{ 
-                      width: '120px',
-                      display: 'flex',
-                      justifyContent: 'flex-end',
-                      alignItems: 'flex-start',
-                      textAlign: 'right'
-                    }}>
-                      <Typography 
+                    <Box
+                      sx={{
+                        width: "120px",
+                        display: "flex",
+                        justifyContent: "flex-end",
+                        alignItems: "flex-start",
+                        textAlign: "right",
+                      }}
+                    >
+                      <Typography
                         variant="body1"
-                        sx={{ 
-                          color: '#8a5a2a',
-                          fontWeight: 'bold',
-                          fontSize: '16px',
-                          whiteSpace: 'nowrap',
-                          width: '100%'
+                        sx={{
+                          color: "#8a5a2a",
+                          fontWeight: "bold",
+                          fontSize: "16px",
+                          whiteSpace: "nowrap",
+                          width: "100%",
                         }}
                       >
-                        {(Number(item.subPrice) || 0).toLocaleString('vi-VN')} VNĐ
+                        {(Number(item.subPrice) || 0).toLocaleString("vi-VN")}{" "}
+                        VNĐ
                       </Typography>
                     </Box>
                   </Box>
@@ -525,53 +655,88 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
                 <Typography variant="body2">No items in the order.</Typography>
               )}
             </Box>
-            <Box className="order-summary">
+            <Box className="order-summary" sx={{ pt: 2 }}>
               <Typography variant="body1" className="order-summary-title">
                 TÓM TẮT ĐƠN HÀNG
               </Typography>
-              <Box className="order-summary-item" sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Box
+                className="order-summary-item"
+                sx={{ display: "flex", justifyContent: "space-between" }}
+              >
                 <Typography variant="body2">SỐ MÓN:</Typography>
-                <Typography variant="body2" sx={{ minWidth: '120px', textAlign: 'right' }}>
+                <Typography
+                  variant="body2"
+                  sx={{ minWidth: "120px", textAlign: "right" }}
+                >
                   {calculateTotalQuantity(cart)}
                 </Typography>
               </Box>
-              <Box className="order-summary-item" sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Box
+                className="order-summary-item"
+                sx={{ display: "flex", justifyContent: "space-between" }}
+              >
                 <Typography variant="body2">TỔNG CỘNG:</Typography>
-                <Typography variant="body2" sx={{ minWidth: '120px', textAlign: 'right' }}>
-                  {total.toLocaleString('vi-VN')} VNĐ
+                <Typography
+                  variant="body2"
+                  sx={{ minWidth: "120px", textAlign: "right" }}
+                >
+                  {total.toLocaleString("vi-VN")} VNĐ
                 </Typography>
               </Box>
               {selectedVoucher && (
-                <Box className="order-summary-item" sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Box
+                  className="order-summary-item"
+                  sx={{ display: "flex", justifyContent: "space-between" }}
+                >
                   <Typography variant="body2">GIẢM GIÁ:</Typography>
-                  <Typography variant="body2" sx={{ minWidth: '120px', textAlign: 'right', color: 'success.main' }}>
-                    -{calculateDiscount().toLocaleString('vi-VN')} VNĐ
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      minWidth: "120px",
+                      textAlign: "right",
+                      color: "success.main",
+                    }}
+                  >
+                    -{calculateDiscount().toLocaleString("vi-VN")} VNĐ
                   </Typography>
                 </Box>
               )}
-              <Box className="order-summary-item" sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Box
+                className="order-summary-item"
+                sx={{ display: "flex", justifyContent: "space-between" }}
+              >
                 <Typography variant="body2">THÀNH TIỀN:</Typography>
-                <Typography variant="body2" fontWeight="bold" sx={{ minWidth: '120px', textAlign: 'right' }}>
-                  {calculateFinalTotal().toLocaleString('vi-VN')} VNĐ
+                <Typography
+                  variant="body2"
+                  fontWeight="bold"
+                  sx={{ minWidth: "120px", textAlign: "right" }}
+                >
+                  {calculateFinalTotal().toLocaleString("vi-VN")} VNĐ
                 </Typography>
               </Box>
             </Box>
           </Box>
         </Box>
 
-        {/* Footer */}
-        <Box className="modal-checkout__footer">
-          <Button 
-            variant="outlined" 
-            onClick={onClose}
-            disabled={isProcessing}
-          >
+        <Box
+          className="modal-checkout__footer"
+          sx={{
+            p: 2,
+            borderTop: "1px solid #e0e0e0",
+            display: "flex",
+            gap: 2,
+            justifyContent: "flex-end",
+          }}
+        >
+          <Button variant="outlined" onClick={onClose} disabled={isProcessing}>
             Hủy
           </Button>
           <Button
             variant="contained"
             color="primary"
-            disabled={!paymentMethod || !cart || cart.length === 0 || isProcessing}
+            disabled={
+              !paymentMethod || !cart || cart.length === 0 || isProcessing
+            }
             onClick={handleCreateOrder}
           >
             {isProcessing ? <CircularProgress size={24} /> : "Thanh toán"}

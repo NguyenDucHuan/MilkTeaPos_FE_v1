@@ -1,12 +1,13 @@
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import fetcher from "../../apis/fetcher";
 
 export const getAllVouchers = createAsyncThunk(
   "voucher/getAllVouchers",
   async ({ Page, PageSize }, { rejectWithValue }) => {
     try {
+      console.log("Fetching vouchers with Page:", Page, "PageSize:", PageSize);
       const response = await fetcher.get(
-        `/vouchers?Page=${Page}&PageSize=${PageSize}`
+        `/vouchers?Page=${Page}&PageSize=${PageSize}&Status=true`
       );
       console.log("Fetched vouchers:", response.data);
       return {
@@ -16,6 +17,27 @@ export const getAllVouchers = createAsyncThunk(
         currentPage: response.data.page,
         pageSize: response.data.size,
       };
+    } catch (error) {
+      console.error("Get vouchers error:", error.response || error.message);
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const getVouchers = createAsyncThunk(
+  "voucher/getVouchers",
+  async (_, { rejectWithValue }) => {
+    try {
+      console.log("Fetching all vouchers with Page=1&PageSize=100");
+      const response = await fetcher.get(
+        "/vouchers?Page=1&PageSize=100&Status=true"
+      );
+      console.log("Fetched vouchers:", response.data);
+      // Xử lý dữ liệu trả về để đảm bảo là mảng
+      const vouchers = Array.isArray(response.data)
+        ? response.data
+        : response.data?.items || response.data?.data || [];
+      return vouchers;
     } catch (error) {
       console.error("Get vouchers error:", error.response || error.message);
       return rejectWithValue(error.response?.data || error.message);
@@ -33,8 +55,8 @@ export const deleteVouchers = createAsyncThunk(
       const { pagination } = getState().voucher;
       dispatch(
         getAllVouchers({
-          Page: pagination.currentPage,
-          PageSize: pagination.pageSize,
+          Page: pagination.page || 1,
+          PageSize: pagination.size || 10,
         })
       );
       return id;
@@ -103,26 +125,14 @@ export const updateVoucher = createAsyncThunk(
       const { pagination } = getState().voucher;
       dispatch(
         getAllVouchers({
-          Page: pagination.currentPage,
-          PageSize: pagination.pageSize,
+          Page: pagination.page || 1,
+          PageSize: pagination.size || 10,
         })
       );
       return response.data;
     } catch (error) {
       console.error("Update voucher error:", error.response || error.message);
       return rejectWithValue(error.response?.data || error.message);
-    }
-  }
-);
-
-export const fetchVouchers = createAsyncThunk(
-  "voucher/fetchVouchers",
-  async ({ page = 1, size = 10, status = true } = {}) => {
-    try {
-      const response = await fetcher.get(`/vouchers?page=${page}&size=${size}&status=${status}`);
-      return response.data;
-    } catch (error) {
-      throw error;
     }
   }
 );
@@ -138,7 +148,7 @@ const voucherSlice = createSlice({
       page: 1,
       size: 10,
       total: 0,
-      totalPages: 0
+      totalPages: 0,
     },
   },
   reducers: {
@@ -150,86 +160,85 @@ const voucherSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    builder.addCase(getAllVouchers.pending, (state) => {
-      state.isLoading = true;
-      state.error = null;
-    });
-    builder.addCase(getAllVouchers.fulfilled, (state, { payload }) => {
-      state.isLoading = false;
-      state.vouchers = payload.items;
-      state.pagination = {
-        page: payload.currentPage,
-        size: payload.pageSize,
-        total: payload.total,
-        totalPages: payload.totalPages,
-      };
-    });
-    builder.addCase(getAllVouchers.rejected, (state, { payload }) => {
-      state.isLoading = false;
-      state.error = payload;
-    });
-    builder.addCase(deleteVouchers.pending, (state) => {
-      state.isLoading = true;
-      state.error = null;
-    });
-    builder.addCase(deleteVouchers.fulfilled, (state) => {
-      state.isLoading = false;
-    });
-    builder.addCase(deleteVouchers.rejected, (state, { payload }) => {
-      state.isLoading = false;
-      state.error = payload;
-    });
-    builder.addCase(createVoucher.pending, (state) => {
-      state.isLoading = true;
-      state.error = null;
-    });
-    builder.addCase(createVoucher.fulfilled, (state, { payload }) => {
-      state.isLoading = false;
-      state.error = null;
-      state.vouchers = [...state.vouchers, payload];
-    });
-    builder.addCase(createVoucher.rejected, (state, { payload }) => {
-      state.isLoading = false;
-      state.error = payload;
-    });
-    builder.addCase(updateVoucher.pending, (state) => {
-      state.isLoading = true;
-      state.error = null;
-    });
-    builder.addCase(updateVoucher.fulfilled, (state, { payload }) => {
-      state.isLoading = false;
-      state.error = null;
-      const index = state.vouchers.findIndex(
-        (v) => v.voucherId === payload.voucherId
-      );
-      if (index !== -1) {
-        state.vouchers[index] = payload;
-      }
-    });
-    builder.addCase(updateVoucher.rejected, (state, { payload }) => {
-      state.isLoading = false;
-      state.error = payload;
-    });
-    builder.addCase(fetchVouchers.pending, (state) => {
-      state.isLoading = true;
-      state.error = null;
-    });
-    builder.addCase(fetchVouchers.fulfilled, (state, action) => {
-      state.isLoading = false;
-      state.vouchers = action.payload.items;
-      state.pagination = {
-        page: action.payload.page,
-        size: action.payload.size,
-        total: action.payload.total,
-        totalPages: action.payload.totalPages
-      };
-    });
-    builder.addCase(fetchVouchers.rejected, (state, action) => {
-      state.isLoading = false;
-      state.error = action.error.message;
-    });
+    builder
+      .addCase(getAllVouchers.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(getAllVouchers.fulfilled, (state, { payload }) => {
+        console.log("Cập nhật pagination:", {
+          currentPage: payload.currentPage,
+          pageSize: payload.pageSize,
+        });
+        state.isLoading = false;
+        state.vouchers = payload.items;
+        state.pagination = {
+          page: payload.currentPage || 1,
+          size: payload.pageSize || 10,
+          total: payload.total || 0,
+          totalPages: payload.totalPages || 0,
+        };
+      })
+      .addCase(getAllVouchers.rejected, (state, { payload }) => {
+        state.isLoading = false;
+        state.error = payload;
+      })
+      .addCase(getVouchers.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(getVouchers.fulfilled, (state, { payload }) => {
+        state.isLoading = false;
+        state.vouchers = payload;
+      })
+      .addCase(getVouchers.rejected, (state, { payload }) => {
+        state.isLoading = false;
+        state.error = payload;
+      })
+      .addCase(deleteVouchers.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteVouchers.fulfilled, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(deleteVouchers.rejected, (state, { payload }) => {
+        state.isLoading = false;
+        state.error = payload;
+      })
+      .addCase(createVoucher.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(createVoucher.fulfilled, (state) => {
+        state.isLoading = false;
+        state.error = null;
+      })
+      .addCase(createVoucher.rejected, (state, { payload }) => {
+        state.isLoading = false;
+        state.error = payload;
+      })
+      .addCase(updateVoucher.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(updateVoucher.fulfilled, (state, { payload }) => {
+        state.isLoading = false;
+        state.error = null;
+        const index = state.vouchers.findIndex(
+          (v) => v.voucherId === payload.voucherId
+        );
+        if (index !== -1) {
+          state.vouchers[index] = payload;
+        }
+      })
+      .addCase(updateVoucher.rejected, (state, { payload }) => {
+        state.isLoading = false;
+        state.error = payload;
+      });
   },
 });
 
-export const { setSelectedVoucher, clearSelectedVoucher } = voucherSlice.actions;
+export const { setSelectedVoucher, clearSelectedVoucher } =
+  voucherSlice.actions;
 export default voucherSlice.reducer;

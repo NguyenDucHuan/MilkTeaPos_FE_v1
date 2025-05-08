@@ -13,7 +13,9 @@ import { useForm, useWatch } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useSelector } from "react-redux";
+import { format, startOfDay, isBefore } from "date-fns";
 
+// Tạo schema xác thực
 const createSchema = (isEdit) =>
   yup.object().shape({
     VoucherCode: isEdit
@@ -35,7 +37,14 @@ const createSchema = (isEdit) =>
     DiscountAmount: yup
       .number()
       .required("Số tiền giảm là bắt buộc")
-      .positive("Số tiền giảm phải là số dương"),
+      .when("DiscountType", {
+        is: "Percentage",
+        then: (schema) =>
+          schema
+            .max(100, "Phần trăm giảm không được vượt quá 100%")
+            .min(0.01, "Phần trăm giảm phải lớn hơn 0"),
+        otherwise: (schema) => schema.min(0.01, "Số tiền giảm phải lớn hơn 0"),
+      }),
     DiscountType: yup
       .string()
       .required("Loại giảm giá là bắt buộc")
@@ -46,8 +55,8 @@ const createSchema = (isEdit) =>
       .nullable()
       .typeError("Định dạng ngày không hợp lệ")
       .min(
-        new Date().toISOString().split("T")[0],
-        "Ngày hết hạn không được là quá khứ"
+        new Date(new Date().setHours(0, 0, 0, 0)).toISOString().split("T")[0],
+        "Ngày hết hạn phải từ hôm nay trở đi"
       ),
     MinimumOrderAmount: yup
       .number()
@@ -65,6 +74,7 @@ const VoucherModal = ({ open, onClose, onSubmit, initialData }) => {
     formState: { errors },
     reset,
     control,
+    setError,
   } = useForm({
     resolver: yupResolver(createSchema(isEdit)),
     defaultValues: {
@@ -99,11 +109,23 @@ const VoucherModal = ({ open, onClose, onSubmit, initialData }) => {
   }, [initialData, reset]);
 
   const handleFormSubmit = (data) => {
+    // Chuyển ExpirationDate thành đối tượng Date và kiểm tra
+    const expirationDate = new Date(data.ExpirationDate);
+    const today = startOfDay(new Date()); // Ngày hiện tại, bỏ giờ/phút/giây
+
+    // Kiểm tra nếu ngày hết hạn nhỏ hơn ngày hiện tại
+    if (isBefore(expirationDate, today)) {
+      setError("ExpirationDate", {
+        type: "manual",
+        message: "Ngày hết hạn không được là quá khứ",
+      });
+      return;
+    }
+
+    // Định dạng ExpirationDate thành chuỗi ISO ở UTC
     const formattedData = {
       ...data,
-      ExpirationDate:
-        new Date(data.ExpirationDate).toISOString().split("T")[0] +
-        "T00:00:00Z",
+      ExpirationDate: format(expirationDate, "yyyy-MM-dd'T'00:00:00'Z'"),
       DiscountAmount:
         data.DiscountType === "Percentage"
           ? data.DiscountAmount / 100
@@ -170,11 +192,12 @@ const VoucherModal = ({ open, onClose, onSubmit, initialData }) => {
                 helperText={
                   errors.DiscountAmount?.message ||
                   (watchDiscountType === "Percentage"
-                    ? "Nhập theo phần trăm (ví dụ: 12 cho 12%)"
-                    : "Nhập số tiền cố định")
+                    ? "Nhập theo phần trăm (0.01-100)"
+                    : "Nhập số tiền cố định (lớn hơn 0)")
                 }
                 variant="outlined"
                 InputLabelProps={{ style: { fontWeight: "500" } }}
+                inputProps={{ min: 0.01, step: "0.01" }}
               />
             </Box>
             <Box sx={{ marginBottom: "16px" }}>
@@ -202,6 +225,11 @@ const VoucherModal = ({ open, onClose, onSubmit, initialData }) => {
                 error={!!errors.ExpirationDate}
                 helperText={errors.ExpirationDate?.message}
                 variant="outlined"
+                inputProps={{
+                  min: new Date(new Date().setHours(0, 0, 0, 0))
+                    .toISOString()
+                    .split("T")[0],
+                }}
               />
             </Box>
             <Box sx={{ marginBottom: "16px" }}>
@@ -214,6 +242,7 @@ const VoucherModal = ({ open, onClose, onSubmit, initialData }) => {
                 helperText={errors.MinimumOrderAmount?.message}
                 variant="outlined"
                 InputLabelProps={{ style: { fontWeight: "500" } }}
+                inputProps={{ min: 0, step: "1" }}
               />
             </Box>
           </form>
