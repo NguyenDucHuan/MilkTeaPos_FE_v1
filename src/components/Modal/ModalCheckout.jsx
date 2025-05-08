@@ -177,25 +177,30 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
       setIsProcessing(true);
       const orderData = {
         note: "string",
-        paymentMethodId: paymentMethod,
-        staffId: 1,
-        voucherId: selectedVoucher?.voucherId,
-        orderItems: cart.map((item) => ({
+        voucherCode: selectedVoucher?.voucherCode || null,
+        orderItems: cart.map(item => ({
           productId: item.productId,
           quantity: item.quantity,
           price: item.subPrice || item.price || 0,
-        })),
+          toppings: item.toppings?.map(topping => ({
+            toppingId: topping.toppingId,
+            quantity: topping.quantity || 1
+          })) || []
+        }))
       };
 
       const response = await fetcher.post("/order", orderData);
-      toast.success("Order created successfully!");
-      console.log("Order created:", response.data);
-
-      onClose();
-      navigate("/orders");
+      
+      if (response.data) {
+        toast.success("Đặt hàng thành công!");
+        console.log("Order created:", response.data);
+        onClose();
+        navigate("/orders");
+      }
     } catch (error) {
-      toast.error("Failed to create order. Please try again.");
       console.error("Error creating order:", error);
+      const errorMessage = error.response?.data?.message || "Không thể tạo đơn hàng. Vui lòng thử lại.";
+      toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
     }
