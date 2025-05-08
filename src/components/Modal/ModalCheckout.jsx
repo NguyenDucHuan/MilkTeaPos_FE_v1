@@ -238,7 +238,7 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
       >
         <Box className="modal-checkout__header" sx={{ p: 2 }}>
           <Typography variant="h6" component="h2">
-            Complete Order
+            Hoàn tất đơn hàng
           </Typography>
         </Box>
 
@@ -463,43 +463,6 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
                 )}
               </Box>
             </Box>
-          </Box>
-
-          <Box>
-            <Typography variant="body1" className="modal-checkout__body-title">
-              Payment Method
-            </Typography>
-            <FormControl fullWidth>
-              <Select
-                labelId="payment-method-label"
-                value={paymentMethod}
-                onChange={handleChange}
-                disabled={paymentLoading || !!paymentError || isProcessing}
-              >
-                {paymentLoading ? (
-                  <MenuItem value="" disabled>
-                    <CircularProgress size={24} />
-                  </MenuItem>
-                ) : paymentError ? (
-                  <MenuItem value="" disabled>
-                    Error: {paymentError}
-                  </MenuItem>
-                ) : payment && payment.length > 0 ? (
-                  payment.map((method) => (
-                    <MenuItem
-                      key={method.paymentMethodId}
-                      value={method.paymentMethodId}
-                    >
-                      {method.methodName}
-                    </MenuItem>
-                  ))
-                ) : (
-                  <MenuItem value="" disabled>
-                    No payment methods available
-                  </MenuItem>
-                )}
-              </Select>
-            </FormControl>
           </Box>
 
           <Box
@@ -733,16 +696,30 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
             justifyContent: "flex-end",
           }}
         >
-          <Button variant="outlined" onClick={onClose} disabled={isProcessing}>
+          <Button 
+            variant="outlined" 
+            onClick={onClose} 
+            disabled={isProcessing}
+            sx={{
+              color: "#895a2a",
+              borderColor: "#895a2a",
+              "&:hover": { borderColor: "#6b4423" },
+            }}
+          >
             Hủy
           </Button>
           <Button
             variant="contained"
-            color="primary"
-            disabled={
-              !paymentMethod || !cart || cart.length === 0 || isProcessing
-            }
+            disabled={!cart || cart.length === 0 || isProcessing}
             onClick={handleCreateOrder}
+            sx={{ 
+              bgcolor: "#895a2a", 
+              "&:hover": { bgcolor: "#6b4423" },
+              "&.Mui-disabled": {
+                bgcolor: "#e0e0e0",
+                color: "#9e9e9e"
+              }
+            }}
           >
             {isProcessing ? <CircularProgress size={24} /> : "Thanh toán"}
           </Button>
