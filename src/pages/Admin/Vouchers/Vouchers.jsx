@@ -31,6 +31,7 @@ export default function Vouchers() {
     (state) => state.voucher
   );
   console.log("Danh sách voucher:", vouchers);
+  console.log("Pagination state:", pagination);
 
   const [openConfirm, setOpenConfirm] = useState(false);
   const [selectedVoucherId, setSelectedVoucherId] = useState(null);
@@ -38,13 +39,14 @@ export default function Vouchers() {
   const [editVoucher, setEditVoucher] = useState(null);
 
   useEffect(() => {
+    console.log("useEffect chạy với pagination:", pagination);
     dispatch(
       getAllVouchers({
-        Page: pagination.currentPage,
-        PageSize: pagination.pageSize,
+        Page: pagination.page || 1,
+        PageSize: pagination.size || 10,
       })
     );
-  }, [dispatch, pagination.currentPage, pagination.pageSize]);
+  }, [dispatch, pagination.page, pagination.size]);
 
   const handleOpenAddModal = () => {
     setEditVoucher(null);
@@ -84,12 +86,6 @@ export default function Vouchers() {
         await dispatch(createVoucher(formData)).unwrap();
         toast.success("Thêm voucher thành công!");
       }
-      dispatch(
-        getAllVouchers({
-          Page: pagination.currentPage,
-          PageSize: pagination.pageSize,
-        })
-      );
       handleCloseModal();
     } catch (err) {
       toast.error("Thao tác thất bại! " + (err.message || err.detail || ""));
@@ -110,12 +106,6 @@ export default function Vouchers() {
     try {
       await dispatch(deleteVouchers(selectedVoucherId)).unwrap();
       toast.success("Xoá voucher thành công!");
-      dispatch(
-        getAllVouchers({
-          Page: pagination.currentPage,
-          PageSize: pagination.pageSize,
-        })
-      );
     } catch {
       toast.error("Xoá voucher thất bại!");
     } finally {
@@ -124,7 +114,9 @@ export default function Vouchers() {
   };
 
   const handlePageChange = (event, newPage) => {
-    dispatch(getAllVouchers({ Page: newPage, PageSize: pagination.pageSize }));
+    dispatch(
+      getAllVouchers({ Page: newPage, PageSize: pagination.size || 10 })
+    );
   };
 
   if (isLoading) return <Typography sx={{ p: 2 }}>Loading...</Typography>;
@@ -153,6 +145,7 @@ export default function Vouchers() {
                 <TableCell>Mã Voucher</TableCell>
                 <TableCell>Số tiền giảm</TableCell>
                 <TableCell>Loại giảm giá</TableCell>
+                <TableCell>Ngày tạo</TableCell>
                 <TableCell>Ngày hết hạn</TableCell>
                 <TableCell>Đơn hàng tối thiểu</TableCell>
                 <TableCell>Trạng thái</TableCell>
@@ -160,47 +153,54 @@ export default function Vouchers() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {vouchers.map((item) => (
-                <TableRow key={item.voucherId}>
-                  <TableCell>{item.voucherCode}</TableCell>
-                  <TableCell>
-                    {item.discountType === "Percentage"
-                      ? `${(item.discountAmount * 100).toFixed(0)}%`
-                      : item.discountAmount}
-                  </TableCell>
-                  <TableCell>{item.discountType}</TableCell>
-                  <TableCell>
-                    {new Date(item.expirationDate).toLocaleDateString("vi-VN")}
-                  </TableCell>
-                  <TableCell>{item.minimumOrderAmount}</TableCell>
-                  <TableCell>
-                    {item.status ? "Hoạt động" : "Ngưng hoạt động"}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="contained"
-                      color="warning"
-                      sx={{ mr: 1 }}
-                      onClick={() => handleOpenEditModal(item)}
-                    >
-                      Sửa
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="error"
-                      onClick={() => handleOpenConfirm(item.voucherId)}
-                    >
-                      Xóa
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {vouchers
+                .filter((item) => item.status === true)
+                .map((item) => (
+                  <TableRow key={item.voucherId}>
+                    <TableCell>{item.voucherCode}</TableCell>
+                    <TableCell>
+                      {item.discountType === "Percentage"
+                        ? `${(item.discountAmount * 100).toFixed(0)}%`
+                        : item.discountAmount}
+                    </TableCell>
+                    <TableCell>{item.discountType}</TableCell>
+                    <TableCell>
+                      {new Date(item.createAt).toLocaleDateString("vi-VN")}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(item.expirationDate).toLocaleDateString(
+                        "vi-VN"
+                      )}
+                    </TableCell>
+                    <TableCell>{item.minimumOrderAmount}</TableCell>
+                    <TableCell>
+                      {item.status ? "Hoạt động" : "Ngưng hoạt động"}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="contained"
+                        color="warning"
+                        sx={{ mr: 1 }}
+                        onClick={() => handleOpenEditModal(item)}
+                      >
+                        Sửa
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        onClick={() => handleOpenConfirm(item.voucherId)}
+                      >
+                        Xóa
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
             </TableBody>
           </Table>
           <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
             <Pagination
-              count={pagination.totalPages}
-              page={pagination.currentPage}
+              count={pagination.totalPages || 1}
+              page={pagination.page || 1}
               onChange={handlePageChange}
               color="primary"
               sx={{ "& .MuiPagination-ul": { justifyContent: "center" } }}
