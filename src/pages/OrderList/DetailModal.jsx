@@ -9,10 +9,10 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
   IconButton,
   CircularProgress,
   Divider,
+  Paper,
 } from "@mui/material";
 import { Close as CloseIcon } from "@mui/icons-material";
 import OrderStatus from "./OrderStatus";
@@ -224,7 +224,7 @@ const DetailModal = ({
             <Typography variant="subtitle1" gutterBottom>
               Danh sách sản phẩm
             </Typography>
-            <TableContainer component={Paper}>
+            <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
               <Table sx={{ minWidth: 900 }}>
                 <TableHead>
                   <TableRow>
@@ -252,12 +252,13 @@ const DetailModal = ({
                               (topping) => topping.masterId === item.orderItemId
                             )
                           : [];
-                      const itemPrice = item.price || 0;
+                      const itemPrice = item.product?.prize || 0;
                       const toppingsPrice = toppings.reduce(
-                        (total, topping) => total + (topping.price || 0),
+                        (total, topping) =>
+                          total + (topping.product?.prize || 0),
                         0
                       );
-                      const totalPrice = itemPrice + toppingsPrice;
+                      const totalPrice = item.price || 0;
 
                       return (
                         <TableRow key={item.orderItemId}>
@@ -296,7 +297,10 @@ const DetailModal = ({
                                     style={{ color: "#b0855b" }}
                                   >
                                     {topping.product?.productName} (
-                                    {formatCurrency(topping.price)})
+                                    {formatCurrency(
+                                      topping.product?.prize || 0
+                                    )}
+                                    )
                                   </li>
                                 ))}
                               </ul>
@@ -306,10 +310,10 @@ const DetailModal = ({
                           </TableCell>
                           <TableCell align="right">{item.quantity}</TableCell>
                           <TableCell align="right">
-                            {formatCurrency(totalPrice)}
+                            {formatCurrency(itemPrice + toppingsPrice)}
                           </TableCell>
                           <TableCell align="right">
-                            {formatCurrency(totalPrice * item.quantity)}
+                            {formatCurrency(orderDetails.totalAmount)}
                           </TableCell>
                         </TableRow>
                       );
