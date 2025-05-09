@@ -31,7 +31,6 @@ import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
   AccessTime as PendingIcon,
-  Close as CloseIcon,
 } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchOrders } from "../../store/slices/orderSlice";
@@ -48,29 +47,23 @@ const statusColors = {
     label: "Đang xử lý",
     statusId: 1,
   },
+  Preparing: {
+    color: "bg-indigo-100 text-indigo-800",
+    icon: ShippingIcon,
+    label: "Đang chuẩn bị",
+    statusId: 2,
+  },
   Success: {
     color: "bg-green-100 text-green-800",
     icon: CheckCircleIcon,
     label: "Thành công",
-    statusId: 4,
+    statusId: 3,
   },
   Cancelled: {
     color: "bg-red-100 text-red-800",
     icon: CancelIcon,
     label: "Đã hủy",
-    statusId: 5,
-  },
-  Delivered: {
-    color: "bg-blue-100 text-blue-800",
-    icon: ShippingIcon,
-    label: "Đã giao hàng",
-    statusId: 3,
-  },
-  Shipped: {
-    color: "bg-indigo-100 text-indigo-800",
-    icon: ShippingIcon,
-    label: "Đang vận chuyển",
-    statusId: 2,
+    statusId: 4,
   },
 };
 
@@ -130,7 +123,11 @@ const OrderList = () => {
       if (!statusId) {
         throw new Error(`Không tìm thấy statusId cho trạng thái ${newStatus}`);
       }
-
+      const order = orders.items.find((o) => o.orderId === orderId);
+      if (order.paymentStatus === "Unpaid") {
+        toast.error("Vui lòng thanh toán trước khi thay đổi trạng thái");
+        return;
+      }
       console.log(
         "Updating status for order:",
         orderId,
@@ -143,35 +140,24 @@ const OrderList = () => {
       setStatusToUpdate(newStatus);
       setConfirmOpen(true);
     } catch (error) {
-      console.error("Error updating order status:", {
-        status: error.response?.status,
-        data: error.response?.data,
-        headers: error.response?.headers,
-      });
-      if (error.response?.status === 404) {
-        toast.error("Không tìm thấy đơn hàng hoặc endpoint không tồn tại");
-      } else if (error.response?.status === 401) {
-        toast.error("Không có quyền truy cập, vui lòng đăng nhập lại");
-      } else {
-        toast.error(
-          error.response?.data?.message ||
-            "Không thể cập nhật trạng thái đơn hàng"
-        );
-      }
+      console.error("Error preparing status update:", error);
+      toast.error("Không thể chuẩn bị cập nhật trạng thái đơn hàng");
     }
   };
 
   const handleConfirmStatusChange = async () => {
     if (orderIdToUpdate && statusToUpdate) {
       try {
-        await axios.put(
+        console.log("Sending PUT request with:", {
+          orderId: orderIdToUpdate,
+          statusId: statusColors[statusToUpdate].statusId,
+        });
+        const response = await axios.put(
           `https://localhost:7186/api/order/change-status/${orderIdToUpdate}`,
-          null,
+          { statusId: statusColors[statusToUpdate].statusId },
           {
-            params: {
-              statusId: statusColors[statusToUpdate].statusId,
-            },
             headers: {
+              "Content-Type": "application/json",
               // Authorization: `Bearer ${localStorage.getItem("token")}`,
             },
           }
@@ -184,7 +170,13 @@ const OrderList = () => {
           data: error.response?.data,
           headers: error.response?.headers,
         });
-        if (error.response?.status === 404) {
+        console.error("Error details:", error.response?.data);
+        if (error.response?.status === 400) {
+          toast.error(
+            error.response?.data?.message ||
+              "Yêu cầu không hợp lệ. Vui lòng kiểm tra dữ liệu."
+          );
+        } else if (error.response?.status === 404) {
           toast.error("Không tìm thấy đơn hàng hoặc endpoint không tồn tại");
         } else if (error.response?.status === 401) {
           toast.error("Không có quyền truy cập, vui lòng đăng nhập lại");
@@ -265,7 +257,6 @@ const OrderList = () => {
     const statusInfo = statusColors[status] || statusColors.Pending;
     const StatusIcon = statusInfo.icon;
 
-    // Kiểm tra nếu trạng thái bị khóa (Success hoặc Cancelled) hoặc chưa thanh toán
     const isStatusLocked =
       status === "Success" ||
       status === "Cancelled" ||
@@ -348,15 +339,14 @@ const OrderList = () => {
   const normalizeStatus = (status) => {
     console.log("orderStatus value:", status);
     if (!status) return "Pending";
-    if (status === "Success") return "Success";
-    if (["Successed", "Successfull", "Done", "Completed"].includes(status))
-      return "Completed";
-    if (status === "Cancel" || status === "Cancelled") return "Cancelled";
-    if (status === "Processing") return "Processing";
-    if (status === "Pending") return "Pending";
-    if (status === "Delivered") return "Delivered";
-    if (status === "Shipped" || status === "Shipping") return "Shipped";
-    return status;
+    const normalizedStatus = status.toUpperCase();
+    if (normalizedStatus === "PENDING") return "Pending";
+    if (normalizedStatus === "PREPARING") return "Preparing";
+    if (normalizedStatus === "SUCCESS") return "Success";
+    if (normalizedStatus === "CANCELLED" || normalizedStatus === "CANCEL")
+      return "Cancelled";
+    console.warn(`Unknown status: ${status}, defaulting to Pending`);
+    return "Pending";
   };
 
   if (isLoading) {

@@ -20,9 +20,9 @@ import {
 import {
   Search as SearchIcon,
   Visibility as VisibilityIcon,
-  LocalShipping as ShippingIcon,
-  CheckCircle as CheckCircleIcon,
-  Cancel as CancelIcon,
+  LocalShipping as PreparingIcon,
+  CheckCircle as SuccessIcon,
+  Cancel as CancelledIcon,
   AccessTime as PendingIcon,
   Close as CloseIcon,
 } from "@mui/icons-material";
@@ -34,21 +34,21 @@ const statusColors = {
   Pending: {
     color: "bg-yellow-100 text-yellow-800",
     icon: PendingIcon,
-    label: "Đang xử lý",
+    label: "Chờ xử lý",
   },
-  Processing: {
+  Preparing: {
     color: "bg-blue-100 text-blue-800",
-    icon: ShippingIcon,
-    label: "Đang giao",
+    icon: PreparingIcon,
+    label: "Đang pha chế",
   },
-  Completed: {
+  Success: {
     color: "bg-green-100 text-green-800",
-    icon: CheckCircleIcon,
-    label: "Hoàn thành",
+    icon: SuccessIcon,
+    label: "Thành công",
   },
   Cancelled: {
     color: "bg-red-100 text-red-800",
-    icon: CancelIcon,
+    icon: CancelledIcon,
     label: "Đã hủy",
   },
 };
@@ -121,6 +121,41 @@ const OrderList = () => {
     }).format(amount || 0);
   };
 
+  const normalizeStatus = (status) => {
+    console.log("orderStatus value:", status);
+    if (!status) return "Pending";
+    const normalizedStatus = status.toUpperCase();
+    if (normalizedStatus === "PENDING") return "Pending";
+    if (normalizedStatus === "PREPARING") return "Preparing";
+    if (normalizedStatus === "SUCCESS") return "Success";
+    if (normalizedStatus === "CANCELLED" || normalizedStatus === "CANCEL")
+      return "Cancelled";
+    console.warn(`Unknown status: ${status}, defaulting to Pending`);
+    return "Pending";
+  };
+
+  const getLatestStatus = (orderStatusUpdates) => {
+    console.log("Raw orderStatusUpdates:", orderStatusUpdates);
+    if (
+      !orderStatusUpdates ||
+      !Array.isArray(orderStatusUpdates) ||
+      orderStatusUpdates.length === 0
+    ) {
+      console.log("No valid order status updates found, defaulting to Pending");
+      return "Pending";
+    }
+
+    const validUpdates = orderStatusUpdates
+      .filter((update) => update && update.orderStatus !== null)
+      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+    console.log("Filtered and sorted updates:", validUpdates);
+    const latestUpdate = validUpdates[0];
+    const status = latestUpdate ? latestUpdate.orderStatus : "Pending";
+    console.log("Selected latest status:", status);
+    return status;
+  };
+
   const OrderStatus = ({ status }) => {
     const statusInfo = statusColors[status] || statusColors.Pending;
     const StatusIcon = statusInfo.icon;
@@ -132,21 +167,6 @@ const OrderList = () => {
         <span className="text-sm font-medium">{statusInfo.label}</span>
       </div>
     );
-  };
-
-  const normalizeStatus = (status) => {
-    console.log("orderStatus value:", status); // Log để kiểm tra giá trị thực tế
-    if (!status) return "Pending";
-    if (
-      ["Success", "Successed", "Successfull", "Done", "Completed"].includes(
-        status
-      )
-    )
-      return "Completed";
-    if (status === "Cancel" || status === "Cancelled") return "Cancelled";
-    if (status === "Processing") return "Processing";
-    if (status === "Pending") return "Pending";
-    return status;
   };
 
   if (isLoading) {
@@ -366,14 +386,14 @@ const OrderList = () => {
                       <OrderStatus
                         status={normalizeStatus(
                           orderDetails.orderStatus ||
-                            orderDetails.status ||
-                            orderDetails.orderstatusupdates?.[0]?.orderStatus
+                            getLatestStatus(orderDetails.orderstatusupdates)
                         )}
                       />
                     </Typography>
                     <Typography variant="body2">
                       Phương thức thanh toán:{" "}
-                      {orderDetails.paymentMethod?.methodName}
+                      {orderDetails.transactions?.[0]?.paymentMethod
+                        ?.methodName || "Chưa thanh toán"}
                     </Typography>
                     <Typography variant="body2">
                       Ghi chú: {orderDetails.note || "Không có"}
@@ -414,10 +434,10 @@ const OrderList = () => {
                                   )
                                 : [];
                             // Giá sản phẩm chính (chưa cộng topping)
-                            const basePrice = item.price;
+                            const basePrice = item.price || 0;
                             // Tổng giá topping
                             const toppingsPrice = toppings.reduce(
-                              (total, topping) => total + topping.price,
+                              (total, topping) => total + (topping.price || 0),
                               0
                             );
                             // Tổng giá (sản phẩm + topping)
