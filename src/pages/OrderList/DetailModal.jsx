@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Modal,
   Box,
@@ -44,19 +44,20 @@ const DetailModal = ({
   };
 
   const normalizeStatus = (status) => {
+    console.log("orderStatus value:", status);
     if (!status) return "Pending";
-    if (status === "Success") return "Success";
-    if (["Successed", "Successfull", "Done", "Completed"].includes(status))
-      return "Completed";
-    if (status === "Cancel" || status === "Cancelled") return "Cancelled";
-    if (status === "Processing") return "Processing";
-    if (status === "Pending") return "Pending";
-    if (status === "Delivered") return "Delivered";
-    if (status === "Shipped") return "Shipped";
-    return status;
+    const normalizedStatus = status.toUpperCase();
+    if (normalizedStatus === "PENDING") return "Pending";
+    if (normalizedStatus === "PREPARING") return "Preparing";
+    if (normalizedStatus === "SUCCESS") return "Success";
+    if (normalizedStatus === "CANCELLED" || normalizedStatus === "CANCEL")
+      return "Cancelled";
+    console.warn(`Unknown status: ${status}, defaulting to Pending`);
+    return "Pending";
   };
 
   const getLatestStatus = (orderStatusUpdates) => {
+    console.log("Raw orderStatusUpdates:", orderStatusUpdates);
     if (
       !orderStatusUpdates ||
       !Array.isArray(orderStatusUpdates) ||
@@ -66,12 +67,14 @@ const DetailModal = ({
       return "Pending";
     }
 
-    const latestUpdate = orderStatusUpdates
+    const validUpdates = orderStatusUpdates
       .filter((update) => update && update.orderStatus !== null)
-      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))[0];
+      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
+    console.log("Filtered and sorted updates:", validUpdates);
+    const latestUpdate = validUpdates[0];
     const status = latestUpdate ? latestUpdate.orderStatus : "Pending";
-    console.log("Latest status:", status, "from updates:", orderStatusUpdates);
+    console.log("Selected latest status:", status);
     return status;
   };
 
@@ -90,10 +93,18 @@ const DetailModal = ({
     );
   };
 
-  // Debug orderDetails
   console.log("orderDetails:", orderDetails);
+  console.log("selectedOrder:", selectedOrder);
 
-  const transaction = orderDetails?.transactions?.[0];
+  const latestStatus = normalizeStatus(
+    selectedOrder?.orderStatus ||
+      getLatestStatus(orderDetails?.orderstatusupdates)
+  );
+  console.log("Latest normalized status:", latestStatus);
+
+  useEffect(() => {
+    console.log("Effect triggered, latestStatus:", latestStatus);
+  }, [latestStatus]);
 
   return (
     <Modal open={open} onClose={onClose} aria-labelledby="order-detail-modal">
@@ -113,11 +124,11 @@ const DetailModal = ({
           overflowY: "auto",
         }}
       >
-        {isLoadingDetails ? (
+        {isLoadingDetails || !orderDetails ? (
           <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
             <CircularProgress />
           </Box>
-        ) : orderDetails ? (
+        ) : (
           <>
             <div className="flex justify-between items-center mb-4">
               <Typography variant="h6" component="h2">
@@ -144,17 +155,12 @@ const DetailModal = ({
                     Ngày tạo: {formatDate(orderDetails.createAt)}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Trạng thái:{" "}
-                    <OrderStatus
-                      status={normalizeStatus(
-                        getLatestStatus(orderDetails.orderstatusupdates)
-                      )}
-                    />
+                    Trạng thái: <OrderStatus status={latestStatus} />
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Thanh toán:{" "}
                     <PaymentStatus
-                      paymentStatus={selectedOrder?.paymentStatus}
+                      paymentStatus={selectedOrder?.paymentStatus || "Unpaid"}
                     />
                   </Typography>
                 </Box>
@@ -186,22 +192,28 @@ const DetailModal = ({
                   <Typography variant="body2" color="text.secondary">
                     Số tiền phải trả:{" "}
                     {formatCurrency(
-                      transaction?.amount || orderDetails.totalAmount
+                      orderDetails.transactions?.[0]?.amount ||
+                        orderDetails.totalAmount
                     )}
                   </Typography>
                 </Box>
                 <Box>
                   <Typography variant="body2" color="text.secondary">
                     Số tiền khách đưa:{" "}
-                    {formatCurrency(transaction?.amountPaid || 0)}
+                    {formatCurrency(
+                      orderDetails.transactions?.[0]?.amountPaid || 0
+                    )}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Tiền thừa: {formatCurrency(transaction?.changeGiven || 0)}
+                    Tiền thừa:{" "}
+                    {formatCurrency(
+                      orderDetails.transactions?.[0]?.changeGiven || 0
+                    )}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Phương thức thanh toán:{" "}
-                    {transaction?.paymentMethod?.methodName ||
-                      "Chưa thanh toán"}
+                    {orderDetails.transactions?.[0]?.paymentMethod
+                      ?.methodName || "Chưa thanh toán"}
                   </Typography>
                 </Box>
               </Box>
@@ -312,8 +324,6 @@ const DetailModal = ({
               </IconButton>
             </Box>
           </>
-        ) : (
-          <Typography>Không tìm thấy thông tin chi tiết đơn hàng</Typography>
         )}
       </Box>
     </Modal>
