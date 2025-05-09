@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Container,
   Typography,
-  Avatar,
   IconButton,
   InputAdornment,
   TextField,
   CircularProgress,
-  Modal,
   Box,
   Table,
   TableBody,
@@ -19,8 +17,13 @@ import {
   Select,
   MenuItem,
   FormControl,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
   Button,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Search as SearchIcon,
   Visibility as VisibilityIcon,
@@ -29,36 +32,45 @@ import {
   Cancel as CancelIcon,
   AccessTime as PendingIcon,
   Close as CloseIcon,
-} from '@mui/icons-material';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchOrders } from '../../store/slices/orderSlice';
-import fetcher from '../../apis/fetcher';
-import { toast } from 'react-hot-toast';
-import PaymentMethodModal from './PaymentMethodModal';
-import DetailModal from './DetailModal';
-import axios from 'axios';
+} from "@mui/icons-material";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchOrders } from "../../store/slices/orderSlice";
+import fetcher from "../../apis/fetcher";
+import { toast } from "react-hot-toast";
+import PaymentMethodModal from "./PaymentMethodModal";
+import DetailModal from "./DetailModal";
+import axios from "axios";
 
 const statusColors = {
   Pending: {
-    color: 'bg-yellow-100 text-yellow-800',
+    color: "bg-yellow-100 text-yellow-800",
     icon: PendingIcon,
-    label: 'Đang xử lý',
+    label: "Đang xử lý",
+    statusId: 1,
   },
-
   Success: {
-    color: 'bg-green-100 text-green-800',
+    color: "bg-green-100 text-green-800",
     icon: CheckCircleIcon,
-    label: 'Thành công',
-  },
-  Completed: {
-    color: 'bg-green-100 text-green-800',
-    icon: CheckCircleIcon,
-    label: 'Hoàn thành',
+    label: "Thành công",
+    statusId: 4,
   },
   Cancelled: {
-    color: 'bg-red-100 text-red-800',
+    color: "bg-red-100 text-red-800",
     icon: CancelIcon,
-    label: 'Đã hủy',
+    label: "Đã hủy",
+    statusId: 5,
+  },
+  Delivered: {
+    color: "bg-blue-100 text-blue-800",
+    icon: ShippingIcon,
+    label: "Đã giao hàng",
+    statusId: 3,
+  },
+  Shipped: {
+    color: "bg-indigo-100 text-indigo-800",
+    icon: ShippingIcon,
+    label: "Đang vận chuyển",
+    statusId: 2,
   },
 };
 
@@ -67,15 +79,18 @@ const OrderList = () => {
   const { orders, isLoading, error } = useSelector((state) => state.order);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderDetails, setOrderDetails] = useState(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedOrderForPayment, setSelectedOrderForPayment] = useState(null);
   const [paymentMethods, setPaymentMethods] = useState([]);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
   const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [statusToUpdate, setStatusToUpdate] = useState(null);
+  const [orderIdToUpdate, setOrderIdToUpdate] = useState(null);
 
   useEffect(() => {
     dispatch(fetchOrders());
@@ -97,7 +112,8 @@ const OrderList = () => {
       setOrderDetails(response.data);
       setSelectedOrder(order);
     } catch (error) {
-      console.error('Error fetching order details:', error);
+      console.error("Error fetching order details:", error);
+      toast.error("Không thể tải chi tiết đơn hàng");
     } finally {
       setIsLoadingDetails(false);
     }
@@ -110,34 +126,103 @@ const OrderList = () => {
 
   const handleStatusChange = async (orderId, newStatus) => {
     try {
-      await axios.get(`https://localhost:7186/api/order/order-status/${orderId}`, {
-        status: newStatus
-      });
-      
-      // Cập nhật lại danh sách đơn hàng
-      dispatch(fetchOrders());
-      toast.success('Cập nhật trạng thái thành công');
+      const statusId = statusColors[newStatus]?.statusId;
+      if (!statusId) {
+        throw new Error(`Không tìm thấy statusId cho trạng thái ${newStatus}`);
+      }
+
+      console.log(
+        "Updating status for order:",
+        orderId,
+        "to",
+        newStatus,
+        "statusId:",
+        statusId
+      );
+      setOrderIdToUpdate(orderId);
+      setStatusToUpdate(newStatus);
+      setConfirmOpen(true);
     } catch (error) {
-      console.error('Error updating order status:', error);
-      toast.error('Không thể cập nhật trạng thái đơn hàng');
+      console.error("Error updating order status:", {
+        status: error.response?.status,
+        data: error.response?.data,
+        headers: error.response?.headers,
+      });
+      if (error.response?.status === 404) {
+        toast.error("Không tìm thấy đơn hàng hoặc endpoint không tồn tại");
+      } else if (error.response?.status === 401) {
+        toast.error("Không có quyền truy cập, vui lòng đăng nhập lại");
+      } else {
+        toast.error(
+          error.response?.data?.message ||
+            "Không thể cập nhật trạng thái đơn hàng"
+        );
+      }
     }
+  };
+
+  const handleConfirmStatusChange = async () => {
+    if (orderIdToUpdate && statusToUpdate) {
+      try {
+        await axios.put(
+          `https://localhost:7186/api/order/change-status/${orderIdToUpdate}`,
+          null,
+          {
+            params: {
+              statusId: statusColors[statusToUpdate].statusId,
+            },
+            headers: {
+              // Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        dispatch(fetchOrders());
+        toast.success("Cập nhật trạng thái thành công");
+      } catch (error) {
+        console.error("Error updating order status:", {
+          status: error.response?.status,
+          data: error.response?.data,
+          headers: error.response?.headers,
+        });
+        if (error.response?.status === 404) {
+          toast.error("Không tìm thấy đơn hàng hoặc endpoint không tồn tại");
+        } else if (error.response?.status === 401) {
+          toast.error("Không có quyền truy cập, vui lòng đăng nhập lại");
+        } else {
+          toast.error(
+            error.response?.data?.message ||
+              "Không thể cập nhật trạng thái đơn hàng"
+          );
+        }
+      } finally {
+        setConfirmOpen(false);
+        setOrderIdToUpdate(null);
+        setStatusToUpdate(null);
+      }
+    }
+  };
+
+  const handleCancelStatusChange = () => {
+    setConfirmOpen(false);
+    setOrderIdToUpdate(null);
+    setStatusToUpdate(null);
   };
 
   const fetchPaymentMethods = async () => {
     try {
       setIsLoadingPaymentMethods(true);
-      const response = await fetcher.get('/payment-methods');
+      const response = await fetcher.get("/payment-methods");
       setPaymentMethods(response.data);
     } catch (error) {
-      console.error('Error fetching payment methods:', error);
-      toast.error('Không thể tải danh sách phương thức thanh toán');
+      console.error("Error fetching payment methods:", error);
+      toast.error("Không thể tải danh sách phương thức thanh toán");
     } finally {
       setIsLoadingPaymentMethods(false);
     }
   };
 
   const handlePaymentStatusClick = async (order) => {
-    if (order.paymentStatus === 'Unpaid') {
+    if (order.paymentStatus === "Unpaid") {
       setSelectedOrderForPayment(order);
       setShowPaymentModal(true);
     }
@@ -148,67 +233,129 @@ const OrderList = () => {
   };
 
   const filteredOrders = orders?.items
-    ? orders.items.filter((order) =>
-        order.orderId.toString().includes(searchTerm.toLowerCase()) ||
-        order.note?.toLowerCase().includes(searchTerm.toLowerCase())
+    ? orders.items.filter(
+        (order) =>
+          order.orderId.toString().includes(searchTerm.toLowerCase()) ||
+          order.note?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : [];
 
   const formatDate = (dateString) => {
-    if (!dateString) return '';
+    if (!dateString) return "";
     const options = {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
     };
-    return new Date(dateString).toLocaleString('vi-VN', options);
+    return new Date(dateString).toLocaleString("vi-VN", options);
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
     }).format(amount || 0);
   };
 
-  const OrderStatus = ({ status, onStatusChange }) => {
+  const OrderStatus = ({ status, onStatusChange, paymentStatus }) => {
+    const [open, setOpen] = useState(false);
+
     const statusInfo = statusColors[status] || statusColors.Pending;
     const StatusIcon = statusInfo.icon;
+
+    // Kiểm tra nếu trạng thái bị khóa (Success hoặc Cancelled) hoặc chưa thanh toán
+    const isStatusLocked =
+      status === "Success" ||
+      status === "Cancelled" ||
+      paymentStatus === "Unpaid";
+
+    const handleOpen = () => {
+      if (!isStatusLocked) {
+        setOpen(true);
+      } else if (paymentStatus === "Unpaid") {
+        toast.error("Vui lòng thanh toán trước khi thay đổi trạng thái");
+      }
+    };
+
+    const handleClose = () => {
+      setOpen(false);
+    };
+
+    const handleStatusSelect = (event) => {
+      const newStatus = event.target.value;
+      onStatusChange(newStatus);
+      setOpen(false);
+    };
+
     return (
-      <button
-        onClick={() => onStatusChange(status)}
-        className={`flex items-center gap-2 px-3 py-1 rounded-full ${statusInfo.color} hover:opacity-80 transition-opacity`}
-      >
-        <StatusIcon className="w-4 h-4" />
-        <span className="text-sm font-medium">{statusInfo.label}</span>
-      </button>
+      <div className="relative">
+        {open ? (
+          <FormControl variant="outlined" size="small">
+            <Select
+              open={open}
+              onClose={handleClose}
+              onChange={handleStatusSelect}
+              value={status}
+              className="w-36"
+              sx={{ height: "32px", fontSize: "0.875rem" }}
+            >
+              {Object.keys(statusColors).map((key) => (
+                <MenuItem key={key} value={key}>
+                  {statusColors[key].label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        ) : (
+          <button
+            onClick={isStatusLocked ? undefined : handleOpen}
+            className={`flex items-center gap-2 px-3 py-1 rounded-full ${
+              statusInfo.color
+            } ${
+              !isStatusLocked
+                ? "hover:opacity-80 transition-opacity cursor-pointer"
+                : "cursor-default"
+            }`}
+          >
+            <StatusIcon className="w-4 h-4" />
+            <span className="text-sm font-medium">{statusInfo.label}</span>
+          </button>
+        )}
+      </div>
     );
   };
 
   const PaymentStatus = ({ paymentStatus, order }) => {
-    const isPaid = paymentStatus === 'Paid';
+    const isPaid = paymentStatus === "Paid";
     return (
-      <div 
+      <div
         onClick={() => handlePaymentStatusClick(order)}
-        className={`flex items-center gap-2 px-3 py-1 rounded-full ${isPaid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800 cursor-pointer hover:opacity-80'}`}
+        className={`flex items-center gap-2 px-3 py-1 rounded-full ${
+          isPaid
+            ? "bg-green-100 text-green-800"
+            : "bg-red-100 text-red-800 cursor-pointer hover:opacity-80"
+        }`}
       >
-        <span className="text-sm font-medium">{isPaid ? 'Đã thanh toán' : 'Chưa thanh toán'}</span>
+        <span className="text-sm font-medium">
+          {isPaid ? "Đã thanh toán" : "Chưa thanh toán"}
+        </span>
       </div>
     );
   };
 
   const normalizeStatus = (status) => {
-    console.log('orderStatus value:', status); // Log để kiểm tra giá trị thực tế
-    if (!status) return 'Pending';
-    if (status === 'Success') return 'Success';
-    if ([
-      'Successed', 'Successfull', 'Done', 'Completed'
-    ].includes(status)) return 'Completed';
-    if (status === 'Cancel' || status === 'Cancelled') return 'Cancelled';
-    if (status === 'Processing') return 'Processing';
-    if (status === 'Pending') return 'Pending';
+    console.log("orderStatus value:", status);
+    if (!status) return "Pending";
+    if (status === "Success") return "Success";
+    if (["Successed", "Successfull", "Done", "Completed"].includes(status))
+      return "Completed";
+    if (status === "Cancel" || status === "Cancelled") return "Cancelled";
+    if (status === "Processing") return "Processing";
+    if (status === "Pending") return "Pending";
+    if (status === "Delivered") return "Delivered";
+    if (status === "Shipped" || status === "Shipping") return "Shipped";
     return status;
   };
 
@@ -232,7 +379,6 @@ const OrderList = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <Container maxWidth="lg">
         <div className="bg-white rounded-xl shadow-lg p-6">
-          {/* Header */}
           <div className="flex justify-between items-center mb-6">
             <Typography variant="h4" className="text-gray-800 font-bold">
               Danh sách đơn hàng
@@ -253,7 +399,6 @@ const OrderList = () => {
             />
           </div>
 
-          {/* Orders List */}
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -281,7 +426,10 @@ const OrderList = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                    <td
+                      colSpan="6"
+                      className="px-6 py-4 text-center text-gray-500"
+                    >
                       Không có đơn hàng nào
                     </td>
                   </tr>
@@ -300,13 +448,23 @@ const OrderList = () => {
                           {formatCurrency(order.totalAmount)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <OrderStatus 
-                            status={normalizeStatus(order.orderStatus || order.status || order.orderstatusupdates?.[0]?.orderStatus)} 
-                            onStatusChange={(newStatus) => handleStatusChange(order.orderId, newStatus)}
+                          <OrderStatus
+                            status={normalizeStatus(
+                              order.orderStatus ||
+                                order.status ||
+                                order.orderstatusupdates?.[0]?.orderStatus
+                            )}
+                            onStatusChange={(newStatus) =>
+                              handleStatusChange(order.orderId, newStatus)
+                            }
+                            paymentStatus={order.paymentStatus}
                           />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <PaymentStatus paymentStatus={order.paymentStatus} order={order} />
+                          <PaymentStatus
+                            paymentStatus={order.paymentStatus}
+                            order={order}
+                          />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <IconButton
@@ -323,13 +481,13 @@ const OrderList = () => {
             </table>
           </div>
 
-          {/* Pagination */}
           <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
             <div className="flex items-center">
               <span className="text-sm text-gray-700">
-                Hiển thị {filteredOrders.length > 0 ? page * rowsPerPage + 1 : 0} đến{' '}
-                {Math.min((page + 1) * rowsPerPage, filteredOrders.length)} trong{' '}
-                {filteredOrders.length} kết quả
+                Hiển thị{" "}
+                {filteredOrders.length > 0 ? page * rowsPerPage + 1 : 0} đến{" "}
+                {Math.min((page + 1) * rowsPerPage, filteredOrders.length)}{" "}
+                trong {filteredOrders.length} kết quả
               </span>
             </div>
             <div className="flex items-center space-x-2">
@@ -350,7 +508,6 @@ const OrderList = () => {
             </div>
           </div>
 
-          {/* Order Details Modal */}
           <DetailModal
             open={!!selectedOrder}
             onClose={handleCloseDetails}
@@ -359,7 +516,6 @@ const OrderList = () => {
             selectedOrder={selectedOrder}
           />
 
-          {/* Payment Method Modal */}
           <PaymentMethodModal
             open={showPaymentModal}
             onClose={() => {
@@ -369,10 +525,43 @@ const OrderList = () => {
             selectedOrder={selectedOrderForPayment}
             onPaymentSuccess={handlePaymentSuccess}
           />
+
+          <Dialog
+            open={confirmOpen}
+            onClose={handleCancelStatusChange}
+            aria-labelledby="alert-dialog-title"
+            aria-describedby="alert-dialog-description"
+          >
+            <DialogTitle
+              id="alert-dialog-title"
+              className="text-lg font-semibold"
+            >
+              Xác nhận thay đổi trạng thái
+            </DialogTitle>
+            <DialogContent>
+              <DialogContentText id="alert-dialog-description">
+                Bạn có chắc chắn muốn cập nhật trạng thái đơn hàng thành{" "}
+                {statusToUpdate && statusColors[statusToUpdate].label}?
+              </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCancelStatusChange} color="primary">
+                Hủy
+              </Button>
+              <Button
+                onClick={handleConfirmStatusChange}
+                color="primary"
+                autoFocus
+                variant="contained"
+              >
+                Xác nhận
+              </Button>
+            </DialogActions>
+          </Dialog>
         </div>
       </Container>
     </div>
   );
 };
 
-export default OrderList; 
+export default OrderList;
