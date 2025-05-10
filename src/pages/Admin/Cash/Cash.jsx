@@ -176,6 +176,17 @@ const CashStats = ({ cash }) => (
 );
 
 // Sub-component: Transactions table
+const getStaffName = (staffId) => {
+  switch (staffId) {
+    case 1:
+      return "John Doe";
+    case 2:
+      return "Jane Smith";
+    default:
+      return staffId || "-";
+  }
+};
+
 const CashTable = ({ transactions }) => (
   <TableContainer
     component={Paper}
@@ -214,11 +225,15 @@ const CashTable = ({ transactions }) => (
                   color:
                     transaction.transactionType === "CashIn"
                       ? "success.main"
+                      : transaction.transactionType === "Pay"
+                      ? "success.main"
                       : "error.main",
                 }}
               >
                 {transaction.transactionType === "CashIn"
                   ? "Nạp tiền"
+                  : transaction.transactionType === "Pay"
+                  ? "Thanh toán"
                   : "Rút tiền"}
               </Typography>
             </TableCell>
@@ -228,7 +243,7 @@ const CashTable = ({ transactions }) => (
               </Typography>
             </TableCell>
             <TableCell>{transaction.description || "-"}</TableCell>
-            <TableCell>{transaction.staffId || "-"}</TableCell>
+            <TableCell>{getStaffName(transaction.staffId)}</TableCell>
             <TableCell>
               {transaction.beforeCashBalance.toLocaleString("vi-VN")} VNĐ
             </TableCell>
