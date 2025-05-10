@@ -99,7 +99,7 @@ export const fetchOrders = createAsyncThunk(
   "order/fetchOrders",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}/order`, {
+      const response = await axios.get(`${API_URL}/order?PageSize=80`, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
@@ -148,7 +148,7 @@ const orderSlice = createSlice({
     offers: [],
     orders: {
       items: [],
-      size: 10,
+      size: 100,
       page: 1,
       total: 0,
       totalPages: 0,
