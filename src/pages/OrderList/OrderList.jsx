@@ -320,12 +320,19 @@ const OrderList = () => {
 
   const PaymentStatus = ({ paymentStatus, order }) => {
     const isPaid = paymentStatus === "Paid";
+    const normalizedStatus = normalizeStatus(order.orderStatus || order.status || order.orderstatusupdates?.[0]?.orderStatus);
+    const isCancelled = normalizedStatus === "Cancelled";
+    
     return (
       <div
-        onClick={() => handlePaymentStatusClick(order)}
+        onClick={() => !isCancelled && handlePaymentStatusClick(order)}
+        title={isCancelled ? "Không thể thanh toán đơn hàng đã hủy" : ""}
+        style={{ pointerEvents: isCancelled ? 'none' : 'auto' }}
         className={`flex items-center gap-2 px-3 py-1 rounded-full ${
           isPaid
             ? "bg-green-100 text-green-800"
+            : isCancelled
+            ? "bg-red-100 text-red-800 opacity-50"
             : "bg-red-100 text-red-800 cursor-pointer hover:opacity-80"
         }`}
       >
