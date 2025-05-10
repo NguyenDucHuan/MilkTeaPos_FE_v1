@@ -3,11 +3,11 @@ import fetcher from "../../apis/fetcher";
 import axios from "axios";
 
 // API endpoints
-const API_URL = 'https://localhost:7186/api';
+const API_URL = "https://localhost:7186/api";
 
 // Fetch cart items
 export const fetchCartItems = createAsyncThunk(
-  'order/fetchCartItems',
+  "order/fetchCartItems",
   async (_, { rejectWithValue }) => {
     try {
       const response = await axios.get(`${API_URL}/order-item/get-cart`);
@@ -62,7 +62,7 @@ export const updateCartQuantityApi = createAsyncThunk(
       console.log("Sending update request:", { productId, quantity });
       const response = await fetcher.put("/order-item/update", {
         productId,
-        quantity
+        quantity,
       });
       console.log("API Response:", response);
       return response.data;
@@ -99,12 +99,20 @@ export const fetchOrders = createAsyncThunk(
   "order/fetchOrders",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}/order`);
+      const response = await axios.get(`${API_URL}/order`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      });
       console.log("Orders response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error fetching orders:", error);
-      return rejectWithValue(error.response?.data?.message || "Có lỗi xảy ra khi tải danh sách đơn hàng");
+      return rejectWithValue(
+        error.response?.data?.message ||
+          "Có lỗi xảy ra khi tải danh sách đơn hàng"
+      );
     }
   }
 );
@@ -143,7 +151,7 @@ const orderSlice = createSlice({
       size: 10,
       page: 1,
       total: 0,
-      totalPages: 0
+      totalPages: 0,
     },
     isLoading: false,
     error: null,
@@ -163,8 +171,9 @@ const orderSlice = createSlice({
       }
     },
     addToCart: (state, action) => {
-      const { orderItemId, productId, quantity, price, product, toppings } = action.payload;
-      
+      const { orderItemId, productId, quantity, price, product, toppings } =
+        action.payload;
+
       // Kiểm tra xem sản phẩm đã tồn tại trong giỏ hàng chưa
       const existingItemIndex = state.cart.findIndex(
         (item) => item.productId === productId
@@ -181,10 +190,10 @@ const orderSlice = createSlice({
           quantity,
           price,
           product,
-          toppings
+          toppings,
         });
       }
-    }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -256,7 +265,7 @@ const orderSlice = createSlice({
           size: action.payload.size || 10,
           page: action.payload.page || 1,
           total: action.payload.total || 0,
-          totalPages: action.payload.totalPages || 0
+          totalPages: action.payload.totalPages || 0,
         };
       })
       .addCase(fetchOrders.rejected, (state, action) => {
@@ -267,7 +276,7 @@ const orderSlice = createSlice({
           size: 10,
           page: 1,
           total: 0,
-          totalPages: 0
+          totalPages: 0,
         };
       })
       .addCase(getCart.pending, (state) => {
