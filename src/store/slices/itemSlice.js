@@ -239,7 +239,10 @@ const itemSlice = createSlice({
         state.error = null;
         const { productType, items, currentPage, pageSize, totalPages, totalItems } = action.payload;
         if (productType === "MaterProduct") {
-          state.materProducts.items = items || [];
+          state.materProducts.items = items?.map(item => ({
+            ...item,
+            status: item.status !== undefined ? item.status : true
+          })) || [];
           state.materProducts.pagination = {
             currentPage: currentPage || 1,
             pageSize,
@@ -247,7 +250,10 @@ const itemSlice = createSlice({
             totalItems: totalItems || 0,
           };
         } else if (productType === "Combo") {
-          state.combos.items = items || [];
+          state.combos.items = items?.map(item => ({
+            ...item,
+            status: item.status !== undefined ? item.status : true
+          })) || [];
           state.combos.pagination = {
             currentPage: currentPage || 1,
             pageSize,
@@ -255,7 +261,10 @@ const itemSlice = createSlice({
             totalItems: totalItems || 0,
           };
         } else if (productType === "Extra") {
-          state.extras.items = items || [];
+          state.extras.items = items?.map(item => ({
+            ...item,
+            status: item.status !== undefined ? item.status : true
+          })) || [];
           state.extras.pagination = {
             currentPage: currentPage || 1,
             pageSize,

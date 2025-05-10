@@ -601,6 +601,35 @@ export default function HomePage() {
                           height: "450px",
                           display: "flex",
                           flexDirection: "column",
+                          position: "relative",
+                          ...(item.status === false && {
+                            "&::after": {
+                              content: '""',
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              background: "rgba(138, 90, 42, 0.1)",
+                              zIndex: 1,
+                              pointerEvents: "none",
+                            },
+                            "&::before": {
+                              content: '"TẠM NGƯNG BÁN"',
+                              position: "absolute",
+                              top: "50%",
+                              left: "50%",
+                              transform: "translate(-50%, -50%) rotate(-45deg)",
+                              backgroundColor: "rgba(138, 90, 42, 0.8)",
+                              color: "white",
+                              padding: "8px 40px",
+                              fontSize: "1.2rem",
+                              fontWeight: "bold",
+                              zIndex: 2,
+                              whiteSpace: "nowrap",
+                              pointerEvents: "none",
+                            }
+                          })
                         }}
                         className="menu-item"
                       >
@@ -639,6 +668,21 @@ export default function HomePage() {
                             >
                               {item.productName}
                             </Typography>
+                            {/* {item.status === false && (
+                              <Typography 
+                                variant="caption" 
+                                sx={{ 
+                                  color: 'error.main',
+                                  backgroundColor: 'error.light',
+                                  padding: '2px 8px',
+                                  borderRadius: '4px',
+                                  display: 'inline-block',
+                                  mb: 1
+                                }}
+                              >
+                                Tạm ngưng bán
+                              </Typography>
+                            )} */}
                             <Typography
                               variant="body2"
                               color="text.secondary"
@@ -749,20 +793,22 @@ export default function HomePage() {
                               {price.toLocaleString("vi-VN")} VNĐ
                             </Typography>
                             <Box className="menu-item-actions">
-                              <button
-                                onClick={() => handleOpenModal(item)}
-                                className="menu-item-add-button"
-                                style={{
-                                  padding: "8px 16px",
-                                  backgroundColor: "#8a5a2a",
-                                  color: "white",
-                                  border: "none",
-                                  borderRadius: "8px",
-                                  cursor: "pointer",
-                                }}
-                              >
-                                Thêm
-                              </button>
+                              {item.status !== false && (
+                                <button
+                                  onClick={() => handleOpenModal(item)}
+                                  className="menu-item-add-button"
+                                  style={{
+                                    padding: "8px 16px",
+                                    backgroundColor: "#8a5a2a",
+                                    color: "white",
+                                    border: "none",
+                                    borderRadius: "8px",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  Thêm
+                                </button>
+                              )}
                             </Box>
                           </Box>
                         </CardContent>
