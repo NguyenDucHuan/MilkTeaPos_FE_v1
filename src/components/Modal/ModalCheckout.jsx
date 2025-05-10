@@ -63,38 +63,31 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
   };
 
   const handleVoucherSelect = (voucher) => {
+    // Kiểm tra giá trị tối thiểu của đơn hàng
     if (total < voucher.minimumOrderAmount) {
       toast.error(
-        `Đơn hàng tối thiểu ${voucher.minimumOrderAmount.toLocaleString(
+        `Đơn hàng phải có giá trị tối thiểu ${voucher.minimumOrderAmount.toLocaleString(
           "vi-VN"
-        )} VNĐ`
+        )} VNĐ để sử dụng voucher này`
       );
       return;
     }
 
-    if (voucher.discountType === "Amount" && voucher.discountAmount > total) {
-      toast(
-        `Voucher ${
-          voucher.voucherCode
-        } có giá trị ${voucher.discountAmount.toLocaleString(
-          "vi-VN"
-        )} VNĐ vượt quá tổng tiền đơn hàng (${total.toLocaleString(
-          "vi-VN"
-        )} VNĐ). Sẽ được áp dụng giảm tối đa ${total.toLocaleString(
-          "vi-VN"
-        )} VNĐ`,
-        {
-          duration: 5000,
-          icon: "⚠️",
-          style: {
-            background: "#fff3e0",
-            color: "#e65100",
-            border: "1px solid #e65100",
-          },
-        }
-      );
+    // Kiểm tra thời hạn voucher
+    const currentDate = new Date();
+    const expirationDate = new Date(voucher.expirationDate);
+    if (currentDate > expirationDate) {
+      toast.error("Voucher đã hết hạn sử dụng");
+      return;
     }
 
+    // Kiểm tra giá trị voucher
+    if (voucher.discountType === "Amount" && voucher.discountAmount > total) {
+      toast.error("Giá trị voucher không được vượt quá tổng tiền đơn hàng");
+      return;
+    }
+
+    // Nếu tất cả điều kiện đều thỏa mãn, mới cho phép chọn voucher
     dispatch(setSelectedVoucher(voucher));
     setVoucherCode(voucher.voucherCode);
     toast.success("Áp dụng voucher thành công");
@@ -175,6 +168,42 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
   const handleCreateOrder = async () => {
     try {
       setIsProcessing(true);
+
+      // Kiểm tra điều kiện voucher trước khi tạo đơn hàng
+      if (selectedVoucher) {
+        if (total < selectedVoucher.minimumOrderAmount) {
+          toast.error(
+            `Đơn hàng phải có giá trị tối thiểu ${selectedVoucher.minimumOrderAmount.toLocaleString(
+              "vi-VN"
+            )} VNĐ để sử dụng voucher này`
+          );
+          dispatch(clearSelectedVoucher());
+          setVoucherCode("");
+          setIsProcessing(false);
+          return;
+        }
+
+        // Kiểm tra thời hạn voucher
+        const currentDate = new Date();
+        const expirationDate = new Date(selectedVoucher.expirationDate);
+        if (currentDate > expirationDate) {
+          toast.error("Voucher đã hết hạn sử dụng");
+          dispatch(clearSelectedVoucher());
+          setVoucherCode("");
+          setIsProcessing(false);
+          return;
+        }
+
+        // Kiểm tra giá trị voucher
+        if (selectedVoucher.discountType === "Amount" && selectedVoucher.discountAmount > total) {
+          toast.error("Giá trị voucher không được vượt quá tổng tiền đơn hàng");
+          dispatch(clearSelectedVoucher());
+          setVoucherCode("");
+          setIsProcessing(false);
+          return;
+        }
+      }
+
       const orderData = {
         note: "string",
         voucherCode: selectedVoucher?.voucherCode || null,
@@ -199,8 +228,13 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
       }
     } catch (error) {
       console.error("Error creating order:", error);
-      const errorMessage = error.response?.data?.message || "Không thể tạo đơn hàng. Vui lòng thử lại.";
+      const errorMessage = error.response?.data?.detail || error.response?.data?.message || "Không thể tạo đơn hàng. Vui lòng thử lại.";
       toast.error(errorMessage);
+      // Xóa voucher nếu có lỗi từ server
+      if (error.response?.data?.detail?.includes("voucher")) {
+        dispatch(clearSelectedVoucher());
+        setVoucherCode("");
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -315,17 +349,17 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
                 {selectedVoucher.discountType === "Amount" &&
                   selectedVoucher.discountAmount > total && (
                     <Box
-                      sx={{ mt: 1, p: 1, bgcolor: "#fff3e0", borderRadius: 1 }}
+                      sx={{ mt: 1, p: 1, bgcolor: "#f0e6d9", borderRadius: 1 }}
                     >
                       <Typography
                         variant="caption"
-                        sx={{ color: "#e65100", display: "block" }}
+                        sx={{ color: "#8a5a2a", display: "block" }}
                       >
                         ⚠️ Lưu ý: Voucher có giá trị vượt quá tổng tiền đơn hàng
                       </Typography>
                       <Typography
                         variant="caption"
-                        sx={{ color: "#e65100", display: "block", mt: 0.5 }}
+                        sx={{ color: "#8a5a2a", display: "block", mt: 0.5 }}
                       >
                         - Giá trị voucher:{" "}
                         {selectedVoucher.discountAmount.toLocaleString("vi-VN")}{" "}
@@ -333,7 +367,7 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
                       </Typography>
                       <Typography
                         variant="caption"
-                        sx={{ color: "#e65100", display: "block" }}
+                        sx={{ color: "#8a5a2a", display: "block" }}
                       >
                         - Tổng tiền đơn hàng: {total.toLocaleString("vi-VN")}{" "}
                         VNĐ
@@ -341,7 +375,7 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
                       <Typography
                         variant="caption"
                         sx={{
-                          color: "#e65100",
+                          color: "#8a5a2a",
                           display: "block",
                           mt: 0.5,
                           fontWeight: "bold",
@@ -724,6 +758,8 @@ export default function ModalCheckout({ open, onClose, cart, total }) {
             {isProcessing ? <CircularProgress size={24} /> : "Thanh toán"}
           </Button>
         </Box>
+
+     
       </Box>
     </Modal>
   );
