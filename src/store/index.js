@@ -8,6 +8,7 @@ import statisticSlice from "./slices/statisticSlice";
 import comboSlice from "./slices/comboSlice";
 import profileReducer from "./slices/profileSlice";
 import voucherSlice from "./slices/voucherSlice";
+import cashSlice from "./slices/cashSlice";
 
 export const store = configureStore({
   reducer: {
@@ -20,6 +21,7 @@ export const store = configureStore({
     combo: comboSlice,
     profile: profileReducer,
     voucher: voucherSlice,
+    cash: cashSlice,
   },
 });
 

@@ -18,4 +18,5 @@ export const PATH = {
   PAYMENTS: "payments",
   ORDERS_ADMIN: "orders",
   Vourcher: "vourcher",
+  Cash: "cash",
 };

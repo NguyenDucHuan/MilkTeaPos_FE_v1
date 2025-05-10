@@ -24,6 +24,7 @@ import OrderListAdmin from "../pages/Admin/Orders/List";
 import Combos from "../pages/Admin/Combos/Combos";
 import ToppingPage from "../pages/Admin/Topping/TopingPage";
 import Vouchers from "../pages/Admin/Vouchers/Vouchers";
+import Cash from "../pages/Admin/Cash/Cash";
 
 export default function useRouterElements() {
   const routeElements = useRoutes([
@@ -148,6 +149,10 @@ export default function useRouterElements() {
         {
           path: "vourchers",
           element: <Vouchers />,
+        },
+        {
+          path: "cash",
+          element: <Cash />,
         },
         {
           path: PATH.PAYMENTS,
